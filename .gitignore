@@ -26,3 +26,4 @@ replay_pid*
 /target/
 /.classpath
 /.project
+/.checkstyle
