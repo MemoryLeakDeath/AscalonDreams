@@ -1,36 +1,31 @@
 package tv.memoryleakdeath.ascalondreams.asset;
 
 import java.io.Serializable;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Model implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private FloatBuffer verticies;
-    private IntBuffer indicies;
-    private float currentRotation = 0f;
+    private String id;
+    private List<Material> materialList;
+    private List<Entity> entities = new ArrayList<>();
 
-    public float getCurrentRotation() {
-        return currentRotation;
+    public Model(String id, List<Material> materialList) {
+        this.id = id;
+        this.materialList = materialList;
     }
 
-    public void setCurrentRotation(float currentRotation) {
-        this.currentRotation = currentRotation;
+    public String getId() {
+        return id;
     }
 
-    public FloatBuffer getVerticies() {
-        return verticies;
+    public List<Material> getMaterialList() {
+        return materialList;
     }
 
-    public IntBuffer getIndicies() {
-        return indicies;
-    }
-
-    public Model(FloatBuffer verticies, IntBuffer indicies) {
-        super();
-        this.verticies = verticies;
-        this.indicies = indicies;
+    public List<Entity> getEntities() {
+        return entities;
     }
 
 }

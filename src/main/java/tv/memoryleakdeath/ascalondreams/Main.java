@@ -76,7 +76,7 @@ public class Main {
 
     private void loadModel() {
         ModelLoader loader = new ModelLoader();
-        model = loader.load(MODEL_FILE);
+        // model = loader.load(MODEL_FILE);
     }
 
     private void mainLoop() {
@@ -84,14 +84,14 @@ public class Main {
         GL46.glClearColor(0f, 0f, 0f, 0f);
 
         ModelRenderer renderer = new ModelRenderer();
-        model.setCurrentRotation(0.0f);
+        // model.setCurrentRotation(0.0f);
 
         // rendering loop
         while (!GLFW.glfwWindowShouldClose(windowHandle)) {
             GL46.glClear(GL46.GL_COLOR_BUFFER_BIT | GL46.GL_DEPTH_BUFFER_BIT); // clear framebuffers
 
             GL46.glPushMatrix();
-            GL46.glRotatef(model.getCurrentRotation(), 0f, 1f, 0f);
+            // GL46.glRotatef(model.getCurrentRotation(), 0f, 1f, 0f);
             renderer.render(model);
             GL46.glPopMatrix();
 
@@ -122,14 +122,14 @@ public class Main {
             @Override
             public void performAction(int action) {
                 if (action == GLFW.GLFW_PRESS) {
-                    model.setCurrentRotation(model.getCurrentRotation() + 0.08f);
+                    // model.setCurrentRotation(model.getCurrentRotation() + 0.08f);
                 }
             }
         }).addHandler(GLFW.GLFW_KEY_LEFT, new UserInputCallback() {
             @Override
             public void performAction(int action) {
                 if (action == GLFW.GLFW_PRESS) {
-                    model.setCurrentRotation(model.getCurrentRotation() - 0.08f);
+                    // model.setCurrentRotation(model.getCurrentRotation() - 0.08f);
                 }
             }
         });
