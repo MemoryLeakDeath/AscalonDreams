@@ -1,24 +1,19 @@
 package tv.memoryleakdeath.ascalondreams;
 
-import java.io.PrintStream;
-
 import org.lwjgl.glfw.Callbacks;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL46;
 import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
 
 import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.asset.ModelRenderer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.UserInputCallback;
-import tv.memoryleakdeath.ascalondreams.util.LoggingPrintStream;
 
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
@@ -36,16 +31,24 @@ public class Main {
     }
 
     private void init() {
-        GLFWErrorCallback.createPrint(new PrintStream(new LoggingPrintStream(Level.ERROR, getClass()))).set();
+        // GLFWErrorCallback.createPrint(new PrintStream(new
+        // LoggingPrintStream(Level.ERROR, getClass()))).set();
         if (!GLFW.glfwInit()) {
             logger.error("GLFW failed to init!");
             throw new IllegalStateException("GLFW failed to init!");
         }
+        GLFW.glfwSetErrorCallback((int errorCode, long messagePointer) -> {
+            logger.error("Error code: {} Message: {}", errorCode, MemoryUtil.memUTF8(messagePointer));
+        });
 
         // configure window
         GLFW.glfwDefaultWindowHints();
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
+//        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 4);
+//        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 6);
+//        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
+//        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_TRUE);
 
         // create window
         windowHandle = GLFW.glfwCreateWindow(600, 600, "Ascalon Dreams", MemoryUtil.NULL, MemoryUtil.NULL);
@@ -53,8 +56,6 @@ public class Main {
             logger.error("Unable to create game window!");
             throw new RuntimeException("Unable to create game window!");
         }
-
-        loadModel();
 
         GLFW.glfwSetKeyCallback(windowHandle, registerKeyboardCallbacks());
 
@@ -76,12 +77,14 @@ public class Main {
 
     private void loadModel() {
         ModelLoader loader = new ModelLoader();
-        // model = loader.load(MODEL_FILE);
+        model = loader.load("ship", MODEL_FILE);
     }
 
     private void mainLoop() {
         GL.createCapabilities();
         GL46.glClearColor(0f, 0f, 0f, 0f);
+
+        loadModel();
 
         ModelRenderer renderer = new ModelRenderer();
         // model.setCurrentRotation(0.0f);
