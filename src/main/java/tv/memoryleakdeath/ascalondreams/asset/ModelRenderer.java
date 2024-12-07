@@ -22,6 +22,7 @@ public class ModelRenderer {
     private Shader shader;
     private ShaderUniformManager uniformManager;
     private Entity entity;
+    private Camera camera = new Camera();
 
     public ModelRenderer() {
         shader = new Shader(shaderFiles);
@@ -49,7 +50,7 @@ public class ModelRenderer {
         Matrix4f projectionMatrix = new Matrix4f();
         projectionMatrix.setPerspective(FOV, (float)600/600, Z_NEAR, Z_FAR);
         uniformManager.setUniform("projectionMatrix", projectionMatrix);
-        uniformManager.setUniform("viewMatrix", new Matrix4f());
+        uniformManager.setUniform("viewMatrix", camera.getViewMatrix());
         uniformManager.setUniform("txtSampler", 0);
 
         // List<Entity> entities = model.getEntities();
@@ -70,5 +71,9 @@ public class ModelRenderer {
         });
         GL46.glBindVertexArray(0);
         shader.unbind();
+    }
+
+    public Camera getCamera() {
+        return camera;
     }
 }

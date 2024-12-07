@@ -40,11 +40,11 @@ public class Mesh implements Serializable {
         this.vboIdList = vboIdList;
     }
 
-    public Mesh(float[] verticies, float[] texCoords, int[] indicies) {
-        init(verticies, texCoords, indicies);
+    public Mesh(float[] verticies, List<float[]> texCoords, int[] indicies, float[] colors) {
+        init(verticies, texCoords, indicies, colors);
     }
 
-    private void init(float[] verticies, float[] texCoords, int[] indicies) {
+    private void init(float[] verticies, List<float[]> texCoords, int[] indicies, float[] colors) {
         setNumVertices(indicies.length);
         setVaoId(GL46.glGenVertexArrays());
         GL46.glBindVertexArray(getVaoId());
@@ -61,15 +61,26 @@ public class Mesh implements Serializable {
         GL46.glVertexAttribPointer(0, 3, GL46.GL_FLOAT, false, 0, 0);
 
         // textures vbo
-        int texVboId = GL46.glGenBuffers();
-        vboIdList.add(texVboId);
-        FloatBuffer texBuffer = MemoryUtil.memCallocFloat(texCoords.length);
-        // FloatBuffer texBuffer = memoryStack.callocFloat(texCoords.length);
-        texBuffer.put(0, texCoords);
-        GL46.glBindBuffer(GL46.GL_ARRAY_BUFFER, texVboId);
-        GL46.glBufferData(GL46.GL_ARRAY_BUFFER, texBuffer, GL46.GL_STATIC_DRAW);
-        GL46.glEnableVertexAttribArray(1);
-        GL46.glVertexAttribPointer(1, 2, GL46.GL_FLOAT, false, 0, 0);
+        for (int i = 0; i < texCoords.size(); i++) {
+            int texVboId = GL46.glGenBuffers();
+            vboIdList.add(texVboId);
+            FloatBuffer texBuffer = MemoryUtil.memCallocFloat(texCoords.get(i).length);
+            texBuffer.put(0, texCoords.get(i));
+            GL46.glBindBuffer(GL46.GL_ARRAY_BUFFER, texVboId);
+            GL46.glBufferData(GL46.GL_ARRAY_BUFFER, texBuffer, GL46.GL_STATIC_DRAW);
+            GL46.glEnableVertexAttribArray(1 + i);
+            GL46.glVertexAttribPointer(1 + i, 2, GL46.GL_FLOAT, false, 0, 0);
+        }
+
+        // colors vbo
+        int colorVboId = GL46.glGenBuffers();
+        vboIdList.add(colorVboId);
+        FloatBuffer colorBuffer = MemoryUtil.memCallocFloat(colors.length);
+        colorBuffer.put(0, colors);
+        GL46.glBindBuffer(GL46.GL_ARRAY_BUFFER, colorVboId);
+        GL46.glBufferData(GL46.GL_ARRAY_BUFFER, colorBuffer, GL46.GL_STATIC_DRAW);
+        GL46.glEnableVertexAttribArray(1 + texCoords.size());
+        GL46.glVertexAttribPointer(1 + texCoords.size(), 4, GL46.GL_FLOAT, false, 0, 0);
 
         // index vbo
         int indexVboId = GL46.glGenBuffers();
