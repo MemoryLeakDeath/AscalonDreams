@@ -17,7 +17,6 @@ public class Entity implements Serializable {
     private float scale = 1.0f;
 
     public Entity(String id, String modelId) {
-        super();
         this.id = id;
         this.modelId = modelId;
     }
@@ -30,26 +29,29 @@ public class Entity implements Serializable {
         return position;
     }
 
-    public void setPosition(float x, float y, float z) {
+    public Entity setPosition(float x, float y, float z) {
         position.x = x;
         position.y = y;
         position.z = z;
+        return this;
     }
 
     public Quaternionf getRotation() {
         return rotation;
     }
 
-    public void setRotation(float x, float y, float z, float angle) {
+    public Entity setRotation(float x, float y, float z, float angle) {
         rotation.fromAxisAngleRad(x, y, z, angle);
+        return this;
     }
 
     public float getScale() {
         return scale;
     }
 
-    public void setScale(float scale) {
+    public Entity setScale(float scale) {
         this.scale = scale;
+        return this;
     }
 
     public String getId() {

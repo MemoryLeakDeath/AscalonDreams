@@ -84,11 +84,19 @@ public class OpenGLWindow {
         return GLFW.glfwWindowShouldClose(handle);
     }
 
+    public void signalClose() {
+        GLFW.glfwSetWindowShouldClose(handle, true);
+    }
+
     public int getWidth() {
         return width;
     }
 
     public int getHeight() {
         return height;
+    }
+
+    public long getHandle() {
+        return handle;
     }
 }
