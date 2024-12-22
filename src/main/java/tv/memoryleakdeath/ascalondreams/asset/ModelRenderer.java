@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.lwjgl.opengl.GL46;
 
 import tv.memoryleakdeath.ascalondreams.shaders.opengl.GLShader;
@@ -22,6 +23,7 @@ public class ModelRenderer {
 
     private Scene scene;
     private Matrix4f projectionMatrix = new Matrix4f();
+    private Map<String, Texture> textureMap = new HashMap<>();
 
     public ModelRenderer() {
         scene = new Scene();
@@ -43,6 +45,7 @@ public class ModelRenderer {
                 .setScale(1.0f)
                 .setRotation(1f, 1f, 1f, (float) Math.toRadians(0f))
                 .updateModelMatrix();
+        getCamera().setCameraTarget(new Vector3f(0f, 0f, -4f));
     }
 
     public void render(Model model) {
@@ -55,16 +58,14 @@ public class ModelRenderer {
                 .setUniform("txtSampler", 0);
 
         // List<Entity> entities = model.getEntities();
-        Map<String, Texture> textureMap = new HashMap<>();
 
         scene.getUniformManager().setUniform("modelMatrix", scene.getEntity().getModelMatrix());
-        model.getMaterialList().forEach(material -> {
-            // String texturePath = material.getTexturePath();
-            scene.getUniformManager().setUniform("material.diffuse", material.getDiffuseColor());
-            Texture texture = textureMap.computeIfAbsent(TEXTURE_PATH, Texture::new);
-            GL46.glActiveTexture(GL46.GL_TEXTURE0);
-            texture.bind();
+        Texture texture = textureMap.computeIfAbsent(TEXTURE_PATH, Texture::new);
+        GL46.glActiveTexture(GL46.GL_TEXTURE0);
+        texture.bind();
 
+        model.getMaterialList().forEach(material -> {
+            scene.getUniformManager().setUniform("material.diffuse", material.getDiffuseColor());
             material.getMeshList().forEach(mesh -> {
                 GL46.glBindVertexArray(mesh.getVaoId());
                 GL46.glDrawElements(GL46.GL_TRIANGLES, mesh.getNumVertices(), GL46.GL_UNSIGNED_INT, 0);

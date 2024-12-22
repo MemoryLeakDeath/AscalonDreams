@@ -1,13 +1,12 @@
 package tv.memoryleakdeath.ascalondreams.shaders.opengl;
 
-import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL46;
-import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.system.MemoryStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,9 +58,9 @@ public class GLShaderUniformManager implements ShaderUniformManager {
 
     @Override
     public ShaderUniformManager setUniform(String name, Matrix4f value) {
-        FloatBuffer buffer = MemoryUtil.memAllocFloat(16);
-        GL46.glUniformMatrix4fv(getUniformLocation(name), false, value.get(buffer));
-        MemoryUtil.memFree(buffer);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            GL46.glUniformMatrix4fv(getUniformLocation(name), false, value.get(stack.mallocFloat(16)));
+        }
         return this;
     }
 

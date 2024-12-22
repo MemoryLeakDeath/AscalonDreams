@@ -15,9 +15,11 @@ import tv.memoryleakdeath.ascalondreams.input.UserInputCallback;
 public class OpenGLEngine {
     private static final Logger logger = LoggerFactory.getLogger(OpenGLEngine.class);
     public static final String MODEL_FILE = "/home/mem/development/models/scifi-ship/FBX/ship.fbx";
-    private static final int LOGIC_UPDATES_PER_SECOND = 1000 / 30;
-    private static final int DEFAULT_FRAMES_PER_SECOND = 1000 / 60;
-    private static final float MOVEMENT_INCREMENT = 0.08f;
+    private static final int LOGIC_UPDATES_PER_SECOND = 30;
+    private static final int DEFAULT_FRAMES_PER_SECOND = 60;
+    private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;
+    private static final long FPS_FRAME_TIME = 1_000_000_000L / DEFAULT_FRAMES_PER_SECOND;
+    private static final float MOVEMENT_INCREMENT = 1.0f;
 
     private OpenGLWindow window;
     private Model model;
@@ -49,12 +51,16 @@ public class OpenGLEngine {
         // rendering loop
         while (!window.shouldClose()) {
             if (shouldRunLogic()) {
-                lastLogicUpdateTimer = System.currentTimeMillis();
             }
             if (shouldRender()) {
                 render();
                 window.update();
-                lastFrameUpdateTimer = System.currentTimeMillis();
+            } else {
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
             window.pollEvents();
         }
@@ -62,15 +68,21 @@ public class OpenGLEngine {
     }
 
     private boolean shouldRender() {
-        long now = System.currentTimeMillis();
-        float deltaFrameTimer = (now - lastFrameUpdateTimer) / (DEFAULT_FRAMES_PER_SECOND);
-        return (deltaFrameTimer >= 1.0f);
+        long now = System.nanoTime();
+        if (now - lastFrameUpdateTimer >= FPS_FRAME_TIME) {
+            lastFrameUpdateTimer = now;
+            return true;
+        }
+        return false;
     }
 
     private boolean shouldRunLogic() {
-        long now = System.currentTimeMillis();
-        float deltaLogicTimer = (now - lastLogicUpdateTimer) / (LOGIC_UPDATES_PER_SECOND);
-        return (deltaLogicTimer >= 1.0f);
+        long now = System.nanoTime();
+        if (now - lastLogicUpdateTimer >= LOGIC_FRAME_TIME) {
+            lastLogicUpdateTimer = now;
+            return true;
+        }
+        return false;
     }
 
     private void render() {
@@ -99,28 +111,28 @@ public class OpenGLEngine {
             @Override
             public void performAction(int action) {
                 if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().moveRight(MOVEMENT_INCREMENT);
+                    renderer.getCamera().orbitRight(MOVEMENT_INCREMENT);
                 }
             }
         }).addHandler(GLFW.GLFW_KEY_LEFT, new UserInputCallback() {
             @Override
             public void performAction(int action) {
                 if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().moveLeft(MOVEMENT_INCREMENT);
+                    renderer.getCamera().orbitLeft(MOVEMENT_INCREMENT);
                 }
             }
         }).addHandler(GLFW.GLFW_KEY_UP, new UserInputCallback() {
             @Override
             public void performAction(int action) {
                 if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().moveUp(MOVEMENT_INCREMENT);
+                    renderer.getCamera().orbitUp(MOVEMENT_INCREMENT);
                 }
             }
         }).addHandler(GLFW.GLFW_KEY_DOWN, new UserInputCallback() {
             @Override
             public void performAction(int action) {
                 if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().moveDown(MOVEMENT_INCREMENT);
+                    renderer.getCamera().orbitDown(MOVEMENT_INCREMENT);
                 }
             }
         });
