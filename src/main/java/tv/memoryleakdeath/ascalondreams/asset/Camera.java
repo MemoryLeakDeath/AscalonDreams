@@ -106,25 +106,22 @@ public class Camera {
         Vector3f cameraRightVector = new Vector3f(1, 0, 0);
         horizRotation.transformDirection(cameraRightVector);
 
-        cameraRotationMatrix.identity().mul(vertRotation).mul(horizRotation);
+        cameraRotationMatrix.identity().mul(horizRotation).mul(vertRotation);
         updateOrbitUpVector();
     }
 
     private void updateOrbitUpVector() {
         Vector3f viewDirection = new Vector3f(0, 0, 1);
         cameraRotationMatrix.transformDirection(viewDirection);
-        float dotProduct = viewDirection.dot(0, 1, 0);
 
         // if we're close to the poles (looking straight up or down) adjust the camera
         // up vector
-        if (Math.abs(dotProduct) > 0.99999f) {
+        if (Math.abs(cameraVertAngle) > Math.PI / 2 - 0.1f) {
             Vector3f rightVector = new Vector3f(1, 0, 0);
             cameraRotationMatrix.transformDirection(rightVector);
+
             // recalc up vector
-            up.set(rightVector).cross(viewDirection).normalize();
-            if (dotProduct < 0) {
-                up.negate();
-            }
+            up.set(viewDirection).cross(rightVector).normalize();
         } else {
             up.set(0, 1, 0);
         }
