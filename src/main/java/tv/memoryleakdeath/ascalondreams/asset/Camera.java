@@ -97,8 +97,7 @@ public class Camera {
         Vector3f rotatedPosition = new Vector3f();
         cameraRotationMatrix.transformPosition(basePosition, rotatedPosition);
         position.set(cameraTarget).add(rotatedPosition);
-        Vector3f cameraUpVector = new Vector3f(up);
-        viewMatrix.identity().setLookAt(position, cameraTarget, cameraUpVector);
+        viewMatrix.identity().lookAt(position, cameraTarget, up);
     }
 
     private void updateOrbitRotationMatrix() {
@@ -107,7 +106,7 @@ public class Camera {
         Vector3f cameraRightVector = new Vector3f(1, 0, 0);
         horizRotation.transformDirection(cameraRightVector);
 
-        cameraRotationMatrix.identity().mul(horizRotation).mul(vertRotation);
+        cameraRotationMatrix.identity().mul(vertRotation).mul(horizRotation);
         updateOrbitUpVector();
     }
 
@@ -122,7 +121,10 @@ public class Camera {
             Vector3f rightVector = new Vector3f(1, 0, 0);
             cameraRotationMatrix.transformDirection(rightVector);
             // recalc up vector
-            up.set(viewDirection).cross(rightVector).cross(viewDirection).normalize();
+            up.set(rightVector).cross(viewDirection).normalize();
+            if (dotProduct < 0) {
+                up.negate();
+            }
         } else {
             up.set(0, 1, 0);
         }
