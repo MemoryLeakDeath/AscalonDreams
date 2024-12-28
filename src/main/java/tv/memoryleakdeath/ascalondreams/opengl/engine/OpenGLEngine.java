@@ -19,7 +19,7 @@ public class OpenGLEngine {
     private static final int DEFAULT_FRAMES_PER_SECOND = 60;
     private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;
     private static final long FPS_FRAME_TIME = 1_000_000_000L / DEFAULT_FRAMES_PER_SECOND;
-    private static final float MOVEMENT_INCREMENT = 1.0f;
+    private static final float MOVEMENT_INCREMENT = 0.02f;
 
     private OpenGLWindow window;
     private Model model;

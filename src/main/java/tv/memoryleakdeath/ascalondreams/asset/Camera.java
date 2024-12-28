@@ -12,11 +12,12 @@ public class Camera {
     private Vector3f up = new Vector3f();
     private Matrix4f viewMatrix = new Matrix4f();
 
-    // orbiting camera stuff
+    // orbiting camera stuff (arcball/matrix math)
+    private Matrix4f cameraRotationMatrix = new Matrix4f().identity();
+    private float cameraHorizAngle = 0.0f;
+    private float cameraVertAngle = 0.0f;
     private Vector3f cameraTarget = new Vector3f();
     private static final float ORBIT_DISTANCE = 4.0f;
-    private static final float PI_OVER_TWO = (float) Math.PI / 2;
-    private static final float THREE_PI_OVER_TWO = 3 * (float) Math.PI / 2;
 
     public Vector3f getDirection() {
         return direction;
@@ -92,69 +93,62 @@ public class Camera {
     }
 
     private void updateOrbitPosition() {
-        float yaw = (float) Math.toRadians(rotation.y);
-        float pitch = (float) Math.toRadians(rotation.x);
-
-        float distance = (float) (ORBIT_DISTANCE * Math.cos(pitch));
-        float x = (float) (distance * Math.sin(yaw));
-        float y = (float) (ORBIT_DISTANCE * Math.sin(pitch));
-        float z = (float) (distance * Math.cos(yaw));
-
-        position.set(cameraTarget.x + x, cameraTarget.y + y, cameraTarget.z + z);
-
-        Vector3f cameraUpVector = calculateCameraUpVector(pitch);
-        viewMatrix.setLookAt(position, cameraTarget, cameraUpVector);
+        Vector3f basePosition = new Vector3f(0, 0, ORBIT_DISTANCE);
+        Vector3f rotatedPosition = new Vector3f();
+        cameraRotationMatrix.transformPosition(basePosition, rotatedPosition);
+        position.set(cameraTarget).add(rotatedPosition);
+        Vector3f cameraUpVector = new Vector3f(up);
+        viewMatrix.identity().setLookAt(position, cameraTarget, cameraUpVector);
     }
 
-    private Vector3f calculateCameraUpVector(float pitch) {
-        // are we looking from below or above?
-        float normalizedPitch = pitch % (2 * (float) Math.PI);
-        if (normalizedPitch < 0) {
-            normalizedPitch += 2 * (float) Math.PI;
-        }
+    private void updateOrbitRotationMatrix() {
+        Matrix4f horizRotation = new Matrix4f().rotateY(cameraHorizAngle);
+        Matrix4f vertRotation = new Matrix4f().rotateX(cameraVertAngle);
+        Vector3f cameraRightVector = new Vector3f(1, 0, 0);
+        horizRotation.transformDirection(cameraRightVector);
 
-        Vector3f cameraUpVector = new Vector3f(0f, 1f, 0f);
-        // interpolation if we're below the model
-        if (normalizedPitch > PI_OVER_TWO && normalizedPitch < THREE_PI_OVER_TWO) {
-            cameraUpVector.set(0f, -1f, 0f);
-        }
+        cameraRotationMatrix.identity().mul(horizRotation).mul(vertRotation);
+        updateOrbitUpVector();
+    }
 
-        // smooth out the interpolation
-        float transitionRange = 0.1f;
-        boolean normalizedPiOverTwo = Math.abs(normalizedPitch - PI_OVER_TWO) < transitionRange;
-        boolean doSmoothInterpolation = (normalizedPiOverTwo
-                || Math.abs(normalizedPitch - THREE_PI_OVER_TWO) < transitionRange);
-        if (doSmoothInterpolation) {
-            float interpolationFactor = 0;
-            if (normalizedPiOverTwo) {
-                interpolationFactor = (normalizedPitch - (PI_OVER_TWO - transitionRange)) / (2 * transitionRange);
-            } else {
-                interpolationFactor = (normalizedPitch - (THREE_PI_OVER_TWO - transitionRange)) / (2 * transitionRange);
-            }
-            // smooth it out
-            interpolationFactor = 0.5f + 0.5f * (float) Math.sin((interpolationFactor - 0.5f) * Math.PI);
-            cameraUpVector.set(0, Math.cos(interpolationFactor * Math.PI), 0);
+    private void updateOrbitUpVector() {
+        Vector3f viewDirection = new Vector3f(0, 0, 1);
+        cameraRotationMatrix.transformDirection(viewDirection);
+        float dotProduct = viewDirection.dot(0, 1, 0);
+
+        // if we're close to the poles (looking straight up or down) adjust the camera
+        // up vector
+        if (Math.abs(dotProduct) > 0.99999f) {
+            Vector3f rightVector = new Vector3f(1, 0, 0);
+            cameraRotationMatrix.transformDirection(rightVector);
+            // recalc up vector
+            up.set(viewDirection).cross(rightVector).cross(viewDirection).normalize();
+        } else {
+            up.set(0, 1, 0);
         }
-        return cameraUpVector;
     }
 
     public void orbitRight(float inc) {
-        addRotation(0, inc);
+        cameraHorizAngle += inc;
+        updateOrbitRotationMatrix();
         updateOrbitPosition();
     }
 
     public void orbitLeft(float inc) {
-        addRotation(0, -inc);
+        cameraHorizAngle += -inc;
+        updateOrbitRotationMatrix();
         updateOrbitPosition();
     }
 
     public void orbitUp(float inc) {
-        addRotation(-inc, 0);
+        cameraVertAngle += -inc;
+        updateOrbitRotationMatrix();
         updateOrbitPosition();
     }
 
     public void orbitDown(float inc) {
-        addRotation(inc, 0);
+        cameraVertAngle += inc;
+        updateOrbitRotationMatrix();
         updateOrbitPosition();
     }
 
