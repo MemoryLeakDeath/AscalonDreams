@@ -1,7 +1,6 @@
 #version 460
 
 in vec2 outTextureCoord;
-
 out vec4 fragmentColor;
 
 struct Material

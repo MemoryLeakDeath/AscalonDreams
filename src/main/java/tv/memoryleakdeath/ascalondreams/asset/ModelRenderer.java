@@ -13,6 +13,7 @@ import tv.memoryleakdeath.ascalondreams.shaders.opengl.GLShaderUniformManager;
 
 public class ModelRenderer {
     public static final String TEXTURE_PATH = "/home/mem/development/models/scifi-ship/Textures/Sci-Fi Ship_Textures_01.png";
+    public static final String EMISSIVE_TEXTURE_PATH = "/home/mem/development/models/scifi-ship/Textures/Sci-Fi Ship_Textures_Emissive.png";
     private static final List<GLShader.ShaderModuleData> shaderFiles = List.of(
             new GLShader.ShaderModuleData("shaders/model.vert", GL46.GL_VERTEX_SHADER),
             new GLShader.ShaderModuleData("shaders/model.frag", GL46.GL_FRAGMENT_SHADER));
@@ -63,6 +64,9 @@ public class ModelRenderer {
         Texture texture = textureMap.computeIfAbsent(TEXTURE_PATH, Texture::new);
         GL46.glActiveTexture(GL46.GL_TEXTURE0);
         texture.bind();
+        Texture emissiveTexture = textureMap.computeIfAbsent(EMISSIVE_TEXTURE_PATH, Texture::new);
+        GL46.glActiveTexture(GL46.GL_TEXTURE1);
+        emissiveTexture.bind();
 
         model.getMaterialList().forEach(material -> {
             scene.getUniformManager().setUniform("material.diffuse", material.getDiffuseColor());

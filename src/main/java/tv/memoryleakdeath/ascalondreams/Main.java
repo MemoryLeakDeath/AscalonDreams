@@ -4,47 +4,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tv.memoryleakdeath.ascalondreams.opengl.engine.OpenGLEngine;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanEngine;
 
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-    private void run() {
-        logger.info("Starting program....");
+    private void runOpenGL() {
+        logger.info("Starting program in OpenGL mode....");
         OpenGLEngine engine = new OpenGLEngine();
         engine.init();
         engine.mainLoop();
         logger.info("Exiting program....");
     }
 
-//    private KeyboardCallback registerKeyboardCallbacks() {
-//        KeyboardCallback kb = new KeyboardCallback();
-//        kb.addHandler(GLFW.GLFW_KEY_ESCAPE, new UserInputCallback() {
-//            @Override
-//            public void performAction(int action) {
-//                if (action == GLFW.GLFW_RELEASE) {
-//                    GLFW.glfwSetWindowShouldClose(windowHandle, true);
-//                }
-//            }
-//        }).addHandler(GLFW.GLFW_KEY_RIGHT, new UserInputCallback() {
-//            @Override
-//            public void performAction(int action) {
-//                if (action == GLFW.GLFW_PRESS) {
-//                    // model.setCurrentRotation(model.getCurrentRotation() + 0.08f);
-//                }
-//            }
-//        }).addHandler(GLFW.GLFW_KEY_LEFT, new UserInputCallback() {
-//            @Override
-//            public void performAction(int action) {
-//                if (action == GLFW.GLFW_PRESS) {
-//                    // model.setCurrentRotation(model.getCurrentRotation() - 0.08f);
-//                }
-//            }
-//        });
-//        return kb;
-//    }
+    private void runVulkan() {
+        logger.info("Starting program in Vulkan mode....");
+        VulkanEngine engine = new VulkanEngine();
+        engine.init();
+        engine.mainLoop();
+        logger.info("Exiting program....");
+    }
 
     public static void main(String[] args) {
-        new Main().run();
+        // new Main().runOpenGL();
+        new Main().runVulkan();
     }
 
 }
