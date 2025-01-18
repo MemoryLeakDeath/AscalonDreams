@@ -11,7 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding> 
         <finalname>ascalondreams-${project.version}</finalname>	
-		<lwjgl.version>3.3.5</lwjgl.version>
+		<lwjgl.version>3.3.6</lwjgl.version>
 		<steamworks4j.version>1.9.0</steamworks4j.version>
 		<joml.version>1.10.8</joml.version>
 		<joml-primitives.version>1.10.0</joml-primitives.version>
