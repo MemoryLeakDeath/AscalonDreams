@@ -5,12 +5,10 @@ import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL46;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.asset.ModelRenderer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
-import tv.memoryleakdeath.ascalondreams.input.UserInputCallback;
 
 public class OpenGLEngine {
     private static final Logger logger = LoggerFactory.getLogger(OpenGLEngine.class);
@@ -26,6 +24,7 @@ public class OpenGLEngine {
     private ModelRenderer renderer;
     private long lastLogicUpdateTimer;
     private long lastFrameUpdateTimer;
+    private KeyboardCallback kb;
 
     public void init() {
         window = new OpenGLWindow(600, 600);
@@ -46,7 +45,7 @@ public class OpenGLEngine {
         loadModel();
 
         renderer = new ModelRenderer();
-        GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
+        registerKeyboardCallbacks();
 
         // rendering loop
         while (!window.shouldClose()) {
@@ -63,6 +62,7 @@ public class OpenGLEngine {
                 }
             }
             window.pollEvents();
+            kb.process();
         }
         cleanup();
     }
@@ -88,54 +88,32 @@ public class OpenGLEngine {
     private void render() {
         GL46.glClear(GL46.GL_COLOR_BUFFER_BIT | GL46.GL_DEPTH_BUFFER_BIT); // clear framebuffers
         GL46.glViewport(0, 0, window.getWidth(), window.getHeight());
-        // GL46.glPushMatrix();
-        // GL46.glRotatef(model.getCurrentRotation(), 0f, 1f, 0f);
         renderer.render(model);
-        // GL46.glPopMatrix();
     }
 
     private void cleanup() {
         window.cleanup();
     }
 
-    private KeyboardCallback registerKeyboardCallbacks() {
-        KeyboardCallback kb = new KeyboardCallback();
-        kb.addHandler(GLFW.GLFW_KEY_ESCAPE, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_RELEASE) {
-                    window.signalClose();
-                }
+    private void registerKeyboardCallbacks() {
+        this.kb = new KeyboardCallback();
+        kb.addHandler(() -> {
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS) {
+                window.signalClose();
             }
-        }).addHandler(GLFW.GLFW_KEY_RIGHT, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().orbitRight(MOVEMENT_INCREMENT);
-                }
+        }).addHandler(() -> {
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitRight(MOVEMENT_INCREMENT);
             }
-        }).addHandler(GLFW.GLFW_KEY_LEFT, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().orbitLeft(MOVEMENT_INCREMENT);
-                }
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitLeft(MOVEMENT_INCREMENT);
             }
-        }).addHandler(GLFW.GLFW_KEY_UP, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().orbitUp(MOVEMENT_INCREMENT);
-                }
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitUp(MOVEMENT_INCREMENT);
             }
-        }).addHandler(GLFW.GLFW_KEY_DOWN, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    renderer.getCamera().orbitDown(MOVEMENT_INCREMENT);
-                }
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitDown(MOVEMENT_INCREMENT);
             }
         });
-        return kb;
     }
 }

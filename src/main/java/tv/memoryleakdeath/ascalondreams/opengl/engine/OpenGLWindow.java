@@ -45,7 +45,7 @@ public class OpenGLWindow {
             logger.error("Unable to create game window!");
             throw new RuntimeException("Unable to create game window!");
         }
-        // GLFW.glfwSetKeyCallback(handle, registerKeyboardCallbacks());
+        GLFW.glfwSetInputMode(handle, GLFW.GLFW_STICKY_KEYS, GLFW.GLFW_TRUE);
 
         // get resolution of primary monitor
         GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());

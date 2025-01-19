@@ -3,12 +3,10 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.asset.ModelRenderer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
-import tv.memoryleakdeath.ascalondreams.input.UserInputCallback;
 
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
@@ -24,6 +22,7 @@ public class VulkanEngine {
     private ModelRenderer renderer;
     private long lastLogicUpdateTimer;
     private long lastFrameUpdateTimer;
+    private KeyboardCallback kb;
 
     public void init() {
         window = new VulkanWindow(600, 600);
@@ -35,7 +34,7 @@ public class VulkanEngine {
     }
 
     public void mainLoop() {
-        GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
+        //GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
 
         // rendering loop
         while (!window.shouldClose()) {
@@ -82,44 +81,25 @@ public class VulkanEngine {
         window.cleanup();
     }
 
-    private KeyboardCallback registerKeyboardCallbacks() {
-        KeyboardCallback kb = new KeyboardCallback();
-        kb.addHandler(GLFW.GLFW_KEY_ESCAPE, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_RELEASE) {
-                    window.signalClose();
-                }
+    private void registerKeyboardCallbacks() {
+        this.kb = new KeyboardCallback();
+        kb.addHandler(() -> {
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_RELEASE) {
+                window.signalClose();
             }
-        }).addHandler(GLFW.GLFW_KEY_RIGHT, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    // renderer.getCamera().orbitRight(MOVEMENT_INCREMENT);
-                }
+        }).addHandler(() -> {
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitRight(MOVEMENT_INCREMENT);
             }
-        }).addHandler(GLFW.GLFW_KEY_LEFT, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    // renderer.getCamera().orbitLeft(MOVEMENT_INCREMENT);
-                }
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitLeft(MOVEMENT_INCREMENT);
             }
-        }).addHandler(GLFW.GLFW_KEY_UP, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    // renderer.getCamera().orbitUp(MOVEMENT_INCREMENT);
-                }
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitUp(MOVEMENT_INCREMENT);
             }
-        }).addHandler(GLFW.GLFW_KEY_DOWN, new UserInputCallback() {
-            @Override
-            public void performAction(int action) {
-                if (action == GLFW.GLFW_PRESS) {
-                    // renderer.getCamera().orbitDown(MOVEMENT_INCREMENT);
-                }
+            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) {
+                renderer.getCamera().orbitDown(MOVEMENT_INCREMENT);
             }
         });
-        return kb;
     }
 }

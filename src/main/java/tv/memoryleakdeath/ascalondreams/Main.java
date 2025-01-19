@@ -26,8 +26,8 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        // new Main().runOpenGL();
-        new Main().runVulkan();
+        new Main().runOpenGL();
+        //new Main().runVulkan();
     }
 
 }

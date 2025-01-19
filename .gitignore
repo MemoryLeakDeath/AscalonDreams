@@ -28,3 +28,5 @@ replay_pid*
 /.project
 /.checkstyle
 /logs/
+/AscalonDreams.iml
+/.idea/

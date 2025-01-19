@@ -1,27 +1,22 @@
 package tv.memoryleakdeath.ascalondreams.input;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class KeyboardCallback implements GLFWKeyCallbackI {
+import java.util.ArrayList;
+import java.util.List;
+
+public class KeyboardCallback {
     private static final Logger logger = LoggerFactory.getLogger(KeyboardCallback.class);
 
-    private Map<Integer, UserInputCallback> inputCallbacks = new HashMap<>();
+    private List<UserInputCallback> inputCallbacks = new ArrayList<>();
 
-    public KeyboardCallback addHandler(int inputKey, UserInputCallback callback) {
-        inputCallbacks.put(inputKey, callback);
+    public KeyboardCallback addHandler(UserInputCallback callback) {
+        inputCallbacks.add(callback);
         return this;
     }
 
-    @Override
-    public void invoke(long window, int key, int scancode, int action, int mods) {
-        if (inputCallbacks.containsKey(key)) {
-            inputCallbacks.get(key).performAction(action);
-        }
+    public void process() {
+        inputCallbacks.forEach(UserInputCallback::performAction);
     }
-
 }
