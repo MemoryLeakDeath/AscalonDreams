@@ -18,6 +18,8 @@
 		<lwjgl3-awt.version>0.2.3</lwjgl3-awt.version>
 		<logback.version>1.5.16</logback.version>
 		<commonslang.version>3.17.0</commonslang.version>
+		<args4j.version>2.37</args4j.version>
+		<commonsexec.version>1.4.0</commonsexec.version>
 	</properties>
 
 	<profiles>
@@ -184,8 +186,19 @@
 		    <groupId>org.apache.commons</groupId>
 		    <artifactId>commons-lang3</artifactId>
 		    <version>${commonslang.version}</version>
-		</dependency>        
+		</dependency>
+		<dependency>
+			<groupId>args4j</groupId>
+			<artifactId>args4j</artifactId>
+			<version>${args4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-exec</artifactId>
+			<version>${commonsexec.version}</version>
+		</dependency>
 	</dependencies>
+
 	<build>
 		<plugins>
             <plugin>

@@ -5,8 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
-import tv.memoryleakdeath.ascalondreams.asset.ModelRenderer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
 
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
@@ -18,14 +18,15 @@ public class VulkanEngine {
     private static final float MOVEMENT_INCREMENT = 0.02f;
 
     private VulkanWindow window;
+    private VulkanRenderer renderer;
     private Model model;
-    private ModelRenderer renderer;
     private long lastLogicUpdateTimer;
     private long lastFrameUpdateTimer;
     private KeyboardCallback kb;
 
     public void init() {
         window = new VulkanWindow(600, 600);
+        renderer = new VulkanRenderer(window);
     }
 
     private void loadModel() {
@@ -74,11 +75,12 @@ public class VulkanEngine {
     }
 
     private void render() {
-
+        renderer.render();
     }
 
     private void cleanup() {
         window.cleanup();
+        renderer.cleanup();
     }
 
     private void registerKeyboardCallbacks() {
@@ -89,16 +91,12 @@ public class VulkanEngine {
             }
         }).addHandler(() -> {
             if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) {
-                renderer.getCamera().orbitRight(MOVEMENT_INCREMENT);
             }
             if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) {
-                renderer.getCamera().orbitLeft(MOVEMENT_INCREMENT);
             }
             if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
-                renderer.getCamera().orbitUp(MOVEMENT_INCREMENT);
             }
             if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) {
-                renderer.getCamera().orbitDown(MOVEMENT_INCREMENT);
             }
         });
     }
