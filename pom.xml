@@ -20,6 +20,7 @@
 		<commonslang.version>3.17.0</commonslang.version>
 		<args4j.version>2.37</args4j.version>
 		<commonsexec.version>1.4.0</commonsexec.version>
+		<commonscollections.version>4.5.0-M3</commonscollections.version>
 	</properties>
 
 	<profiles>
@@ -196,6 +197,11 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-exec</artifactId>
 			<version>${commonsexec.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-collections4</artifactId>
+			<version>${commonscollections.version}</version>
 		</dependency>
 	</dependencies>
 
