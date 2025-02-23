@@ -2,6 +2,7 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.device;
 
 import org.apache.commons.collections4.IterableUtils;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkExtensionProperties;
@@ -11,6 +12,7 @@ import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanSurface;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 import java.nio.IntBuffer;
@@ -142,5 +144,23 @@ public final class PhysicalDevice {
          throw new RuntimeException("No graphics queue family found!");
       }
       return index;
+   }
+
+   public int getPresentationQueueIndex(VulkanSurface surface) {
+      int matchingIndex = -1;
+      try (MemoryStack stack = MemoryStack.stackPush()) {
+         IntBuffer buf = stack.mallocInt(1);
+         for (int i = 0; i < queueFamilyProperties.capacity(); i++) {
+            KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface.getId(), buf);
+            if (buf.get(0) == VK14.VK_TRUE) {
+               matchingIndex = i;
+               break;
+            }
+         }
+      }
+      if (matchingIndex < 0) {
+         throw new RuntimeException("Unable to find any presentation queue family index!");
+      }
+      return matchingIndex;
    }
 }

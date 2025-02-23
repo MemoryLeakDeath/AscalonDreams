@@ -148,6 +148,14 @@ public class VulkanSwapChain {
       return imageViews;
    }
 
+   public int getWidth() {
+      return swapChainExtent.width();
+   }
+
+   public int getHeight() {
+      return swapChainExtent.height();
+   }
+   
    public record SurfaceFormat(int imageFormat, int colorSpace) {
    }
 }
