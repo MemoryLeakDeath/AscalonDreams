@@ -6,6 +6,8 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanGraphicsQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
 
+import java.util.List;
+
 public class VulkanRenderer {
    private final VulkanRenderInstance instance;
    private VulkanWindow window;
@@ -24,7 +26,7 @@ public class VulkanRenderer {
       this.surface = new VulkanSurface(device.getPhysicalDevice(), window.getHandle());
       this.graphicsQueue = new VulkanGraphicsQueue(device, 0);
       this.presentationQueue = new VulkanPresentationQueue(device, surface, 0);
-      this.swapChain = new VulkanSwapChain(device, surface, window, VulkanSwapChain.TRIPLE_BUFFERING, true);
+      this.swapChain = new VulkanSwapChain(device, surface, window, VulkanSwapChain.TRIPLE_BUFFERING, true, presentationQueue, List.of(graphicsQueue));
       this.commandPool = new VulkanCommandPool(device, graphicsQueue.getQueueFamilyIndex());
       this.forwardRenderer = new ForwardRenderer(swapChain, commandPool);
    }
@@ -43,8 +45,11 @@ public class VulkanRenderer {
 
    public void render() {
       forwardRenderer.waitForFence();
-      // todo: image index
+      int imageIndex = swapChain.aquireNextImage();
+      if (imageIndex < 0) {
+         return;
+      }
       forwardRenderer.submit(graphicsQueue);
-      // todo: swap chain present image
+      swapChain.showImage(presentationQueue, imageIndex);
    }
 }

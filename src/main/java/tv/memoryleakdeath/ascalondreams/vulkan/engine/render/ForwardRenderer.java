@@ -59,12 +59,21 @@ public class ForwardRenderer {
 
    public void submit(BaseDeviceQueue queue) {
       try (MemoryStack stack = MemoryStack.stackPush()) {
-         // todo: finish method
+         int currentFrame = swapChain.getCurrentFrame();
+         Fence currentFence = fences.get(currentFrame);
+         currentFence.reset();
+         VulkanCommandBuffer commandBuffer = commandBuffers.get(currentFrame);
+         VulkanSwapChain.SyncSemaphores syncSemaphores = swapChain.getSemaphoreList().get(currentFrame);
+         queue.submit(stack.pointers(commandBuffer.getBuffer()),
+                 stack.longs(syncSemaphores.imageAquisitionSemaphore().getId()),
+                 stack.ints(VK14.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                 stack.longs(syncSemaphores.renderCompleteSemaphore().getId()),
+                 currentFence);
       }
    }
 
    public void waitForFence() {
-      // todo: finish
+      fences.get(swapChain.getCurrentFrame()).waitForFence();
    }
 
    public void cleanup() {

@@ -1,16 +1,21 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.render;
 
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkExtent2D;
+import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSurfaceFormatKHR;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Semaphore;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
@@ -29,9 +34,12 @@ public class VulkanSwapChain {
    private SurfaceFormat surfaceFormats;
    private List<VulkanImageView> imageViews;
    private VkExtent2D swapChainExtent;
+   private List<SyncSemaphores> semaphoreList = new ArrayList<>();
    private long id;
+   private int currentFrame = 0;
 
-   public VulkanSwapChain(LogicalDevice device, VulkanSurface surface, VulkanWindow window, int bufferingSetup, boolean vsync) {
+   public VulkanSwapChain(LogicalDevice device, VulkanSurface surface, VulkanWindow window, int bufferingSetup, boolean vsync,
+                          VulkanPresentationQueue presentationQueue, List<BaseDeviceQueue> concurrentQueues) {
       this.device = device;
       this.bufferingSetup = bufferingSetup;
       try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -62,10 +70,29 @@ public class VulkanSwapChain {
          } else {
             swapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR);
          }
+
+         if (concurrentQueues != null) {
+            int presentationQueueFamilyIndex = presentationQueue.getQueueFamilyIndex();
+            int[] queueIndexes = concurrentQueues.stream()
+                    .filter(q -> q.getQueueFamilyIndex() != presentationQueueFamilyIndex)
+                    .mapToInt(BaseDeviceQueue::getQueueFamilyIndex)
+                    .toArray();
+            if (queueIndexes.length > 0) {
+               IntBuffer indexBuf = stack.mallocInt(queueIndexes.length + 1);
+               indexBuf.put(queueIndexes);
+               indexBuf.put(presentationQueueFamilyIndex).flip();
+               swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_CONCURRENT)
+                       .queueFamilyIndexCount(indexBuf.capacity())
+                       .pQueueFamilyIndices(indexBuf);
+            } else {
+               swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE);
+            }
+         }
          LongBuffer buf = stack.mallocLong(1);
          VulkanUtils.failIfNeeded(KHRSwapchain.vkCreateSwapchainKHR(device.getDevice(), swapchainCreateInfo, null, buf), "Cannot create swapchain!");
          this.id = buf.get(0);
          buildImageViews(stack, device, id, surfaceFormats.imageFormat());
+         imageViews.forEach(iv -> this.semaphoreList.add(new SyncSemaphores(device)));
       }
    }
 
@@ -129,7 +156,41 @@ public class VulkanSwapChain {
    public void cleanup() {
       swapChainExtent.free();
       imageViews.forEach(VulkanImageView::cleanup);
+      semaphoreList.forEach(SyncSemaphores::cleanup);
       KHRSwapchain.vkDestroySwapchainKHR(device.getDevice(), id, null);
+   }
+
+   public int aquireNextImage() {
+      try (MemoryStack stack = MemoryStack.stackPush()) {
+         IntBuffer iBuf = stack.mallocInt(1);
+         int result = KHRSwapchain.vkAcquireNextImageKHR(device.getDevice(), id, Long.MAX_VALUE,
+                 semaphoreList.get(currentFrame).imageAquisitionSemaphore().getId(), MemoryUtil.NULL, iBuf);
+         return switch (result) {
+            case KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR -> -1;
+            case KHRSwapchain.VK_SUBOPTIMAL_KHR, VK14.VK_SUCCESS -> iBuf.get(0);
+            default -> throw new RuntimeException("failed to aquire image, result: %d".formatted(result));
+         };
+      }
+   }
+
+   public boolean showImage(BaseDeviceQueue queue, int imageIndex) {
+      boolean resize = false;
+      try (MemoryStack stack = MemoryStack.stackPush()) {
+         VkPresentInfoKHR presentInfoKHR = VkPresentInfoKHR.calloc(stack)
+                 .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
+                 .pWaitSemaphores(stack.longs(semaphoreList.get(currentFrame).renderCompleteSemaphore().getId()))
+                 .swapchainCount(1)
+                 .pSwapchains(stack.longs(id))
+                 .pImageIndices(stack.ints(imageIndex));
+         int result = KHRSwapchain.vkQueuePresentKHR(queue.getQueue(), presentInfoKHR);
+         if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
+            resize = true;
+         } else if (result != VK14.VK_SUCCESS) {
+            throw new RuntimeException("Failed to show KHR! result: %d".formatted(result));
+         }
+      }
+      currentFrame = (currentFrame + 1) % imageViews.size();
+      return resize;
    }
 
    public LogicalDevice getDevice() {
@@ -155,7 +216,26 @@ public class VulkanSwapChain {
    public int getHeight() {
       return swapChainExtent.height();
    }
-   
+
+   public int getCurrentFrame() {
+      return currentFrame;
+   }
+
+   public List<SyncSemaphores> getSemaphoreList() {
+      return semaphoreList;
+   }
+
    public record SurfaceFormat(int imageFormat, int colorSpace) {
+   }
+
+   public record SyncSemaphores(Semaphore imageAquisitionSemaphore, Semaphore renderCompleteSemaphore) {
+      public SyncSemaphores(LogicalDevice device) {
+         this(new Semaphore(device), new Semaphore(device));
+      }
+
+      public void cleanup() {
+         imageAquisitionSemaphore.cleanup();
+         renderCompleteSemaphore.cleanup();
+      }
    }
 }
