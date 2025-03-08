@@ -46,5 +46,6 @@ public final class VulkanUtils {
       }).findFirst().orElseThrow(() -> new RuntimeException("Unable to find physical device matching name: %s".formatted(deviceName)));
       return new VulkanDeviceAndProperties(matchingDevice, props);
    }
+
 }
 

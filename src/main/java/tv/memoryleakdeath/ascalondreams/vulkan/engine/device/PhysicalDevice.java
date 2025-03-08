@@ -7,6 +7,7 @@ import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkExtensionProperties;
 import org.lwjgl.vulkan.VkInstance;
+import org.lwjgl.vulkan.VkMemoryType;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
@@ -162,5 +163,15 @@ public final class PhysicalDevice {
          throw new RuntimeException("Unable to find any presentation queue family index!");
       }
       return matchingIndex;
+   }
+
+   public int getMemoryTypeFromProperties(int type, int mask) {
+      VkMemoryType.Buffer memoryTypes = memoryProperties.memoryTypes();
+      for (int i = 0; i < VK14.VK_MAX_MEMORY_TYPES; i++) {
+         if ((((type >> i) & 1) == 1) && (memoryTypes.get(i).propertyFlags() & mask) == mask) {
+            return i;
+         }
+      }
+      throw new RuntimeException("Failed to find memory type!");
    }
 }
