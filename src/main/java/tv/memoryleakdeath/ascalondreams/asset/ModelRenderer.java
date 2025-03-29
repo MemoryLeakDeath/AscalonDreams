@@ -1,15 +1,14 @@
 package tv.memoryleakdeath.ascalondreams.asset;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL46;
-
 import tv.memoryleakdeath.ascalondreams.shaders.opengl.GLShader;
 import tv.memoryleakdeath.ascalondreams.shaders.opengl.GLShaderUniformManager;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ModelRenderer {
     public static final String TEXTURE_PATH = "/home/mem/development/models/scifi-ship/Textures/Sci-Fi Ship_Textures_01.png";
@@ -20,7 +19,6 @@ public class ModelRenderer {
     private static final float FOV = (float) Math.toRadians(60.0f);
     private static final float Z_FAR = 1000.0f;
     private static final float Z_NEAR = 0.01f;
-
 
     private Scene scene;
     private Matrix4f projectionMatrix = new Matrix4f();

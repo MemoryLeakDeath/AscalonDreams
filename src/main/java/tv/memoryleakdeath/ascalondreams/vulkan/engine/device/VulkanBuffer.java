@@ -78,4 +78,7 @@ public class VulkanBuffer {
       return requestedSize;
    }
 
+   public PointerBuffer getBuffer() {
+      return pb;
+   }
 }
