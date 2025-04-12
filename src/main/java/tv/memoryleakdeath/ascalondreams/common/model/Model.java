@@ -4,12 +4,12 @@ import java.util.List;
 
 public class Model {
    private String id;
-   private Mesh mesh;
+   private List<Mesh> meshes;
    private List<Material> materials;
 
-   public Model(String id, Mesh mesh, List<Material> materials) {
+   public Model(String id, List<Mesh> mesh, List<Material> materials) {
       this.id = id;
-      this.mesh = mesh;
+      this.meshes = mesh;
       this.materials = materials;
    }
 
@@ -17,8 +17,8 @@ public class Model {
       return id;
    }
 
-   public Mesh getMesh() {
-      return mesh;
+   public List<Mesh> getMeshes() {
+      return meshes;
    }
 
    public List<Material> getMaterials() {

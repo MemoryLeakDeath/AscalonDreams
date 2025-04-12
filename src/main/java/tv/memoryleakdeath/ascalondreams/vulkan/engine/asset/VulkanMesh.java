@@ -14,17 +14,15 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 public class VulkanMesh {
-   private String id;
    private Mesh mesh;
-   private VulkanBuffer vertexBuffer;
-   private VulkanBuffer indexBuffer;
+   private TransferBuffers vertexBuffer;
+   private TransferBuffers indexBuffer;
 
-   public VulkanMesh(String id, Mesh mesh) {
-      this.id = id;
+   public VulkanMesh(Mesh mesh) {
       this.mesh = mesh;
    }
 
-   private TransferBuffers createIndexBuffer(LogicalDevice device) {
+   private void createIndexBuffer(LogicalDevice device) {
       int bufferSize = mesh.getIndexes().length * SizeConstants.INT_LENGTH;
       VulkanBuffer sourceBuffer = new VulkanBuffer(device, bufferSize,
               VK14.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -35,10 +33,10 @@ public class VulkanMesh {
       data.put(mesh.getIndexes());
       sourceBuffer.unmap();
 
-      return new TransferBuffers(sourceBuffer, destinationBuffer);
+      this.indexBuffer = new TransferBuffers(sourceBuffer, destinationBuffer);
    }
 
-   private TransferBuffers createVertexBuffer(LogicalDevice device) {
+   private void createVertexBuffer(LogicalDevice device) {
       int bufferSize = mesh.getVertices().length * SizeConstants.FLOAT_LENGTH;
       VulkanBuffer sourceBuffer = new VulkanBuffer(device, bufferSize,
               VK14.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -49,7 +47,12 @@ public class VulkanMesh {
       data.put(mesh.getVertices());
       sourceBuffer.unmap();
 
-      return new TransferBuffers(sourceBuffer, destinationBuffer);
+      this.vertexBuffer = new TransferBuffers(sourceBuffer, destinationBuffer);
+   }
+
+   private void recordTransferCommands(VulkanCommandBuffer cmd) {
+      recordTransferCommand(cmd, vertexBuffer);
+      recordTransferCommand(cmd, indexBuffer);
    }
 
    private void recordTransferCommand(VulkanCommandBuffer cmd, TransferBuffers buffers) {
@@ -62,12 +65,15 @@ public class VulkanMesh {
       }
    }
 
-   public void transformModels() {
-      // TODO: complete this
+   public void prepareMesh(LogicalDevice device, VulkanCommandBuffer commandBuffer) {
+      createVertexBuffer(device);
+      createIndexBuffer(device);
+      recordTransferCommands(commandBuffer);
    }
 
-   public String getId() {
-      return id;
+   public void cleanupSrcBuffers() {
+      vertexBuffer.source().cleanup();
+      indexBuffer.source().cleanup();
    }
 
    public void cleanup() {
@@ -76,5 +82,9 @@ public class VulkanMesh {
    }
 
    private record TransferBuffers(VulkanBuffer source, VulkanBuffer destination) {
+      public void cleanup() {
+         source.cleanup();
+         destination.cleanup();
+      }
    }
 }
