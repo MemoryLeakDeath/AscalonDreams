@@ -3,10 +3,15 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
+import tv.memoryleakdeath.ascalondreams.common.model.Mesh;
+import tv.memoryleakdeath.ascalondreams.common.model.Model;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
+
+import java.util.Collections;
+import java.util.List;
 
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
@@ -19,7 +24,6 @@ public class VulkanEngine {
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
-    private Model model;
     private long lastLogicUpdateTimer;
     private long lastFrameUpdateTimer;
     private KeyboardCallback kb;
@@ -29,13 +33,25 @@ public class VulkanEngine {
         renderer = new VulkanRenderer(window);
     }
 
+    private VulkanModel createTestModel() {
+        Mesh meshData = new Mesh();
+        meshData.setVertices(new float[]{
+                -0.5f, -0.5f, 0f,
+                0f, 0.5f, 0f,
+                0.5f, -0.5f, 0f});
+        meshData.setIndexes(new int[]{0, 1, 2});
+        Model model = new Model("TriangleModel", List.of(meshData), Collections.emptyList());
+        return new VulkanModel("TriangleModel", model);
+    }
+
     private void loadModel() {
         ModelLoader loader = new ModelLoader();
-        model = loader.load("ship", MODEL_FILE);
+        //model = loader.load("ship", MODEL_FILE);
     }
 
     public void mainLoop() {
         //GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
+        renderer.loadModels(List.of(createTestModel()));
 
         // rendering loop
         while (!window.shouldClose()) {

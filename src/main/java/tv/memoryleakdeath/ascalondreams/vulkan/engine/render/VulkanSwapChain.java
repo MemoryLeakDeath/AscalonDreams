@@ -225,6 +225,10 @@ public class VulkanSwapChain {
       return semaphoreList;
    }
 
+   public VkExtent2D getExtent() {
+      return this.swapChainExtent;
+   }
+
    public record SurfaceFormat(int imageFormat, int colorSpace) {
    }
 

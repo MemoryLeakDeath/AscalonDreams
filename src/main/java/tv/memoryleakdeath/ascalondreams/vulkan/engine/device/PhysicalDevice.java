@@ -1,8 +1,6 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.device;
 
-import org.apache.commons.collections4.IterableUtils;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkExtensionProperties;
@@ -14,9 +12,9 @@ import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanSurface;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
-import java.nio.IntBuffer;
 import java.util.List;
 
 public final class PhysicalDevice {
@@ -40,19 +38,12 @@ public final class PhysicalDevice {
 
    private void init() {
       try (MemoryStack stack = MemoryStack.stackPush()) {
-         IntBuffer intBuffer = stack.mallocInt(1);
          if (deviceProperties == null) {
             deviceProperties = VkPhysicalDeviceProperties.calloc();
             VK14.vkGetPhysicalDeviceProperties(physicalDevice, deviceProperties);
          }
-
-         VulkanUtils.failIfNeeded(VK14.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, null), "Failed to get number of device extension properties!");
-         deviceExtensions = VkExtensionProperties.calloc(intBuffer.get(0));
-         VulkanUtils.failIfNeeded(VK14.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, deviceExtensions), "Failed to get device extension properties!");
-
-         VK14.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, intBuffer, null);
-         queueFamilyProperties = VkQueueFamilyProperties.calloc(intBuffer.get(0));
-         VK14.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, intBuffer, queueFamilyProperties);
+         this.deviceExtensions = StructureUtils.getDeviceExtensionProperties(stack, physicalDevice);
+         this.queueFamilyProperties = StructureUtils.getQueueFamilyProperties(stack, physicalDevice);
 
          deviceFeatures = VkPhysicalDeviceFeatures.calloc();
          VK14.vkGetPhysicalDeviceFeatures(physicalDevice, deviceFeatures);
@@ -140,7 +131,7 @@ public final class PhysicalDevice {
    }
 
    public int getGraphicsQueueIndex() {
-      int index = IterableUtils.indexOf(queueFamilyProperties, p -> (p.queueFlags() & VK14.VK_QUEUE_GRAPHICS_BIT) != 0);
+      int index = VulkanUtils.getGraphicsQueueFamilyIndex(queueFamilyProperties);
       if (index < 0) {
          throw new RuntimeException("No graphics queue family found!");
       }
@@ -148,17 +139,7 @@ public final class PhysicalDevice {
    }
 
    public int getPresentationQueueIndex(VulkanSurface surface) {
-      int matchingIndex = -1;
-      try (MemoryStack stack = MemoryStack.stackPush()) {
-         IntBuffer buf = stack.mallocInt(1);
-         for (int i = 0; i < queueFamilyProperties.capacity(); i++) {
-            KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface.getId(), buf);
-            if (buf.get(0) == VK14.VK_TRUE) {
-               matchingIndex = i;
-               break;
-            }
-         }
-      }
+      int matchingIndex = VulkanUtils.getPresentationQueueFamilyIndex(queueFamilyProperties, physicalDevice, surface.getId());
       if (matchingIndex < 0) {
          throw new RuntimeException("Unable to find any presentation queue family index!");
       }

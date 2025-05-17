@@ -4,12 +4,10 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK14;
-import org.lwjgl.vulkan.VkBufferCreateInfo;
-import org.lwjgl.vulkan.VkMemoryAllocateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.AllocateInfoResults;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
-
-import java.nio.LongBuffer;
 
 public class VulkanBuffer {
    private long allocationSize;
@@ -24,25 +22,14 @@ public class VulkanBuffer {
       this.device = device;
       this.requestedSize = size;
       try (MemoryStack stack = MemoryStack.stackPush()) {
-         VkBufferCreateInfo bufferCreateInfo = VkBufferCreateInfo.calloc(stack)
-                 .sType(VK14.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-                 .size(size)
-                 .usage(usageType)
-                 .sharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE);
-         LongBuffer lb = stack.mallocLong(1);
-         VulkanUtils.failIfNeeded(VK14.vkCreateBuffer(device.getDevice(), bufferCreateInfo, null, lb), "Failed to create buffer structure!");
-         this.id = lb.get(0);
+         this.id = StructureUtils.createBufferInfo(stack, device.getDevice(), size, usageType, VK14.VK_SHARING_MODE_EXCLUSIVE);
 
          VkMemoryRequirements memoryRequirements = VkMemoryRequirements.malloc(stack);
          VK14.vkGetBufferMemoryRequirements(device.getDevice(), id, memoryRequirements);
 
-         VkMemoryAllocateInfo allocateInfo = VkMemoryAllocateInfo.calloc(stack)
-                 .sType(VK14.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-                 .allocationSize(memoryRequirements.size())
-                 .memoryTypeIndex(device.getPhysicalDevice().getMemoryTypeFromProperties(memoryRequirements.memoryTypeBits(), mask));
-         VulkanUtils.failIfNeeded(VK14.vkAllocateMemory(device.getDevice(), allocateInfo, null, lb), "Failed to allocate memory for buffer!");
-         this.allocationSize = allocateInfo.allocationSize();
-         this.memoryHandle = lb.get(0);
+         AllocateInfoResults allocateInfoResults = StructureUtils.createMemoryAllocateInfo(stack, device.getDevice(), memoryRequirements.size(), device.getPhysicalDevice().getMemoryTypeFromProperties(memoryRequirements.memoryTypeBits(), mask));
+         this.allocationSize = allocateInfoResults.size();
+         this.memoryHandle = allocateInfoResults.handle();
          this.pb = MemoryUtil.memAllocPointer(1);
 
          VulkanUtils.failIfNeeded(VK14.vkBindBufferMemory(device.getDevice(), id, memoryHandle, 0), "Failed to bind buffer memory!");

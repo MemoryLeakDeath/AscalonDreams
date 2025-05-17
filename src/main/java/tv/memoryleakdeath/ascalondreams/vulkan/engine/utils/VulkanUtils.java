@@ -1,11 +1,14 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.utils;
 
+import org.apache.commons.collections4.IterableUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
+import org.lwjgl.vulkan.VkQueueFamilyProperties;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
 
 import java.nio.IntBuffer;
@@ -47,5 +50,23 @@ public final class VulkanUtils {
       return new VulkanDeviceAndProperties(matchingDevice, props);
    }
 
+   public static int getGraphicsQueueFamilyIndex(VkQueueFamilyProperties.Buffer queueFamilyProperties) {
+      return IterableUtils.indexOf(queueFamilyProperties, p -> (p.queueFlags() & VK14.VK_QUEUE_GRAPHICS_BIT) != 0);
+   }
+
+   public static int getPresentationQueueFamilyIndex(VkQueueFamilyProperties.Buffer queueFamilyProperties, VkPhysicalDevice physicalDevice, long surfaceId) {
+      int matchingIndex = -1;
+      try (MemoryStack stack = MemoryStack.stackPush()) {
+         IntBuffer buf = stack.mallocInt(1);
+         for (int i = 0; i < queueFamilyProperties.capacity(); i++) {
+            KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surfaceId, buf);
+            if (buf.get(0) == VK14.VK_TRUE) {
+               matchingIndex = i;
+               break;
+            }
+         }
+      }
+      return matchingIndex;
+   }
 }
 

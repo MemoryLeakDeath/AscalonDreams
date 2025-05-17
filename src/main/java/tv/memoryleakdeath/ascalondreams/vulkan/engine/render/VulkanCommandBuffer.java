@@ -4,9 +4,8 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkCommandBuffer;
-import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo;
-import org.lwjgl.vulkan.VkCommandBufferInheritanceInfo;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 public class VulkanCommandBuffer {
@@ -20,13 +19,7 @@ public class VulkanCommandBuffer {
       this.primary = primary;
       this.oneTimeSubmit = oneTimeSubmit;
       try (MemoryStack stack = MemoryStack.stackPush()) {
-         VkCommandBufferAllocateInfo allocateInfo = VkCommandBufferAllocateInfo.calloc(stack)
-                 .sType(VK14.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-                 .commandPool(pool.getId())
-                 .level(primary ? VK14.VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK14.VK_COMMAND_BUFFER_LEVEL_SECONDARY)
-                 .commandBufferCount(1);
-         PointerBuffer buf = stack.mallocPointer(1);
-         VulkanUtils.failIfNeeded(VK14.vkAllocateCommandBuffers(pool.getDevice().getDevice(), allocateInfo, buf), "Cannot allocate command buffer!");
+         PointerBuffer buf = StructureUtils.createCommandBufferAllocateInfo(stack, pool.getDevice().getDevice(), pool.getId(), primary, 1);
          this.buffer = new VkCommandBuffer(buf.get(0), pool.getDevice().getDevice());
       }
    }
@@ -43,23 +36,11 @@ public class VulkanCommandBuffer {
             beginInfo.flags(VK14.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
          }
          if (!primary) {
-            beginInfo.pInheritanceInfo(buildInheritanceInfo(stack, inheritance));
+            beginInfo.pInheritanceInfo(StructureUtils.buildInheritanceInfo(stack, inheritance));
             beginInfo.flags(VK14.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
          }
          VulkanUtils.failIfNeeded(VK14.vkBeginCommandBuffer(buffer, beginInfo), "Unable to create command buffer!");
       }
-   }
-
-   private VkCommandBufferInheritanceInfo buildInheritanceInfo(MemoryStack stack, BufferInheritance inheritance) {
-      if (inheritance == null) {
-         throw new RuntimeException("Secondary Buffers must have inheritance information!");
-      }
-      VkCommandBufferInheritanceInfo info = VkCommandBufferInheritanceInfo.calloc(stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO)
-              .renderPass(inheritance.renderPassId())
-              .subpass(inheritance.subPass())
-              .framebuffer(inheritance.frameBufferId());
-      return info;
    }
 
    public void endRecording() {

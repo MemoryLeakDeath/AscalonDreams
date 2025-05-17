@@ -1,11 +1,14 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.render;
 
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PipelineCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanGraphicsQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class VulkanRenderer {
@@ -18,6 +21,8 @@ public class VulkanRenderer {
    private final VulkanCommandPool commandPool;
    private final ForwardRenderer forwardRenderer;
    private final VulkanPresentationQueue presentationQueue;
+   private final PipelineCache pipelineCache;
+   private final List<VulkanModel> vulkanModels = new ArrayList<>();
 
    public VulkanRenderer(VulkanWindow window) {
       this.instance = new VulkanRenderInstance(false);
@@ -29,18 +34,27 @@ public class VulkanRenderer {
       this.swapChain = new VulkanSwapChain(device, surface, window, VulkanSwapChain.TRIPLE_BUFFERING, true, presentationQueue, List.of(graphicsQueue));
       this.commandPool = new VulkanCommandPool(device, graphicsQueue.getQueueFamilyIndex());
       this.forwardRenderer = new ForwardRenderer(swapChain, commandPool);
+      this.pipelineCache = new PipelineCache(device);
    }
 
    public void cleanup() {
       presentationQueue.waitIdle();
       graphicsQueue.waitIdle();
       device.waitIdle();
+      pipelineCache.cleanup();
       forwardRenderer.cleanup();
       commandPool.cleanup();
       swapChain.cleanup();
       surface.cleanup();
       device.cleanup();
       instance.cleanup();
+   }
+
+   public void loadModels(List<VulkanModel> models) {
+      for (VulkanModel model : models) {
+         model.prepareModel(commandPool, graphicsQueue);
+         vulkanModels.add(model);
+      }
    }
 
    public void render() {
