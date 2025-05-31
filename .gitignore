@@ -30,3 +30,5 @@ replay_pid*
 /logs/
 /AscalonDreams.iml
 /.idea/
+/shaders/fwd_fragment.glsl.spv
+/shaders/fwd_vertex.glsl.spv

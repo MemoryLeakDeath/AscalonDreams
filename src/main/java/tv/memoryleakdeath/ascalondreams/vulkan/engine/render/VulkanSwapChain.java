@@ -9,7 +9,6 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSurfaceFormatKHR;
-import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
@@ -17,6 +16,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Semaphore;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 import java.nio.IntBuffer;
@@ -52,45 +52,10 @@ public class VulkanSwapChain {
          getSurfaceFormat(physicalDevice, surface);
          getSwapChainExtent(window, surfaceCapabilities);
 
-         VkSwapchainCreateInfoKHR swapchainCreateInfo = VkSwapchainCreateInfoKHR.calloc(stack)
-                 .sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
-                 .surface(surface.getId())
-                 .minImageCount(bestBufferingSetup)
-                 .imageFormat(surfaceFormats.imageFormat())
-                 .imageColorSpace(surfaceFormats.colorSpace())
-                 .imageExtent(swapChainExtent)
-                 .imageArrayLayers(1)
-                 .imageUsage(VK14.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-                 .imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE)
-                 .preTransform(surfaceCapabilities.currentTransform())
-                 .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
-                 .clipped(true);
-         if (vsync) {
-            swapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_KHR);
-         } else {
-            swapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR);
-         }
-
-         if (concurrentQueues != null) {
-            int presentationQueueFamilyIndex = presentationQueue.getQueueFamilyIndex();
-            int[] queueIndexes = concurrentQueues.stream()
-                    .filter(q -> q.getQueueFamilyIndex() != presentationQueueFamilyIndex)
-                    .mapToInt(BaseDeviceQueue::getQueueFamilyIndex)
-                    .toArray();
-            if (queueIndexes.length > 0) {
-               IntBuffer indexBuf = stack.mallocInt(queueIndexes.length + 1);
-               indexBuf.put(queueIndexes);
-               indexBuf.put(presentationQueueFamilyIndex).flip();
-               swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_CONCURRENT)
-                       .queueFamilyIndexCount(indexBuf.capacity())
-                       .pQueueFamilyIndices(indexBuf);
-            } else {
-               swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE);
-            }
-         }
-         LongBuffer buf = stack.mallocLong(1);
-         VulkanUtils.failIfNeeded(KHRSwapchain.vkCreateSwapchainKHR(device.getDevice(), swapchainCreateInfo, null, buf), "Cannot create swapchain!");
-         this.id = buf.get(0);
+         this.id = StructureUtils.createSwapchainInfo(stack, surface.getId(), bestBufferingSetup,
+                 surfaceFormats.imageFormat(), surfaceFormats.colorSpace(),
+                 swapChainExtent, 1, surfaceCapabilities.currentTransform(),
+                 true, vsync, concurrentQueues, presentationQueue, device.getDevice());
          buildImageViews(stack, device, id, surfaceFormats.imageFormat());
          imageViews.forEach(iv -> this.semaphoreList.add(new SyncSemaphores(device)));
       }
@@ -176,12 +141,9 @@ public class VulkanSwapChain {
    public boolean showImage(BaseDeviceQueue queue, int imageIndex) {
       boolean resize = false;
       try (MemoryStack stack = MemoryStack.stackPush()) {
-         VkPresentInfoKHR presentInfoKHR = VkPresentInfoKHR.calloc(stack)
-                 .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
-                 .pWaitSemaphores(stack.longs(semaphoreList.get(currentFrame).renderCompleteSemaphore().getId()))
-                 .swapchainCount(1)
-                 .pSwapchains(stack.longs(id))
-                 .pImageIndices(stack.ints(imageIndex));
+         long[] semaphoreIds = new long[]{semaphoreList.get(currentFrame).renderCompleteSemaphore().getId()};
+         VkPresentInfoKHR presentInfoKHR = StructureUtils.createPresentInfo(stack, 1,
+                 new long[]{id}, new int[]{imageIndex}, semaphoreIds);
          int result = KHRSwapchain.vkQueuePresentKHR(queue.getQueue(), presentInfoKHR);
          if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
             resize = true;

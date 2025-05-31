@@ -4,8 +4,11 @@ import org.apache.commons.exec.OS;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.KHRPortabilitySubset;
+import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK14;
+import org.lwjgl.vulkan.VkApplicationInfo;
+import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandBufferInheritanceInfo;
@@ -14,9 +17,12 @@ import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkDeviceCreateInfo;
 import org.lwjgl.vulkan.VkDeviceQueueCreateInfo;
 import org.lwjgl.vulkan.VkExtensionProperties;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
+import org.lwjgl.vulkan.VkInstance;
+import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryAllocateInfo;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
@@ -30,8 +36,15 @@ import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
+import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 import org.lwjgl.vulkan.VkSemaphoreCreateInfo;
+import org.lwjgl.vulkan.VkSubpassDependency;
+import org.lwjgl.vulkan.VkSubpassDescription;
+import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.BaseVertexInputStateInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanCommandBuffer;
@@ -46,6 +59,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class StructureUtils {
+   private static final int VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = 0x00000001;
+
    private StructureUtils() {
    }
 
@@ -309,5 +324,103 @@ public final class StructureUtils {
       return imageViewPointer.get(0);
    }
 
-   // TODO: pick up at VulkanRenderInstance
+   public static VkApplicationInfo createApplicationInfo(MemoryStack stack, String appName, int appVersion, int engineVersion) {
+      ByteBuffer appShortName = stack.UTF8(appName);
+      VkApplicationInfo appInfo = VkApplicationInfo.calloc(stack)
+              .sType(VK14.VK_STRUCTURE_TYPE_APPLICATION_INFO)
+              .pApplicationName(appShortName)
+              .applicationVersion(appVersion)
+              .pEngineName(appShortName)
+              .engineVersion(engineVersion)
+              .apiVersion(VK14.VK_API_VERSION_1_4);
+      return appInfo;
+   }
+
+   public static VkInstance createInstance(MemoryStack stack, long loggingExtension,
+                                           VkApplicationInfo appInfo, PointerBuffer requiredLayers,
+                                           PointerBuffer requiredExtensions, boolean usePortabilityExt) {
+      VkInstanceCreateInfo instanceInfo = VkInstanceCreateInfo.calloc(stack)
+              .sType(VK14.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
+              .pNext(loggingExtension)
+              .pApplicationInfo(appInfo)
+              .ppEnabledLayerNames(requiredLayers)
+              .ppEnabledExtensionNames(requiredExtensions);
+      if (usePortabilityExt) {
+         instanceInfo.flags(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR);
+      }
+
+      PointerBuffer instanceBuf = stack.mallocPointer(1);
+      VulkanUtils.failIfNeeded(VK14.vkCreateInstance(instanceInfo, null, instanceBuf), "Cannot create instance!");
+      return new VkInstance(instanceBuf.get(0), instanceInfo);
+   }
+
+   public static long createSwapchainInfo(MemoryStack stack, long surfaceId, int minImageCount,
+                                          int imageFormat, int colorSpace, VkExtent2D swapChainExtent,
+                                          int imageArrayLayers, int preTransform, boolean clipped, boolean vsync,
+                                          List<BaseDeviceQueue> concurrentQueues, VulkanPresentationQueue presentationQueue,
+                                          VkDevice device) {
+      VkSwapchainCreateInfoKHR swapchainCreateInfo = VkSwapchainCreateInfoKHR.calloc(stack)
+              .sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
+              .surface(surfaceId)
+              .minImageCount(minImageCount)
+              .imageFormat(imageFormat)
+              .imageColorSpace(colorSpace)
+              .imageExtent(swapChainExtent)
+              .imageArrayLayers(imageArrayLayers)
+              .imageUsage(VK14.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+              .imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE)
+              .preTransform(preTransform)
+              .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+              .clipped(clipped);
+      if (vsync) {
+         swapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_KHR);
+      } else {
+         swapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR);
+      }
+
+      if (concurrentQueues != null) {
+         int presentationQueueFamilyIndex = presentationQueue.getQueueFamilyIndex();
+         int[] queueIndexes = concurrentQueues.stream()
+                 .filter(q -> q.getQueueFamilyIndex() != presentationQueueFamilyIndex)
+                 .mapToInt(BaseDeviceQueue::getQueueFamilyIndex)
+                 .toArray();
+         if (queueIndexes.length > 0) {
+            IntBuffer indexBuf = stack.mallocInt(queueIndexes.length + 1);
+            indexBuf.put(queueIndexes);
+            indexBuf.put(presentationQueueFamilyIndex).flip();
+            swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_CONCURRENT)
+                    .queueFamilyIndexCount(indexBuf.capacity())
+                    .pQueueFamilyIndices(indexBuf);
+         } else {
+            swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE);
+         }
+      }
+      LongBuffer buf = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(KHRSwapchain.vkCreateSwapchainKHR(device, swapchainCreateInfo, null, buf), "Cannot create swapchain!");
+      return buf.get(0);
+   }
+
+   public static VkPresentInfoKHR createPresentInfo(MemoryStack stack, int swapchainCount, long[] swapChainIds, int[] imageIndices, long[] semaphoreIds) {
+      VkPresentInfoKHR presentInfoKHR = VkPresentInfoKHR.calloc(stack)
+              .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
+              .pWaitSemaphores(stack.longs(semaphoreIds))
+              .swapchainCount(swapchainCount)
+              .pSwapchains(stack.longs(swapChainIds))
+              .pImageIndices(stack.ints(imageIndices));
+      return presentInfoKHR;
+   }
+
+   public static long createRenderPass(MemoryStack stack, VkAttachmentDescription.Buffer attachments,
+                                       VkSubpassDescription.Buffer subpassDescription, VkSubpassDependency.Buffer subpassDependencies,
+                                       VkDevice device) {
+      VkRenderPassCreateInfo renderPassInfo = VkRenderPassCreateInfo.calloc(stack)
+              .sType(VK14.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
+              .pAttachments(attachments)
+              .pSubpasses(subpassDescription)
+              .pDependencies(subpassDependencies);
+
+      LongBuffer buf = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK14.vkCreateRenderPass(device, renderPassInfo, null, buf), "Cannot create render pass!");
+      return buf.get(0);
+   }
 }

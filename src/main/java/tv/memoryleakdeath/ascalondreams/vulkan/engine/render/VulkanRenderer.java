@@ -33,14 +33,15 @@ public class VulkanRenderer {
       this.presentationQueue = new VulkanPresentationQueue(device, surface, 0);
       this.swapChain = new VulkanSwapChain(device, surface, window, VulkanSwapChain.TRIPLE_BUFFERING, true, presentationQueue, List.of(graphicsQueue));
       this.commandPool = new VulkanCommandPool(device, graphicsQueue.getQueueFamilyIndex());
-      this.forwardRenderer = new ForwardRenderer(swapChain, commandPool);
       this.pipelineCache = new PipelineCache(device);
+      this.forwardRenderer = new ForwardRenderer(swapChain, commandPool, pipelineCache);
    }
 
    public void cleanup() {
       presentationQueue.waitIdle();
       graphicsQueue.waitIdle();
       device.waitIdle();
+      vulkanModels.forEach(VulkanModel::cleanup);
       pipelineCache.cleanup();
       forwardRenderer.cleanup();
       commandPool.cleanup();
@@ -63,6 +64,7 @@ public class VulkanRenderer {
       if (imageIndex < 0) {
          return;
       }
+      forwardRenderer.recordCommandBuffer(vulkanModels);
       forwardRenderer.submit(graphicsQueue);
       swapChain.showImage(presentationQueue, imageIndex);
    }

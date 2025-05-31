@@ -5,12 +5,9 @@ import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkAttachmentReference;
-import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
-
-import java.nio.LongBuffer;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 public class VulkanSwapChainRenderPass {
    private VulkanSwapChain swapChain;
@@ -45,15 +42,7 @@ public class VulkanSwapChainRenderPass {
                  .srcAccessMask(0)
                  .dstAccessMask(VK14.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 
-         VkRenderPassCreateInfo renderPassInfo = VkRenderPassCreateInfo.calloc(stack)
-                 .sType(VK14.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
-                 .pAttachments(attachments)
-                 .pSubpasses(subpassDescription)
-                 .pDependencies(subpassDependencies);
-
-         LongBuffer buf = stack.mallocLong(1);
-         VulkanUtils.failIfNeeded(VK14.vkCreateRenderPass(swapChain.getDevice().getDevice(), renderPassInfo, null, buf), "Cannot create render pass!");
-         this.id = buf.get(0);
+         this.id = StructureUtils.createRenderPass(stack, attachments, subpassDescription, subpassDependencies, swapChain.getDevice().getDevice());
       }
    }
 

@@ -87,9 +87,7 @@ public class ForwardRenderer {
          LongBuffer offsets = stack.mallocLong(1);
          offsets.put(0, 0L);
          LongBuffer vertexBuffer = stack.mallocLong(1);
-         models.forEach(model -> {
-            // TODO: continue here
-         });
+         models.forEach(model -> model.bindMeshes(commandBuffer.getBuffer(), vertexBuffer, offsets));
          VK14.vkCmdEndRenderPass(commandBuffer.getBuffer());
          commandBuffer.endRecording();
       }

@@ -55,6 +55,7 @@ public class VulkanEngine {
 
         // rendering loop
         while (!window.shouldClose()) {
+            window.pollEvents();
             if (shouldRunLogic()) {
             }
             if (shouldRender()) {
@@ -67,7 +68,6 @@ public class VulkanEngine {
                     Thread.currentThread().interrupt();
                 }
             }
-            window.pollEvents();
         }
         cleanup();
     }

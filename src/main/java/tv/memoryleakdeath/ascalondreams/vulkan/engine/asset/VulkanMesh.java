@@ -12,17 +12,19 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.SizeConstants;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.List;
 
 public class VulkanMesh {
    private Mesh mesh;
-   private TransferBuffers vertexBuffer;
-   private TransferBuffers indexBuffer;
+   private VulkanBuffer vertexBuffer;
+   private VulkanBuffer indexBuffer;
+   private List<TransferBuffers> transferBuffers;
 
    public VulkanMesh(Mesh mesh) {
       this.mesh = mesh;
    }
 
-   private void createIndexBuffer(LogicalDevice device) {
+   private TransferBuffers createIndexBuffer(LogicalDevice device) {
       int bufferSize = mesh.getIndexes().length * SizeConstants.INT_LENGTH;
       VulkanBuffer sourceBuffer = new VulkanBuffer(device, bufferSize,
               VK14.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -33,10 +35,10 @@ public class VulkanMesh {
       data.put(mesh.getIndexes());
       sourceBuffer.unmap();
 
-      this.indexBuffer = new TransferBuffers(sourceBuffer, destinationBuffer);
+      return new TransferBuffers(sourceBuffer, destinationBuffer);
    }
 
-   private void createVertexBuffer(LogicalDevice device) {
+   private TransferBuffers createVertexBuffer(LogicalDevice device) {
       int bufferSize = mesh.getVertices().length * SizeConstants.FLOAT_LENGTH;
       VulkanBuffer sourceBuffer = new VulkanBuffer(device, bufferSize,
               VK14.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -47,17 +49,17 @@ public class VulkanMesh {
       data.put(mesh.getVertices());
       sourceBuffer.unmap();
 
-      this.vertexBuffer = new TransferBuffers(sourceBuffer, destinationBuffer);
+      return new TransferBuffers(sourceBuffer, destinationBuffer);
    }
 
-   private void recordTransferCommands(VulkanCommandBuffer cmd) {
+   private void recordTransferCommands(VulkanCommandBuffer cmd, TransferBuffers vertexBuffer, TransferBuffers indexBuffer) {
       recordTransferCommand(cmd, vertexBuffer);
       recordTransferCommand(cmd, indexBuffer);
    }
 
    private void recordTransferCommand(VulkanCommandBuffer cmd, TransferBuffers buffers) {
       try (MemoryStack stack = MemoryStack.stackPush()) {
-         VkBufferCopy.Buffer copyRegion = VkBufferCopy.calloc(1)
+         VkBufferCopy.Buffer copyRegion = VkBufferCopy.calloc(1, stack)
                  .srcOffset(0)
                  .dstOffset(0)
                  .size(buffers.source().getRequestedSize());
@@ -66,14 +68,12 @@ public class VulkanMesh {
    }
 
    public void prepareMesh(LogicalDevice device, VulkanCommandBuffer commandBuffer) {
-      createVertexBuffer(device);
-      createIndexBuffer(device);
-      recordTransferCommands(commandBuffer);
-   }
-
-   public void cleanupSrcBuffers() {
-      vertexBuffer.source().cleanup();
-      indexBuffer.source().cleanup();
+      TransferBuffers vertexBuffer = createVertexBuffer(device);
+      TransferBuffers indexBuffer = createIndexBuffer(device);
+      transferBuffers = List.of(vertexBuffer, indexBuffer);
+      recordTransferCommands(commandBuffer, vertexBuffer, indexBuffer);
+      this.vertexBuffer = vertexBuffer.destination();
+      this.indexBuffer = indexBuffer.destination();
    }
 
    public void cleanup() {
@@ -81,10 +81,22 @@ public class VulkanMesh {
       indexBuffer.cleanup();
    }
 
+   public void cleanSrcTransferBuffers() {
+      transferBuffers.forEach(b -> b.source().cleanup());
+   }
+
+   public VulkanBuffer getVertexBuffer() {
+      return vertexBuffer;
+   }
+
+   public VulkanBuffer getIndexBuffer() {
+      return indexBuffer;
+   }
+
+   public Mesh getMesh() {
+      return mesh;
+   }
+
    private record TransferBuffers(VulkanBuffer source, VulkanBuffer destination) {
-      public void cleanup() {
-         source.cleanup();
-         destination.cleanup();
-      }
    }
 }
