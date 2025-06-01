@@ -68,8 +68,8 @@ public class ForwardRenderer {
    public void recordCommandBuffer(List<VulkanModel> models) {
       try (MemoryStack stack = MemoryStack.stackPush()) {
          VkExtent2D swapChainExtent = swapChain.getExtent();
-         int swapChainWidth = swapChain.getWidth();
-         int swapChainHeight = swapChain.getHeight();
+         int swapChainWidth = swapChainExtent.width();
+         int swapChainHeight = swapChainExtent.height();
          int frame = swapChain.getCurrentFrame();
 
          VulkanCommandBuffer commandBuffer = commandBuffers.get(frame);

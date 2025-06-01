@@ -50,7 +50,7 @@ public class VulkanModel {
          vertexBuffer.put(0, mesh.getVertexBuffer().getId());
          VK14.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
          VK14.vkCmdBindIndexBuffer(cmd, mesh.getIndexBuffer().getId(), 0, VK14.VK_INDEX_TYPE_UINT32);
-         VK14.vkCmdDrawIndexed(cmd, mesh.getMesh().getNumVertices(), 1, 0, 0, 0);
+         VK14.vkCmdDrawIndexed(cmd, mesh.getMesh().getIndexes().length, 1, 0, 0, 0);
       });
    }
 

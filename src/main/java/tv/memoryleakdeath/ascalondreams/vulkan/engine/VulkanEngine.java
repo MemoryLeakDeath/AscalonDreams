@@ -95,8 +95,8 @@ public class VulkanEngine {
     }
 
     private void cleanup() {
-        window.cleanup();
         renderer.cleanup();
+        window.cleanup();
     }
 
     private void registerKeyboardCallbacks() {

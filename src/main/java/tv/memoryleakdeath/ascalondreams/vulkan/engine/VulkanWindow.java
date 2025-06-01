@@ -15,6 +15,7 @@ public class VulkanWindow {
     private int width;
     private int height;
     private long handle;
+    private boolean resized = false;
 
     public VulkanWindow(int width, int height) {
         this.width = width;
@@ -49,6 +50,9 @@ public class VulkanWindow {
             throw new RuntimeException("Unable to create game window!");
         }
 
+        GLFW.glfwSetFramebufferSizeCallback(handle, ((window, w, h) -> resize(w, h)));
+        
+
         // get resolution of primary monitor
         GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
 
@@ -57,6 +61,20 @@ public class VulkanWindow {
 
         // make window visible
         GLFW.glfwShowWindow(handle);
+    }
+
+    public void resize(int width, int height) {
+        resized = true;
+        this.width = width;
+        this.height = height;
+    }
+
+    public void resetResized() {
+        this.resized = false;
+    }
+
+    public void setResized(boolean resized) {
+        this.resized = resized;
     }
 
     public void cleanup() {
