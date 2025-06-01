@@ -20,10 +20,12 @@ import org.lwjgl.vulkan.VkExtensionProperties;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
+import org.lwjgl.vulkan.VkImageCreateInfo;
 import org.lwjgl.vulkan.VkImageViewCreateInfo;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkMemoryAllocateInfo;
+import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPipelineCacheCreateInfo;
@@ -44,7 +46,9 @@ import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.BaseVertexInputStateInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanCommandBuffer;
@@ -421,6 +425,39 @@ public final class StructureUtils {
 
       LongBuffer buf = stack.mallocLong(1);
       VulkanUtils.failIfNeeded(VK14.vkCreateRenderPass(device, renderPassInfo, null, buf), "Cannot create render pass!");
+      return buf.get(0);
+   }
+
+   public static long createImageInfo(MemoryStack stack, VkDevice device, VulkanImageData imageData) {
+      VkImageCreateInfo createInfo = VkImageCreateInfo.calloc(stack)
+              .sType(VK14.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+              .imageType(VK14.VK_IMAGE_TYPE_2D)
+              .format(imageData.getFormat())
+              .extent(it -> it.width(imageData.getWidth())
+                      .height(imageData.getHeight())
+                      .depth(1))
+              .mipLevels(imageData.getMipLevels())
+              .arrayLayers(imageData.getArrayLayers())
+              .samples(imageData.getSampleCount())
+              .initialLayout(VK14.VK_IMAGE_LAYOUT_UNDEFINED)
+              .sharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE)
+              .tiling(VK14.VK_IMAGE_TILING_OPTIMAL)
+              .usage(imageData.getUsage());
+      LongBuffer buf = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK14.vkCreateImage(device, createInfo, null, buf), "Unable to create vulkan image!");
+      return buf.get(0);
+   }
+
+   public static long allocateImageMemory(MemoryStack stack, LogicalDevice device, long imageId) {
+      VkMemoryRequirements requirements = VkMemoryRequirements.calloc(stack);
+      VK14.vkGetImageMemoryRequirements(device.getDevice(), imageId, requirements);
+
+      VkMemoryAllocateInfo allocateInfo = VkMemoryAllocateInfo.calloc(stack)
+              .sType(VK14.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+              .allocationSize(requirements.size())
+              .memoryTypeIndex(device.getPhysicalDevice().getMemoryTypeFromProperties(requirements.memoryTypeBits(), 0));
+      LongBuffer buf = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK14.vkAllocateMemory(device.getDevice(), allocateInfo, null, buf), "Unable to allocate image memory!");
       return buf.get(0);
    }
 }
