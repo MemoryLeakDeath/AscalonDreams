@@ -144,7 +144,9 @@ public class VulkanSwapChain {
          long[] semaphoreIds = new long[]{semaphoreList.get(currentFrame).renderCompleteSemaphore().getId()};
          VkPresentInfoKHR presentInfoKHR = StructureUtils.createPresentInfo(stack, 1,
                  new long[]{id}, new int[]{imageIndex}, semaphoreIds);
+         System.out.println("Before queue present");
          int result = KHRSwapchain.vkQueuePresentKHR(queue.getQueue(), presentInfoKHR);
+         System.out.println("after queue present");
          if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
             resize = true;
          } else if (result != VK14.VK_SUCCESS) {

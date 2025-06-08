@@ -7,6 +7,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PipelineCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanGraphicsQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,19 +15,21 @@ import java.util.List;
 public class VulkanRenderer {
    private final VulkanRenderInstance instance;
    private VulkanWindow window;
+   private VulkanScene scene;
+   private VulkanSwapChain swapChain;
    private final LogicalDevice device;
    private final VulkanGraphicsQueue graphicsQueue;
    private final VulkanSurface surface;
-   private final VulkanSwapChain swapChain;
    private final VulkanCommandPool commandPool;
    private final ForwardRenderer forwardRenderer;
    private final VulkanPresentationQueue presentationQueue;
    private final PipelineCache pipelineCache;
    private final List<VulkanModel> vulkanModels = new ArrayList<>();
 
-   public VulkanRenderer(VulkanWindow window) {
+   public VulkanRenderer(VulkanWindow window, VulkanScene scene) {
       this.instance = new VulkanRenderInstance(false);
       this.window = window;
+      this.scene = scene;
       this.device = new LogicalDevice(PhysicalDevice.getInstance(instance.getVkInstance()));
       this.surface = new VulkanSurface(device.getPhysicalDevice(), window.getHandle());
       this.graphicsQueue = new VulkanGraphicsQueue(device, 0);
@@ -34,7 +37,7 @@ public class VulkanRenderer {
       this.swapChain = new VulkanSwapChain(device, surface, window, VulkanSwapChain.TRIPLE_BUFFERING, true, presentationQueue, List.of(graphicsQueue));
       this.commandPool = new VulkanCommandPool(device, graphicsQueue.getQueueFamilyIndex());
       this.pipelineCache = new PipelineCache(device);
-      this.forwardRenderer = new ForwardRenderer(swapChain, commandPool, pipelineCache);
+      this.forwardRenderer = new ForwardRenderer(swapChain, commandPool, pipelineCache, scene);
    }
 
    public void cleanup() {
@@ -59,13 +62,28 @@ public class VulkanRenderer {
    }
 
    public void render() {
-      forwardRenderer.waitForFence();
-      int imageIndex = swapChain.aquireNextImage();
-      if (imageIndex < 0) {
+      if (window.getWidth() <= 0 && window.getHeight() <= 0) {
          return;
+      }
+      forwardRenderer.waitForFence();
+      int imageIndex = (window.isResized() ? 0 : swapChain.aquireNextImage());
+      if (window.isResized() || imageIndex < 0) {
+         window.resetResized();
+         resize();
+         scene.getProjection().resize(window.getWidth(), window.getHeight());
+         imageIndex = swapChain.aquireNextImage();
       }
       forwardRenderer.recordCommandBuffer(vulkanModels);
       forwardRenderer.submit(graphicsQueue);
-      swapChain.showImage(presentationQueue, imageIndex);
+      boolean resized = swapChain.showImage(presentationQueue, imageIndex);
+      window.setResized(resized);
+   }
+
+   private void resize() {
+      device.waitIdle();
+      graphicsQueue.waitIdle();
+      swapChain.cleanup();
+      this.swapChain = new VulkanSwapChain(device, surface, window,
+              3, true, presentationQueue, List.of(graphicsQueue));
    }
 }

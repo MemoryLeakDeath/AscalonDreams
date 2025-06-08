@@ -31,6 +31,7 @@ import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPipelineCacheCreateInfo;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineDepthStencilStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
@@ -39,6 +40,7 @@ import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
 import org.lwjgl.vulkan.VkPresentInfoKHR;
+import org.lwjgl.vulkan.VkPushConstantRange;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
 import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 import org.lwjgl.vulkan.VkSemaphoreCreateInfo;
@@ -190,10 +192,11 @@ public final class StructureUtils {
               .pDynamicStates(stack.ints(dynamicStates));
    }
 
-   public static long createPipelineLayoutInfo(MemoryStack stack, VkDevice device) {
+   public static long createPipelineLayoutInfo(MemoryStack stack, VkDevice device, VkPushConstantRange.Buffer constantRangeBuffer) {
       LongBuffer lb = stack.mallocLong(1);
       VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
+              .sType(VK14.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+              .pPushConstantRanges(constantRangeBuffer);
       VulkanUtils.failIfNeeded(VK14.vkCreatePipelineLayout(device, pipelineLayoutCreateInfo, null, lb), "Unable to create pipeline layout!");
       return lb.get(0);
    }
@@ -205,6 +208,7 @@ public final class StructureUtils {
                                          VkPipelineViewportStateCreateInfo viewportStateCreateInfo,
                                          VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo,
                                          VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo,
+                                         VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo,
                                          VkPipelineColorBlendStateCreateInfo colorBlendInfo,
                                          VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo,
                                          long layoutId,
@@ -224,6 +228,9 @@ public final class StructureUtils {
               .pDynamicState(dynamicStateCreateInfo)
               .layout(layoutId)
               .renderPass(renderPass);
+      if (depthStencilStateCreateInfo != null) {
+         pipeline.pDepthStencilState(depthStencilStateCreateInfo);
+      }
       VulkanUtils.failIfNeeded(VK14.vkCreateGraphicsPipelines(device, cacheId, pipeline, null, lb), "Failed to create graphics pipeline!");
       return lb.get(0);
    }
@@ -459,5 +466,22 @@ public final class StructureUtils {
       LongBuffer buf = stack.mallocLong(1);
       VulkanUtils.failIfNeeded(VK14.vkAllocateMemory(device.getDevice(), allocateInfo, null, buf), "Unable to allocate image memory!");
       return buf.get(0);
+   }
+
+   public static VkPipelineDepthStencilStateCreateInfo createDepthStencilStateInfo(MemoryStack stack) {
+      return VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+              .sType(VK14.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+              .depthTestEnable(true)
+              .depthWriteEnable(true)
+              .depthCompareOp(VK14.VK_COMPARE_OP_LESS_OR_EQUAL)
+              .depthBoundsTestEnable(false)
+              .stencilTestEnable(false);
+   }
+
+   public static VkPushConstantRange.Buffer createConstantRangeBuffer(MemoryStack stack, int constantsSize) {
+      return VkPushConstantRange.calloc(1, stack)
+              .stageFlags(VK14.VK_SHADER_STAGE_VERTEX_BIT)
+              .offset(0)
+              .size(constantsSize);
    }
 }

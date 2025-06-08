@@ -51,7 +51,7 @@ public class VulkanWindow {
         }
 
         GLFW.glfwSetFramebufferSizeCallback(handle, ((window, w, h) -> resize(w, h)));
-        
+
 
         // get resolution of primary monitor
         GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
@@ -92,6 +92,10 @@ public class VulkanWindow {
 
     public void update() {
         // GLFW.glfwSwapBuffers(handle);
+    }
+
+    public boolean isResized() {
+        return resized;
     }
 
     public boolean shouldClose() {

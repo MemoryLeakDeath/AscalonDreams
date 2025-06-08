@@ -15,8 +15,9 @@ public final class ViewportUtils {
    }
 
    public static VkRenderPassBeginInfo initViewport(MemoryStack stack, VulkanSwapChainRenderPass renderPass, int swapChainWidth, int swapChainHeight, VulkanFrameBuffer frameBuffer) {
-      VkClearValue.Buffer clearValue = VkClearValue.calloc(1, stack);
+      VkClearValue.Buffer clearValue = VkClearValue.calloc(2, stack);
       clearValue.apply(0, v -> v.color().float32(0, 0).float32(1, 0).float32(2, 0).float32(3, 1));
+      clearValue.apply(1, v -> v.depthStencil().depth(1.0f));
 
       VkRenderPassBeginInfo beginInfo = VkRenderPassBeginInfo.calloc(stack)
               .sType(VK14.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)

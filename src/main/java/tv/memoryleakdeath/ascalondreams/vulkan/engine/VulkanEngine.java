@@ -1,14 +1,17 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine;
 
+import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
+import tv.memoryleakdeath.ascalondreams.common.model.Entity;
 import tv.memoryleakdeath.ascalondreams.common.model.Mesh;
 import tv.memoryleakdeath.ascalondreams.common.model.Model;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,24 +27,62 @@ public class VulkanEngine {
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
+    private VulkanScene scene;
     private long lastLogicUpdateTimer;
     private long lastFrameUpdateTimer;
     private KeyboardCallback kb;
+    private Vector3f rotationAngle = new Vector3f(1f, 1f, 1f);
 
     public void init() {
         window = new VulkanWindow(600, 600);
-        renderer = new VulkanRenderer(window);
+        scene = new VulkanScene(window.getWidth(), window.getHeight());
+        renderer = new VulkanRenderer(window, scene);
     }
 
     private VulkanModel createTestModel() {
         Mesh meshData = new Mesh();
         meshData.setVertices(new float[]{
-                -0.5f, -0.5f, 0f,
-                0f, 0.5f, 0f,
-                0.5f, -0.5f, 0f});
-        meshData.setIndexes(new int[]{0, 1, 2});
-        Model model = new Model("TriangleModel", List.of(meshData), Collections.emptyList());
-        return new VulkanModel("TriangleModel", model);
+                -0.5f, 0.5f, 0.5f,
+                -0.5f, -0.5f, 0.5f,
+                0.5f, -0.5f, 0.5f,
+                0.5f, 0.5f, 0.5f,
+                -0.5f, 0.5f, -0.5f,
+                0.5f, 0.5f, -0.5f,
+                -0.5f, -0.5f, -0.5f,
+                0.5f, -0.5f, -0.5f,
+        });
+        meshData.setTexCoords(List.of(new float[]{
+                0.0f, 0.0f,
+                0.5f, 0.0f,
+                1.0f, 0.0f,
+                1.0f, 0.5f,
+                1.0f, 1.0f,
+                0.5f, 1.0f,
+                0.0f, 1.0f,
+                0.0f, 0.5f,
+        }));
+        meshData.setIndexes(new int[]{
+                // Front face
+                0, 1, 3, 3, 1, 2,
+                // Top Face
+                4, 0, 3, 5, 4, 3,
+                // Right face
+                3, 2, 7, 5, 3, 7,
+                // Left face
+                6, 1, 0, 6, 0, 4,
+                // Bottom face
+                2, 1, 6, 2, 6, 7,
+                // Back face
+                7, 6, 4, 7, 4, 5,
+        });
+        Model model = new Model("CubeModel", List.of(meshData), Collections.emptyList());
+        return new VulkanModel("CubeModel", model);
+    }
+
+    private void createTestEntity() {
+        Entity cubeEntity = new Entity("CubeEntity", "CubeModel", new Vector3f(0f, 0f, 0f));
+        cubeEntity.setPosition(0f, 0f, -2f);
+        scene.addEntity(cubeEntity);
     }
 
     private void loadModel() {
@@ -52,6 +93,7 @@ public class VulkanEngine {
     public void mainLoop() {
         //GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
         renderer.loadModels(List.of(createTestModel()));
+        createTestEntity();
 
         // rendering loop
         while (!window.shouldClose()) {
@@ -60,7 +102,7 @@ public class VulkanEngine {
             }
             if (shouldRender()) {
                 render();
-                window.update();
+                update();
             } else {
                 try {
                     Thread.sleep(1);
@@ -97,6 +139,10 @@ public class VulkanEngine {
     private void cleanup() {
         renderer.cleanup();
         window.cleanup();
+    }
+
+    private void update() {
+        scene.getEntity("CubeModel", "CubeEntity").rotate(1f, rotationAngle);
     }
 
     private void registerKeyboardCallbacks() {

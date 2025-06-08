@@ -39,14 +39,33 @@ public class VulkanMesh {
    }
 
    private TransferBuffers createVertexBuffer(LogicalDevice device) {
+      float[] positions = mesh.getVertices();
+      float[] textureCoords = mesh.getTexCoords().getFirst();
+      if (textureCoords == null || textureCoords.length == 0) {
+         textureCoords = new float[(positions.length / 3) * 2];
+      }
+      int numElements = textureCoords.length + positions.length;
       int bufferSize = mesh.getVertices().length * SizeConstants.FLOAT_LENGTH;
+
       VulkanBuffer sourceBuffer = new VulkanBuffer(device, bufferSize,
               VK14.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
       VulkanBuffer destinationBuffer = new VulkanBuffer(device, bufferSize,
               VK14.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK14.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK14.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
       long mappedMemory = sourceBuffer.map();
       FloatBuffer data = MemoryUtil.memFloatBuffer(mappedMemory, (int) sourceBuffer.getRequestedSize());
-      data.put(mesh.getVertices());
+
+      int rows = positions.length / 3;
+      for (int row = 0; row < rows; row++) {
+         int startPosition = row * 3;
+         int startTexCoord = row * 2;
+         data.put(positions[startPosition]);
+         data.put(positions[startPosition + 1]);
+         data.put(positions[startPosition + 2]);
+         data.put(textureCoords[startTexCoord]);
+         data.put(textureCoords[startTexCoord + 1]);
+      }
+
       sourceBuffer.unmap();
 
       return new TransferBuffers(sourceBuffer, destinationBuffer);
