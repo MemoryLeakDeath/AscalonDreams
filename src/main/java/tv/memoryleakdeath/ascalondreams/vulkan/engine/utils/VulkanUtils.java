@@ -9,6 +9,8 @@ import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
 
 import java.nio.IntBuffer;
@@ -16,12 +18,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class VulkanUtils {
+   private static final Logger logger = LoggerFactory.getLogger(VulkanUtils.class);
    private VulkanUtils() {
    }
 
    public static void failIfNeeded(int resultCode, String errorMsg) {
       if (resultCode != VK14.VK_SUCCESS) {
-         throw new RuntimeException(errorMsg);
+         throw new RuntimeException(errorMsg + " result code: " + resultCode);
       }
    }
 
@@ -30,6 +33,7 @@ public final class VulkanUtils {
       IntBuffer intBuffer = stack.mallocInt(1);
       failIfNeeded(VK14.vkEnumeratePhysicalDevices(instance, intBuffer, null), "Failed to get number of physical devices");
       int numDevices = intBuffer.get(0);
+      logger.debug("Number of Physical Devices: {}", numDevices);
 
       devicesPointerBuffer = stack.mallocPointer(numDevices);
       failIfNeeded(VK14.vkEnumeratePhysicalDevices(instance, intBuffer, devicesPointerBuffer), "Failed to get physical devices");

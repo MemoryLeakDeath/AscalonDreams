@@ -66,8 +66,8 @@ public class VulkanRenderer {
          return;
       }
       forwardRenderer.waitForFence();
-      int imageIndex = (window.isResized() ? 0 : swapChain.aquireNextImage());
-      if (window.isResized() || imageIndex < 0) {
+      int imageIndex;
+      if (window.isResized() || (imageIndex = swapChain.aquireNextImage()) < 0) {
          window.resetResized();
          resize();
          scene.getProjection().resize(window.getWidth(), window.getHeight());
@@ -75,8 +75,9 @@ public class VulkanRenderer {
       }
       forwardRenderer.recordCommandBuffer(vulkanModels);
       forwardRenderer.submit(graphicsQueue);
-      boolean resized = swapChain.showImage(presentationQueue, imageIndex);
-      window.setResized(resized);
+      if(swapChain.showImage(presentationQueue, imageIndex)) {
+         window.setResized(true);
+      }
    }
 
    private void resize() {
@@ -85,5 +86,6 @@ public class VulkanRenderer {
       swapChain.cleanup();
       this.swapChain = new VulkanSwapChain(device, surface, window,
               3, true, presentationQueue, List.of(graphicsQueue));
+      forwardRenderer.resize(swapChain);
    }
 }

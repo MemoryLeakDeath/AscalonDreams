@@ -60,6 +60,7 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -379,7 +380,6 @@ public final class StructureUtils {
               .imageExtent(swapChainExtent)
               .imageArrayLayers(imageArrayLayers)
               .imageUsage(VK14.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-              .imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE)
               .preTransform(preTransform)
               .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
               .clipped(clipped);
@@ -389,22 +389,21 @@ public final class StructureUtils {
          swapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR);
       }
 
-      if (concurrentQueues != null) {
-         int presentationQueueFamilyIndex = presentationQueue.getQueueFamilyIndex();
-         int[] queueIndexes = concurrentQueues.stream()
-                 .filter(q -> q.getQueueFamilyIndex() != presentationQueueFamilyIndex)
-                 .mapToInt(BaseDeviceQueue::getQueueFamilyIndex)
-                 .toArray();
-         if (queueIndexes.length > 0) {
-            IntBuffer indexBuf = stack.mallocInt(queueIndexes.length + 1);
-            indexBuf.put(queueIndexes);
-            indexBuf.put(presentationQueueFamilyIndex).flip();
-            swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_CONCURRENT)
-                    .queueFamilyIndexCount(indexBuf.capacity())
-                    .pQueueFamilyIndices(indexBuf);
-         } else {
-            swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE);
-         }
+      List<BaseDeviceQueue> queues = (concurrentQueues != null) ? concurrentQueues : Collections.emptyList();
+      int presentationQueueFamilyIndex = presentationQueue.getQueueFamilyIndex();
+      int[] queueIndexes = queues.stream()
+              .filter(q -> q.getQueueFamilyIndex() != presentationQueueFamilyIndex)
+              .mapToInt(BaseDeviceQueue::getQueueFamilyIndex)
+              .toArray();
+      if (queueIndexes.length > 0) {
+         IntBuffer indexBuf = stack.mallocInt(queueIndexes.length + 1);
+         indexBuf.put(queueIndexes);
+         indexBuf.put(presentationQueueFamilyIndex).flip();
+         swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_CONCURRENT)
+                 .queueFamilyIndexCount(indexBuf.capacity())
+                 .pQueueFamilyIndices(indexBuf);
+      } else {
+         swapchainCreateInfo.imageSharingMode(VK14.VK_SHARING_MODE_EXCLUSIVE);
       }
       LongBuffer buf = stack.mallocLong(1);
       VulkanUtils.failIfNeeded(KHRSwapchain.vkCreateSwapchainKHR(device, swapchainCreateInfo, null, buf), "Cannot create swapchain!");

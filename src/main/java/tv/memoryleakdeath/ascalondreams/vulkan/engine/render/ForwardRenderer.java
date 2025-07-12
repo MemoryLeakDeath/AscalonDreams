@@ -35,6 +35,7 @@ public class ForwardRenderer {
    private VulkanSwapChain swapChain;
    private final VulkanShaderProgram shaderProgram;
    private final Pipeline pipeline;
+   private final PipelineCache pipelineCache;
    private VulkanScene scene;
 
    private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/fwd_fragment.glsl";
@@ -45,6 +46,7 @@ public class ForwardRenderer {
    public ForwardRenderer(VulkanSwapChain swapChain, VulkanCommandPool pool,
                           PipelineCache pipelineCache, VulkanScene scene) {
       this.swapChain = swapChain;
+      this.pipelineCache = pipelineCache;
       this.scene = scene;
       LogicalDevice device = swapChain.getDevice();
       createDepthImages(swapChain.getWidth(), swapChain.getHeight(), device);
@@ -137,8 +139,8 @@ public class ForwardRenderer {
       try (MemoryStack stack = MemoryStack.stackPush()) {
          int currentFrame = swapChain.getCurrentFrame();
          Fence currentFence = fences.get(currentFrame);
-         currentFence.reset();
          VulkanCommandBuffer commandBuffer = commandBuffers.get(currentFrame);
+         currentFence.reset();
          VulkanSwapChain.SyncSemaphores syncSemaphores = swapChain.getSemaphoreList().get(currentFrame);
          queue.submit(stack.pointers(commandBuffer.getBuffer()),
                  stack.longs(syncSemaphores.imageAquisitionSemaphore().getId()),

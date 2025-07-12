@@ -9,6 +9,8 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkPresentInfoKHR;
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR;
 import org.lwjgl.vulkan.VkSurfaceFormatKHR;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
@@ -26,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class VulkanSwapChain {
+   private static final Logger logger = LoggerFactory.getLogger(VulkanSwapChain.class);
    public static final int TRIPLE_BUFFERING = 3;
    public static final int DOUBLE_BUFFERING = 2;
 
@@ -69,6 +72,7 @@ public class VulkanSwapChain {
          bestSetup = Math.min(bufferingSetup, maxImages);
       }
       bestSetup = Math.max(bestSetup, minImages);
+      logger.debug("Buffering setup: Max: {} Min: {} best: {}", maxImages, minImages, bestSetup);
       return bestSetup;
    }
 
@@ -95,8 +99,10 @@ public class VulkanSwapChain {
 
          extent.width(width);
          extent.height(height);
+         logger.debug("Swap chain extent: width: {} height: {}", width, height);
       } else {
          extent.set(surfaceCapabilities.currentExtent());
+         logger.debug("Current Extent: {}", surfaceCapabilities.currentExtent());
       }
       this.swapChainExtent = extent;
    }
@@ -119,6 +125,7 @@ public class VulkanSwapChain {
    }
 
    public void cleanup() {
+      logger.debug("cleanup swapchain: {}", id);
       swapChainExtent.free();
       imageViews.forEach(VulkanImageView::cleanup);
       semaphoreList.forEach(SyncSemaphores::cleanup);
@@ -144,9 +151,7 @@ public class VulkanSwapChain {
          long[] semaphoreIds = new long[]{semaphoreList.get(currentFrame).renderCompleteSemaphore().getId()};
          VkPresentInfoKHR presentInfoKHR = StructureUtils.createPresentInfo(stack, 1,
                  new long[]{id}, new int[]{imageIndex}, semaphoreIds);
-         System.out.println("Before queue present");
          int result = KHRSwapchain.vkQueuePresentKHR(queue.getQueue(), presentInfoKHR);
-         System.out.println("after queue present");
          if (result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
             resize = true;
          } else if (result != VK14.VK_SUCCESS) {

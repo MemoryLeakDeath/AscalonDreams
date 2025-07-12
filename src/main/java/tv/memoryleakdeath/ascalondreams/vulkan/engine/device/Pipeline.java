@@ -11,9 +11,12 @@ import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
 import org.lwjgl.vulkan.VkPushConstantRange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 public class Pipeline {
+   private static final Logger logger = LoggerFactory.getLogger(Pipeline.class);
    private static final int COLOR_MASK = VK14.VK_COLOR_COMPONENT_R_BIT | VK14.VK_COLOR_COMPONENT_G_BIT | VK14.VK_COLOR_COMPONENT_B_BIT | VK14.VK_COLOR_COMPONENT_A_BIT;
    private LogicalDevice device;
    private long id;
@@ -43,10 +46,12 @@ public class Pipeline {
                  info.vertexInputStateInfo(), assemblyStateCreateInfo, viewportStateCreateInfo,
                  rasterizationStateCreateInfo, multisampleStateCreateInfo, depthStencilStateCreateInfo, colorBlendInfo,
                  dynamicStateCreateInfo, layoutId, info.renderPass(), device.getDevice(), cache.getId());
+         logger.debug("Created pipeline with id: {}", id);
       }
    }
 
    public void cleanup() {
+      logger.debug("cleaning up pipeline: {}", id);
       VK14.vkDestroyPipelineLayout(device.getDevice(), layoutId, null);
       VK14.vkDestroyPipeline(device.getDevice(), id, null);
    }

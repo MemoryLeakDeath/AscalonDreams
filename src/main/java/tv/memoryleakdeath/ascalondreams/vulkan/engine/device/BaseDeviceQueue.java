@@ -5,16 +5,20 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkQueue;
 import org.lwjgl.vulkan.VkSubmitInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 
 public abstract class BaseDeviceQueue {
+   private static final Logger logger = LoggerFactory.getLogger(BaseDeviceQueue.class);
    private VkQueue queue;
    private int queueFamilyIndex;
 
    protected void createQueue(LogicalDevice device, int queueFamilyIndex, int queueIndex) {
+      logger.debug("Creating queue with familyIndex: {} and queueIndex: {}", queueFamilyIndex, queueIndex);
       this.queueFamilyIndex = queueFamilyIndex;
       try (MemoryStack stack = MemoryStack.stackPush()) {
          PointerBuffer queuePointer = stack.mallocPointer(1);
@@ -49,6 +53,7 @@ public abstract class BaseDeviceQueue {
             submitInfo.waitSemaphoreCount(0);
          }
          long fenceHandle = fence != null ? fence.getId() : VK14.VK_NULL_HANDLE;
+         logger.debug("Submitting queue address: {} fence id: {}", queue.address(), fenceHandle);
          VulkanUtils.failIfNeeded(VK14.vkQueueSubmit(queue, submitInfo, fenceHandle), "Failed to submit command to queue!");
       }
    }

@@ -11,6 +11,8 @@ import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanSurface;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
@@ -18,6 +20,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 import java.util.List;
 
 public final class PhysicalDevice {
+   private static final Logger logger = LoggerFactory.getLogger(PhysicalDevice.class);
    private VkExtensionProperties.Buffer deviceExtensions;
    private VkPhysicalDeviceMemoryProperties memoryProperties;
    private final VkPhysicalDevice physicalDevice;
@@ -68,8 +71,10 @@ public final class PhysicalDevice {
          for (VkPhysicalDevice device : devices) {
             selectedDevice = new PhysicalDevice(device);
             if (selectedDevice.isGameReady()) {
+               logger.debug("Selecting device: {}", selectedDevice.getDeviceName());
                break;
             }
+            logger.debug("Cleaning up device: {}", selectedDevice.getDeviceName());
             selectedDevice.cleanup();
             selectedDevice = null;
          }

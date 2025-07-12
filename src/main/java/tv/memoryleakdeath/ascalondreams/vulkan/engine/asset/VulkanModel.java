@@ -4,6 +4,8 @@ import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkCommandBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.common.model.Entity;
 import tv.memoryleakdeath.ascalondreams.common.model.Model;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
@@ -20,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VulkanModel {
+   private static final Logger logger = LoggerFactory.getLogger(VulkanModel.class);
    private String id;
    private Model model;
    private List<VulkanMesh> meshList = new ArrayList<>();
@@ -30,6 +33,7 @@ public class VulkanModel {
    }
 
    public void prepareModel(VulkanCommandPool commandPool, BaseDeviceQueue queue) {
+      logger.debug("starting prepareModel for model id: {}", id);
       LogicalDevice device = commandPool.getDevice();
       VulkanCommandBuffer commandBuffer = new VulkanCommandBuffer(commandPool, true, true);
       commandBuffer.beginRecording();
@@ -48,9 +52,11 @@ public class VulkanModel {
       fence.cleanup();
       commandBuffer.cleanup();
       meshList.forEach(VulkanMesh::cleanSrcTransferBuffers);
+      logger.debug("model id: {} prepared!", id);
    }
 
    public void bindMeshes(VkCommandBuffer cmd, LongBuffer vertexBuffer, LongBuffer offsets, VulkanScene scene, List<Entity> entities, ByteBuffer pushConstantsBuffer, long pipelineLayout) {
+      logger.debug("binding meshes for model id: {} number of meshes: {}", id, meshList.size());
       meshList.forEach(mesh -> {
          vertexBuffer.put(0, mesh.getVertexBuffer().getId());
          VK14.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
@@ -81,6 +87,7 @@ public class VulkanModel {
    }
 
    public void cleanup() {
+      logger.debug("Cleaning up mesh id: {}", id);
       meshList.forEach(VulkanMesh::cleanup);
    }
 }

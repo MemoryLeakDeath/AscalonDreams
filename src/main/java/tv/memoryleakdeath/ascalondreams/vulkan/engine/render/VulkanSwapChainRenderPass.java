@@ -7,9 +7,12 @@ import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkAttachmentReference;
 import org.lwjgl.vulkan.VkSubpassDependency;
 import org.lwjgl.vulkan.VkSubpassDescription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 public class VulkanSwapChainRenderPass {
+   private static final Logger logger = LoggerFactory.getLogger(VulkanSwapChainRenderPass.class);
    private VulkanSwapChain swapChain;
    private long id;
 
@@ -57,10 +60,12 @@ public class VulkanSwapChainRenderPass {
                  .dstAccessMask(VK14.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK14.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
          this.id = StructureUtils.createRenderPass(stack, attachments, subpassDescription, subpassDependencies, swapChain.getDevice().getDevice());
+         logger.debug("Created swap chain render pass with id: {}", id);
       }
    }
 
    public void cleanup() {
+      logger.debug("cleanup swap chain render pass: {}", id);
       VK14.vkDestroyRenderPass(swapChain.getDevice().getDevice(), id, null);
    }
 

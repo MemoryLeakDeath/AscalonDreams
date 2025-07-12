@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 public class ModelRenderer {
-    public static final String TEXTURE_PATH = "/home/mem/development/models/scifi-ship/Textures/Sci-Fi Ship_Textures_01.png";
-    public static final String EMISSIVE_TEXTURE_PATH = "/home/mem/development/models/scifi-ship/Textures/Sci-Fi Ship_Textures_Emissive.png";
+    public static final String TEXTURE_PATH = "/home/memdev/development/models/scifi-ship/Textures/Sci-Fi Ship_Textures_01.png";
+    public static final String EMISSIVE_TEXTURE_PATH = "/home/memdev/development/models/scifi-ship/Textures/Sci-Fi Ship_Textures_Emissive.png";
     private static final List<GLShader.ShaderModuleData> shaderFiles = List.of(
             new GLShader.ShaderModuleData("shaders/model.vert", GL46.GL_VERTEX_SHADER),
             new GLShader.ShaderModuleData("shaders/model.frag", GL46.GL_FRAGMENT_SHADER));

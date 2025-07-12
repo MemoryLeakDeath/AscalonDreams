@@ -12,7 +12,7 @@ import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 
 public class OpenGLEngine {
     private static final Logger logger = LoggerFactory.getLogger(OpenGLEngine.class);
-    public static final String MODEL_FILE = "/home/mem/development/models/scifi-ship/FBX/ship.fbx";
+    public static final String MODEL_FILE = "/home/memdev/development/models/scifi-ship/FBX/ship.fbx";
     private static final int LOGIC_UPDATES_PER_SECOND = 30;
     private static final int DEFAULT_FRAMES_PER_SECOND = 60;
     private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;

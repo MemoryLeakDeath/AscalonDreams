@@ -4,6 +4,8 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkBufferCopy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.common.model.Mesh;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanBuffer;
@@ -15,6 +17,7 @@ import java.nio.IntBuffer;
 import java.util.List;
 
 public class VulkanMesh {
+   private static final Logger logger = LoggerFactory.getLogger(VulkanMesh.class);
    private Mesh mesh;
    private VulkanBuffer vertexBuffer;
    private VulkanBuffer indexBuffer;
@@ -34,6 +37,7 @@ public class VulkanMesh {
       IntBuffer data = MemoryUtil.memIntBuffer(mappedMemory, (int) sourceBuffer.getRequestedSize());
       data.put(mesh.getIndexes());
       sourceBuffer.unmap();
+      logger.debug("Created index buffer for mesh");
 
       return new TransferBuffers(sourceBuffer, destinationBuffer);
    }
@@ -45,7 +49,7 @@ public class VulkanMesh {
          textureCoords = new float[(positions.length / 3) * 2];
       }
       int numElements = textureCoords.length + positions.length;
-      int bufferSize = mesh.getVertices().length * SizeConstants.FLOAT_LENGTH;
+      int bufferSize = numElements * SizeConstants.FLOAT_LENGTH;
 
       VulkanBuffer sourceBuffer = new VulkanBuffer(device, bufferSize,
               VK14.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -67,6 +71,7 @@ public class VulkanMesh {
       }
 
       sourceBuffer.unmap();
+      logger.debug("Created vertex buffer for mesh");
 
       return new TransferBuffers(sourceBuffer, destinationBuffer);
    }
@@ -93,9 +98,11 @@ public class VulkanMesh {
       recordTransferCommands(commandBuffer, vertexBuffer, indexBuffer);
       this.vertexBuffer = vertexBuffer.destination();
       this.indexBuffer = indexBuffer.destination();
+      logger.debug("Mesh prepared");
    }
 
    public void cleanup() {
+      logger.debug("Mesh cleanup!");
       vertexBuffer.cleanup();
       indexBuffer.cleanup();
    }
