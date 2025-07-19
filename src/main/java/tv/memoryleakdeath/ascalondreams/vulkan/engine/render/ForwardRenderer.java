@@ -5,6 +5,8 @@ import org.lwjgl.util.shaderc.Shaderc;
 import org.lwjgl.vulkan.VK14;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkRenderPassBeginInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.common.CommonUtils;
 import tv.memoryleakdeath.ascalondreams.common.model.Entity;
 import tv.memoryleakdeath.ascalondreams.common.shaders.ShaderCompiler;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ForwardRenderer {
+   private static final Logger logger = LoggerFactory.getLogger(ForwardRenderer.class);
    private final List<VulkanCommandBuffer> commandBuffers = new ArrayList<>();
    private final List<Fence> fences = new ArrayList<>();
    private final List<VulkanFrameBuffer> frameBuffers = new ArrayList<>();
@@ -130,7 +133,9 @@ public class ForwardRenderer {
    public void resize(VulkanSwapChain swapChain) {
       this.swapChain = swapChain;
       frameBuffers.forEach(VulkanFrameBuffer::cleanup);
+      frameBuffers.clear();
       depthAttachments.forEach(VulkanAttachment::cleanup);
+      depthAttachments.clear();
       createDepthImages(swapChain.getWidth(), swapChain.getHeight(), swapChain.getDevice());
       createFrameBuffers(swapChain.getWidth(), swapChain.getHeight(), swapChain.getDevice());
    }
@@ -157,10 +162,14 @@ public class ForwardRenderer {
    public void cleanup() {
       pipeline.cleanup();
       depthAttachments.forEach(VulkanAttachment::cleanup);
+      depthAttachments.clear();
       shaderProgram.cleanup();
       frameBuffers.forEach(VulkanFrameBuffer::cleanup);
+      frameBuffers.clear();
       renderPass.cleanup();
       commandBuffers.forEach(VulkanCommandBuffer::cleanup);
+      commandBuffers.clear();
       fences.forEach(Fence::cleanup);
+      fences.clear();
    }
 }

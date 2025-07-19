@@ -1,5 +1,7 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.render;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VulkanRenderer {
+   private static final Logger logger = LoggerFactory.getLogger(VulkanRenderer.class);
    private final VulkanRenderInstance instance;
    private VulkanWindow window;
    private VulkanScene scene;
@@ -66,8 +69,9 @@ public class VulkanRenderer {
          return;
       }
       forwardRenderer.waitForFence();
-      int imageIndex;
+      int imageIndex = 0;
       if (window.isResized() || (imageIndex = swapChain.aquireNextImage()) < 0) {
+         logger.debug("Window Resized!! Image Index: {}", imageIndex);
          window.resetResized();
          resize();
          scene.getProjection().resize(window.getWidth(), window.getHeight());
