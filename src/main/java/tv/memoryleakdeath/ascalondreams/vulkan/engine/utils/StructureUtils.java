@@ -3,57 +3,18 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.utils;
 import org.apache.commons.exec.OS;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRPortabilitySubset;
-import org.lwjgl.vulkan.KHRSurface;
-import org.lwjgl.vulkan.KHRSwapchain;
-import org.lwjgl.vulkan.VK14;
-import org.lwjgl.vulkan.VkApplicationInfo;
-import org.lwjgl.vulkan.VkAttachmentDescription;
-import org.lwjgl.vulkan.VkBufferCreateInfo;
-import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
-import org.lwjgl.vulkan.VkCommandBufferInheritanceInfo;
-import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
-import org.lwjgl.vulkan.VkDevice;
-import org.lwjgl.vulkan.VkDeviceCreateInfo;
-import org.lwjgl.vulkan.VkDeviceQueueCreateInfo;
-import org.lwjgl.vulkan.VkExtensionProperties;
-import org.lwjgl.vulkan.VkExtent2D;
-import org.lwjgl.vulkan.VkFramebufferCreateInfo;
-import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
-import org.lwjgl.vulkan.VkImageCreateInfo;
-import org.lwjgl.vulkan.VkImageViewCreateInfo;
-import org.lwjgl.vulkan.VkInstance;
-import org.lwjgl.vulkan.VkInstanceCreateInfo;
-import org.lwjgl.vulkan.VkMemoryAllocateInfo;
-import org.lwjgl.vulkan.VkMemoryRequirements;
-import org.lwjgl.vulkan.VkPhysicalDevice;
-import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
-import org.lwjgl.vulkan.VkPipelineCacheCreateInfo;
-import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
-import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineDepthStencilStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
-import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
-import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
-import org.lwjgl.vulkan.VkPresentInfoKHR;
-import org.lwjgl.vulkan.VkPushConstantRange;
-import org.lwjgl.vulkan.VkQueueFamilyProperties;
-import org.lwjgl.vulkan.VkRenderPassCreateInfo;
-import org.lwjgl.vulkan.VkSemaphoreCreateInfo;
-import org.lwjgl.vulkan.VkSubpassDependency;
-import org.lwjgl.vulkan.VkSubpassDescription;
-import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR;
+import org.lwjgl.vulkan.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.BaseVertexInputStateInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanCommandBuffer;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImage;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.VulkanShaderProgram;
 
 import java.nio.ByteBuffer;
@@ -66,6 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class StructureUtils {
+   private static final Logger logger = LoggerFactory.getLogger(StructureUtils.class);
    private static final int VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = 0x00000001;
 
    private StructureUtils() {
@@ -482,5 +444,56 @@ public final class StructureUtils {
               .stageFlags(VK14.VK_SHADER_STAGE_VERTEX_BIT)
               .offset(0)
               .size(constantsSize);
+   }
+
+   public static void recordCopyBuffer(MemoryStack stack, VulkanCommandBuffer cmd, VulkanBuffer data, VulkanImage image) {
+      VkBufferImageCopy.Buffer region = VkBufferImageCopy.calloc(1, stack)
+              .bufferOffset(0)
+              .bufferRowLength(0)
+              .bufferImageHeight(0)
+              .imageSubresource(ir -> ir.aspectMask(VK14.VK_IMAGE_ASPECT_COLOR_BIT)
+                      .mipLevel(0).baseArrayLayer(0).layerCount(1))
+              .imageOffset(off -> off.x(0).y(0).z(0))
+              .imageExtent(ext -> ext.width(image.getImageData().getWidth())
+                      .height(image.getImageData().getHeight()).depth(1));
+      VK14.vkCmdCopyBufferToImage(cmd.getBuffer(), data.getId(), image.getImageId(), VK14.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
+   }
+
+   public static void recordImageTransition(MemoryStack stack, VulkanCommandBuffer cmd, int oldLayout, int newLayout, VulkanImage image, int mipLevels) {
+      VkImageMemoryBarrier.Buffer barrier = VkImageMemoryBarrier.calloc(1, stack)
+              .sType(VK14.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
+              .oldLayout(oldLayout)
+              .newLayout(newLayout)
+              .srcQueueFamilyIndex(VK14.VK_QUEUE_FAMILY_IGNORED)
+              .dstQueueFamilyIndex(VK14.VK_QUEUE_FAMILY_IGNORED)
+              .image(image.getImageId())
+              .subresourceRange(range -> range.aspectMask(VK14.VK_IMAGE_ASPECT_COLOR_BIT)
+                      .baseMipLevel(0)
+                      .levelCount(mipLevels)
+                      .baseArrayLayer(0)
+                      .layerCount(1));
+
+      int srcStage;
+      int srcAccessMask;
+      int dstStage;
+      int dstAccessMask;
+      if(oldLayout == VK14.VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK14.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+         srcStage = VK14.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+         srcAccessMask = 0;
+         dstStage = VK14.VK_PIPELINE_STAGE_TRANSFER_BIT;
+         dstAccessMask = VK14.VK_ACCESS_TRANSFER_WRITE_BIT;
+      } else if(oldLayout == VK14.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK14.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+         srcStage = VK14.VK_PIPELINE_STAGE_TRANSFER_BIT;
+         srcAccessMask = VK14.VK_ACCESS_TRANSFER_WRITE_BIT;
+         dstStage = VK14.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+         dstAccessMask = VK14.VK_ACCESS_SHADER_READ_BIT;
+      } else {
+         logger.error("Unknown layout transition");
+         throw new RuntimeException("Unknown layout transition");
+      }
+      barrier.srcAccessMask(srcAccessMask);
+      barrier.dstAccessMask(dstAccessMask);
+
+      VK14.vkCmdPipelineBarrier(cmd.getBuffer(), srcStage, dstStage, 0,null,null,barrier);
    }
 }

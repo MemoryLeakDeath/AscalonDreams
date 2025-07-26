@@ -22,7 +22,7 @@ public class ModelRenderer {
 
     private Scene scene;
     private Matrix4f projectionMatrix = new Matrix4f();
-    private Map<String, Texture> textureMap = new HashMap<>();
+    private Map<String, OpenGlTexture> textureMap = new HashMap<>();
 
     public ModelRenderer() {
         scene = new Scene();
@@ -37,7 +37,7 @@ public class ModelRenderer {
                 "material.diffuse");
     }
 
-    private void initEntity(Model model) {
+    private void initEntity(tv.memoryleakdeath.ascalondreams.common.model.Model model) {
         scene.setEntity(new Entity("ship", model.getId()));
         scene.getEntity()
                 .setPosition(0f, 0f, -4f)
@@ -49,7 +49,8 @@ public class ModelRenderer {
 
     public void render(Model model) {
         if (scene.getEntity() == null) {
-            initEntity(model);
+            //TODO fix this
+            //initEntity(model);
         }
         scene.getShader().bind();
         scene.getUniformManager().setUniform("projectionMatrix", projectionMatrix)
@@ -59,22 +60,27 @@ public class ModelRenderer {
         // List<Entity> entities = model.getEntities();
 
         scene.getUniformManager().setUniform("modelMatrix", scene.getEntity().getModelMatrix());
-        Texture texture = textureMap.computeIfAbsent(TEXTURE_PATH, Texture::new);
+        OpenGlTexture texture = textureMap.computeIfAbsent(TEXTURE_PATH, OpenGlTexture::new);
         GL46.glActiveTexture(GL46.GL_TEXTURE0);
         texture.bind();
-        Texture emissiveTexture = textureMap.computeIfAbsent(EMISSIVE_TEXTURE_PATH, Texture::new);
+        OpenGlTexture emissiveTexture = textureMap.computeIfAbsent(EMISSIVE_TEXTURE_PATH, OpenGlTexture::new);
         GL46.glActiveTexture(GL46.GL_TEXTURE1);
         emissiveTexture.bind();
 
         model.getMaterialList().forEach(material -> {
             scene.getUniformManager().setUniform("material.diffuse", material.getDiffuseColor());
+            // todo: fix this
+/*
             material.getMeshList().forEach(mesh -> {
                 GL46.glBindVertexArray(mesh.getVaoId());
                 GL46.glDrawElements(GL46.GL_TRIANGLES, mesh.getNumVertices(), GL46.GL_UNSIGNED_INT, 0);
             });
+*/
         });
+/*
         GL46.glBindVertexArray(0);
         scene.getShader().unbind();
+*/
     }
 
     public Camera getCamera() {

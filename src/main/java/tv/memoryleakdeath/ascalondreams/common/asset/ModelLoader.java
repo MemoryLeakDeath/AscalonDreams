@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.asset;
+package tv.memoryleakdeath.ascalondreams.common.asset;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
@@ -6,60 +6,74 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joml.Vector4f;
-import org.lwjgl.assimp.AIColor4D;
-import org.lwjgl.assimp.AIMaterial;
-import org.lwjgl.assimp.AIMesh;
-import org.lwjgl.assimp.AIScene;
-import org.lwjgl.assimp.Assimp;
+import org.lwjgl.assimp.*;
+import org.lwjgl.system.MemoryStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tv.memoryleakdeath.ascalondreams.common.model.Material;
+import tv.memoryleakdeath.ascalondreams.common.model.Mesh;
+import tv.memoryleakdeath.ascalondreams.common.model.Model;
 import tv.memoryleakdeath.ascalondreams.util.FileUtils;
 
 public class ModelLoader {
     private static final Logger logger = LoggerFactory.getLogger(ModelLoader.class);
 
-    public Model load(String modelId, String filename) {
-        AIScene scene = Assimp.aiImportFile(filename, Assimp.aiProcess_Triangulate
+    public Model load(String modelId, String modelFile, String textureDir) {
+        return load(modelId, modelFile, textureDir, null);
+    }
+
+    public Model load(String modelId, String modelFile, String textureDir, List<String> textureFiles) {
+        logger.debug("Loading model file: {} with texture directory: {}", modelFile, textureDir);
+        if(!FileUtils.exists(modelFile)) {
+            logger.error("Model file: {} does not exist!", modelFile);
+            throw new RuntimeException("Model file: %s does not exist!".formatted(modelFile));
+        }
+        if(StringUtils.isNotBlank(textureDir) && !FileUtils.dirExists(textureDir)) {
+            logger.error("Texture directory: {} does not exist!", textureDir);
+            throw new RuntimeException("Texture directory: %s does not exist!".formatted(textureDir));
+        }
+        if(textureFiles != null && !textureFiles.isEmpty() && !FileUtils.allExists(textureFiles)) {
+            logger.error("One or more texture files: {} do not exist!", textureFiles);
+            throw new RuntimeException("One or more texture files: %s do not exist".formatted(textureFiles));
+        }
+
+        AIScene scene = Assimp.aiImportFile(modelFile, Assimp.aiProcess_Triangulate
                 | Assimp.aiProcess_JoinIdenticalVertices | Assimp.aiProcess_FixInfacingNormals
                 | Assimp.aiProcess_GenSmoothNormals | Assimp.aiProcess_CalcTangentSpace
                 | Assimp.aiProcess_LimitBoneWeights | Assimp.aiProcess_PreTransformVertices | Assimp.aiProcess_FlipUVs);
         if (scene == null) {
-            logger.error("Unable to load model from file: {}", filename);
+            logger.error("Unable to load model from file: {}", modelFile);
             throw new RuntimeException("Unable to load model!");
         }
 
         List<Material> materials = new ArrayList<>();
         for (int i = 0; i < scene.mNumMaterials(); i++) {
             AIMaterial material = AIMaterial.create(scene.mMaterials().get(i));
-            materials.add(processMaterial(material, FileUtils.getParentDirectory(filename)));
+            materials.add(processMaterial(material, textureDir, null));
         }
 
-        Material defaultMaterial = new Material();
+        List<Mesh> meshList = new ArrayList<>();
         for (int i = 0; i < scene.mNumMeshes(); i++) {
-            logger.debug("Number of meshes: {}", scene.mNumMeshes());
-            logger.debug("Number of textures: {}", scene.mNumTextures());
-            logger.debug("Number of materials: {}", scene.mNumMaterials());
-            logger.debug("Number of lights: {}", scene.mNumLights());
-            logger.debug("Number of animations: {}", scene.mNumAnimations());
-            logger.debug("Number of skeletons: {}", scene.mNumSkeletons());
-            logger.debug("Number of cameras: {}", scene.mNumCameras());
-
-            AIMesh aiMesh = AIMesh.create(scene.mMeshes().get(i));
-            Mesh mesh = processMesh(aiMesh);
-            int materialIndex = aiMesh.mMaterialIndex();
-            Material material = defaultMaterial;
-            if (materialIndex >= 0 && materialIndex < materials.size()) {
-                material = materials.get(materialIndex);
+            if(logger.isDebugEnabled()) {
+                debugLogSceneData(scene);
             }
-            material.getMeshList().add(mesh);
+            AIMesh aiMesh = AIMesh.create(scene.mMeshes().get(i));
+            meshList.add(processMesh(aiMesh));
         }
+        return new Model(modelId, meshList, materials);
+    }
 
-        if (!defaultMaterial.getMeshList().isEmpty()) {
-            materials.add(defaultMaterial);
-        }
-        return new Model(modelId, materials);
+    private void debugLogSceneData(AIScene scene) {
+        logger.debug("Number of meshes: {}", scene.mNumMeshes());
+        logger.debug("Number of textures: {}", scene.mNumTextures());
+        logger.debug("Number of materials: {}", scene.mNumMaterials());
+        logger.debug("Number of lights: {}", scene.mNumLights());
+        logger.debug("Number of animations: {}", scene.mNumAnimations());
+        logger.debug("Number of skeletons: {}", scene.mNumSkeletons());
+        logger.debug("Number of cameras: {}", scene.mNumCameras());
     }
 
     private Mesh processMesh(AIMesh mesh) {
@@ -68,7 +82,7 @@ public class ModelLoader {
         int[] indicies = processIndicies(mesh);
         float[] colors = processColors(mesh);
 
-        if (texCoords.size() == 0) {
+        if (texCoords.isEmpty()) {
             int numElements = (verticies.length / 3) * 2;
             texCoords = List.of(new float[numElements]);
         }
@@ -111,9 +125,40 @@ public class ModelLoader {
         return indicies.stream().mapToInt(Integer::intValue).toArray();
     }
 
-    private Material processMaterial(AIMaterial aiMaterial, String modelPath) {
+    private Material processMaterial(AIMaterial aiMaterial, String texturePath, String textureFile) {
         Material material = new Material();
         AIColor4D color = AIColor4D.create();
+        if(logger.isDebugEnabled()) {
+            debugLogMaterialInfo(aiMaterial);
+        }
+        int result = Assimp.aiGetMaterialColor(aiMaterial, Assimp.AI_MATKEY_COLOR_DIFFUSE, Assimp.aiTextureType_DIFFUSE,
+                0,
+                color);
+        if (result == Assimp.aiReturn_SUCCESS) {
+            material.setDiffuseColor(new Vector4f(color.r(), color.g(), color.b(), color.a()));
+        }
+        if(StringUtils.isNotBlank(textureFile) && FileUtils.exists(textureFile)) {
+            material.setTexturePath(textureFile);
+            material.setDiffuseColor(new Vector4f(0f, 0f, 0f, 0f));
+        } else if(StringUtils.isNotBlank(texturePath)) {
+            material.setTexturePath(getTexturePath(aiMaterial, texturePath));
+            material.setDiffuseColor(new Vector4f(0f, 0f, 0f, 0f));
+        }
+        return material;
+    }
+
+    private String getTexturePath(AIMaterial aiMaterial, String textureDir) {
+        String fullTextureFile = "";
+        try(MemoryStack stack = MemoryStack.stackPush()) {
+            AIString texturePath = AIString.calloc(stack);
+            Assimp.aiGetMaterialTexture(aiMaterial, Assimp.aiTextureType_DIFFUSE, 0, texturePath, (IntBuffer) null, null, null, null, null, null);
+            String textureFile = texturePath.dataString();
+            fullTextureFile = FileUtils.appendPathAndCheckExists(textureDir, textureFile);
+        }
+        return fullTextureFile;
+    }
+
+    private void debugLogMaterialInfo(AIMaterial aiMaterial) {
         logger.debug("Material - diffuse - texture count: {}",
                 Assimp.aiGetMaterialTextureCount(aiMaterial, Assimp.aiTextureType_DIFFUSE));
         logger.debug("Material - specular - texture count: {}",
@@ -134,13 +179,6 @@ public class ModelLoader {
                 Assimp.aiGetMaterialTextureCount(aiMaterial, Assimp.aiTextureType_METALNESS));
         logger.debug("Material - NONE - texture count: {}",
                 Assimp.aiGetMaterialTextureCount(aiMaterial, Assimp.aiTextureType_NONE));
-        int result = Assimp.aiGetMaterialColor(aiMaterial, Assimp.AI_MATKEY_COLOR_DIFFUSE, Assimp.aiTextureType_DIFFUSE,
-                0,
-                color);
-        if (result == Assimp.aiReturn_SUCCESS) {
-            material.setDiffuseColor(new Vector4f(color.r(), color.g(), color.b(), color.a()));
-        }
-        return material;
     }
 
     private float[] processColors(AIMesh mesh) {

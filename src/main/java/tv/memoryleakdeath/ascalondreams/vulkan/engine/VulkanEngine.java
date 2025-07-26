@@ -4,7 +4,7 @@ import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
+import tv.memoryleakdeath.ascalondreams.common.asset.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.common.model.Entity;
 import tv.memoryleakdeath.ascalondreams.common.model.Mesh;
 import tv.memoryleakdeath.ascalondreams.common.model.Model;

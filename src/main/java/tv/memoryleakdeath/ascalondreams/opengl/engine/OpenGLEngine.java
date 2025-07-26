@@ -5,10 +5,12 @@ import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL46;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.asset.Model;
-import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
+import tv.memoryleakdeath.ascalondreams.common.model.Model;
+import tv.memoryleakdeath.ascalondreams.common.asset.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.asset.ModelRenderer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
+
+import java.util.List;
 
 public class OpenGLEngine {
     private static final Logger logger = LoggerFactory.getLogger(OpenGLEngine.class);
@@ -32,7 +34,7 @@ public class OpenGLEngine {
 
     private void loadModel() {
         ModelLoader loader = new ModelLoader();
-        model = loader.load("ship", MODEL_FILE);
+        model = loader.load("ship", MODEL_FILE, null, List.of(ModelRenderer.TEXTURE_PATH));
     }
 
     public void mainLoop() {

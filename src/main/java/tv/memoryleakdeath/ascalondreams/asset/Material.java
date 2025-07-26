@@ -18,7 +18,6 @@ public class Material implements Serializable {
     private float reflectance;
     private Vector4f specularColor = DEFAULT_COLOR;
     private String texturePath;
-    private List<Mesh> meshList = new ArrayList<>();
 
     public Material() {
     }
@@ -86,11 +85,4 @@ public class Material implements Serializable {
         this.texturePath = texturePath;
     }
 
-    public List<Mesh> getMeshList() {
-        return meshList;
-    }
-
-    public void setMeshList(List<Mesh> meshList) {
-        this.meshList = meshList;
-    }
 }

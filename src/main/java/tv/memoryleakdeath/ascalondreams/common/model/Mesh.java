@@ -9,6 +9,13 @@ public class Mesh {
    private float[] colors;
    private int numVertices;
 
+   public Mesh(float[] vertices, List<float[]> texCoords, int[] indexes, float[] colors) {
+      this.vertices = vertices;
+      this.texCoords = texCoords;
+      this.indexes = indexes;
+      this.colors = colors;
+   }
+
    public float[] getVertices() {
       return vertices;
    }
