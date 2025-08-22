@@ -20,7 +20,7 @@
 		<commonslang.version>3.17.0</commonslang.version>
 		<args4j.version>2.37</args4j.version>
 		<commonsexec.version>1.4.0</commonsexec.version>
-		<commonscollections.version>4.5.0-M3</commonscollections.version>
+		<commonscollections.version>4.5.0</commonscollections.version>
 	</properties>
 
 	<profiles>
