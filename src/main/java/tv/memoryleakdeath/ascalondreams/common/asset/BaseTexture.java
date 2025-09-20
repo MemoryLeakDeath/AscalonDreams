@@ -10,8 +10,9 @@ import java.nio.IntBuffer;
 
 public abstract class BaseTexture {
     private static final Logger logger = LoggerFactory.getLogger(BaseTexture.class);
+    protected String fileName;
 
-    protected void loadTexture(String fileName) {
+    protected void loadTexture() {
         ByteBuffer buffer = null;
         try (MemoryStack memoryStack = MemoryStack.stackPush()) {
             IntBuffer width = memoryStack.mallocInt(1);
@@ -37,4 +38,8 @@ public abstract class BaseTexture {
     protected abstract void generateTexture(int width, int height, ByteBuffer buffer, int mipLevels);
 
     public abstract void cleanup();
+
+    public String getFileName() {
+        return fileName;
+    }
 }

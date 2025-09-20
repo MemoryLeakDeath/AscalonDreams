@@ -1,19 +1,16 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.device;
 
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.VK14;
-import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineDepthStencilStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
-import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
-import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
-import org.lwjgl.vulkan.VkPushConstantRange;
+import org.lwjgl.vulkan.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.DescriptorSetLayout;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.pipeline.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
+
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.util.Arrays;
 
 public class Pipeline {
    private static final Logger logger = LoggerFactory.getLogger(Pipeline.class);
@@ -22,30 +19,44 @@ public class Pipeline {
    private long id;
    private long layoutId;
 
-   public Pipeline(PipelineCache cache, PipelineCreateInfo info) {
+   public Pipeline(PipelineCache cache, PipelineBuildInfo info) {
       this.device = cache.getDevice();
       try (MemoryStack stack = MemoryStack.stackPush()) {
-         VkPipelineShaderStageCreateInfo.Buffer shaderStages = StructureUtils.createPipelineShaderInfo(stack, info.shaderProgram().getShaderModules(), "main");
+         VkPipelineShaderStageCreateInfo.Buffer shaderStages = StructureUtils.createPipelineShaderInfo(stack, info.getShaderModules(), "main");
          VkPipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo = StructureUtils.createPipelineAssemblyStateInfo(stack, VK14.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
          VkPipelineViewportStateCreateInfo viewportStateCreateInfo = StructureUtils.createPipelineViewportStateInfo(stack, 1, 1);
          VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = StructureUtils.createRasterizationStateInfo(stack, VK14.VK_POLYGON_MODE_FILL,
                  VK14.VK_CULL_MODE_NONE, VK14.VK_FRONT_FACE_CLOCKWISE, 1.0f);
          VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = StructureUtils.createMultisampleInfo(stack, VK14.VK_SAMPLE_COUNT_1_BIT);
          VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = null;
-         if (info.hasDepthAttachment()) {
+         if (info.hasDepthFormat()) {
             depthStencilStateCreateInfo = StructureUtils.createDepthStencilStateInfo(stack);
          }
-         VkPipelineColorBlendStateCreateInfo colorBlendInfo = StructureUtils.createColorBlendStateInfo(stack, info.numColorAttachments(), COLOR_MASK);
+         VkPipelineColorBlendStateCreateInfo colorBlendInfo = StructureUtils.createColorBlendStateInfo(stack, 1, COLOR_MASK);
          VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = StructureUtils.createDynamicStateInfo(stack, VK14.VK_DYNAMIC_STATE_VIEWPORT, VK14.VK_DYNAMIC_STATE_SCISSOR);
          VkPushConstantRange.Buffer constantRangeBuffer = null;
-         if (info.pushConstantsSize() > 0) {
-            constantRangeBuffer = StructureUtils.createConstantRangeBuffer(stack, info.pushConstantsSize());
+         if (!info.getPushConstantRanges().isEmpty()) {
+            constantRangeBuffer = StructureUtils.createConstantRangeBuffer(stack, info.getPushConstantRanges());
          }
+
+         LongBuffer descriptorSetLayoutBuffer = null;
+         if(!info.getDescriptorSetLayouts().isEmpty()) {
+            descriptorSetLayoutBuffer = stack.mallocLong(info.getDescriptorSetLayouts().size());
+            long[] ids = info.getDescriptorSetLayouts().stream().mapToLong(DescriptorSetLayout::getId).toArray();
+            descriptorSetLayoutBuffer.put(ids);
+         }
+
+         VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo = StructureUtils.createPipelineRenderingInfo(stack, info.getColorFormat());
+         if(depthStencilStateCreateInfo != null) {
+            pipelineRenderingCreateInfo.depthAttachmentFormat(info.getDepthFormat());
+         }
+
          this.layoutId = StructureUtils.createPipelineLayoutInfo(stack, device.getDevice(), constantRangeBuffer);
          this.id = StructureUtils.createPipelineInfo(stack, shaderStages,
-                 info.vertexInputStateInfo(), assemblyStateCreateInfo, viewportStateCreateInfo,
+                 info.getVertexInputStateCreateInfo(), assemblyStateCreateInfo, viewportStateCreateInfo,
                  rasterizationStateCreateInfo, multisampleStateCreateInfo, depthStencilStateCreateInfo, colorBlendInfo,
-                 dynamicStateCreateInfo, layoutId, info.renderPass(), device.getDevice(), cache.getId());
+                 dynamicStateCreateInfo, layoutId, VK14.VK_NULL_HANDLE, pipelineRenderingCreateInfo, device.getDevice(),
+                 cache.getId());
          logger.debug("Created pipeline with id: {}", id);
       }
    }

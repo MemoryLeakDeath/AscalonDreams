@@ -7,6 +7,7 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.common.model.Entity;
+import tv.memoryleakdeath.ascalondreams.common.model.Material;
 import tv.memoryleakdeath.ascalondreams.common.model.Model;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Fence;
@@ -26,13 +27,15 @@ public class VulkanModel {
    private String id;
    private Model model;
    private List<VulkanMesh> meshList = new ArrayList<>();
+   private List<VulkanMaterial> materialList = new ArrayList<>();
 
-   public VulkanModel(String id, Model model) {
+   public VulkanModel(String id, Model model, List<VulkanMaterial> materials) {
       this.id = id;
       this.model = model;
+      this.materialList = materials;
    }
 
-   public void prepareModel(VulkanCommandPool commandPool, BaseDeviceQueue queue) {
+   public void prepareModel(VulkanCommandPool commandPool, BaseDeviceQueue queue, VulkanTextureCache cache) {
       logger.debug("starting prepareModel for model id: {}", id);
       LogicalDevice device = commandPool.getDevice();
       VulkanCommandBuffer commandBuffer = new VulkanCommandBuffer(commandPool, true, true);
@@ -42,6 +45,8 @@ public class VulkanModel {
          vulMesh.prepareMesh(device, commandBuffer);
          meshList.add(vulMesh);
       });
+      List<VulkanTexture> textureList = new ArrayList<>();
+      prepareMaterial(commandBuffer, device, cache, textureList);
       commandBuffer.endRecording();
       Fence fence = new Fence(device, true);
       fence.reset();
@@ -52,7 +57,12 @@ public class VulkanModel {
       fence.cleanup();
       commandBuffer.cleanup();
       meshList.forEach(VulkanMesh::cleanSrcTransferBuffers);
+      materialList.forEach(VulkanMaterial::cleanTempSourceBuffer);
       logger.debug("model id: {} prepared!", id);
+   }
+
+   private void prepareMaterial(VulkanCommandBuffer cmd, LogicalDevice device, VulkanTextureCache textureCache, List<VulkanTexture> textureList) {
+      materialList.forEach(m -> m.prepareMaterial(device, textureCache, cmd, textureList));
    }
 
    public void bindMeshes(VkCommandBuffer cmd, LongBuffer vertexBuffer, LongBuffer offsets, VulkanScene scene, List<Entity> entities, ByteBuffer pushConstantsBuffer, long pipelineLayout) {

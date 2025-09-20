@@ -11,6 +11,7 @@ import tv.memoryleakdeath.ascalondreams.common.CommonUtils;
 import tv.memoryleakdeath.ascalondreams.common.model.Entity;
 import tv.memoryleakdeath.ascalondreams.common.shaders.ShaderCompiler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.VulkanModel;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Fence;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
@@ -18,9 +19,12 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Pipeline;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PipelineCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PipelineCreateInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanGraphicsConstants;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.pipeline.PipelineBuildInfo;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.pipeline.PushConstantRange;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModuleData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.VulkanShaderProgram;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VertexBufferUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.ViewportUtils;
 
 import java.nio.ByteBuffer;
@@ -47,7 +51,7 @@ public class ForwardRenderer {
    private static final String VERTEX_SHADER_FILE_SPV = VERTEX_SHADER_FILE_GLSL + ".spv";
 
    public ForwardRenderer(VulkanSwapChain swapChain, VulkanCommandPool pool,
-                          PipelineCache pipelineCache, VulkanScene scene) {
+                          PipelineCache pipelineCache, VulkanScene scene, VulkanSurface surface) {
       this.swapChain = swapChain;
       this.pipelineCache = pipelineCache;
       this.scene = scene;
@@ -60,11 +64,10 @@ public class ForwardRenderer {
       ShaderCompiler.compileIfModified(FRAGMENT_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_fragment_shader);
       this.shaderProgram = new VulkanShaderProgram(device, List.of(new ShaderModuleData(VK14.VK_SHADER_STAGE_VERTEX_BIT, VERTEX_SHADER_FILE_SPV),
               new ShaderModuleData(VK14.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV)));
-      PipelineCreateInfo piplineInfo = new PipelineCreateInfo(renderPass.getId(), shaderProgram,
-              1, true,
-              VulkanGraphicsConstants.MATRIX_4X4_SIZE * 2, new VertexBufferStructure());
-      this.pipeline = new Pipeline(pipelineCache, piplineInfo);
-      piplineInfo.cleanup();
+
+      // TODO: Create Descriptor Set layouts and pass to pipeline create
+
+      this.pipeline = createPipeline(pipelineCache, surface, List.of());
 
       swapChain.getImageViews().forEach(view -> {
          VulkanCommandBuffer commandBuffer = new VulkanCommandBuffer(pool, true, false);
@@ -72,6 +75,18 @@ public class ForwardRenderer {
          this.commandBuffers.add(commandBuffer);
          this.fences.add(fence);
       });
+   }
+
+   private Pipeline createPipeline(PipelineCache cache, VulkanSurface surface, List<DescriptorSetLayout> setLayouts) {
+      VertexBufferUtil.Components vertexBuffer = VertexBufferUtil.createBuffer();
+      PipelineBuildInfo info = new PipelineBuildInfo(surface.getSurfaceFormats().format(), shaderProgram.getShaderModules(), vertexBuffer.info());
+      info.setDepthFormat(VK14.VK_FORMAT_D16_UNORM);
+      info.setPushConstantRanges(List.of(new PushConstantRange(VK14.VK_SHADER_STAGE_VERTEX_BIT, 0, VulkanGraphicsConstants.MATRIX_4X4_SIZE),
+              new PushConstantRange(VK14.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanGraphicsConstants.MATRIX_4X4_SIZE, VulkanGraphicsConstants.INT_LENGTH)));
+      info.setDescriptorSetLayouts(setLayouts);
+      Pipeline pipeline = new Pipeline(cache, info);
+      VertexBufferUtil.clean(vertexBuffer);
+      return pipeline;
    }
 
    private void createDepthImages(int width, int height, LogicalDevice device) {

@@ -3,18 +3,27 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.utils;
 import org.apache.commons.exec.OS;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.common.CommonUtils;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.TextureSampler;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.TextureSamplerInfo;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.DescriptorTypeCount;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.LayoutInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.pipeline.PushConstantRange;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.BaseVertexInputStateInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanCommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImage;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImageView;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModule;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.VulkanShaderProgram;
 
 import java.nio.ByteBuffer;
@@ -98,13 +107,13 @@ public final class StructureUtils {
       return queueFamilyProperties;
    }
 
-   public static VkPipelineShaderStageCreateInfo.Buffer createPipelineShaderInfo(MemoryStack stack, List<VulkanShaderProgram.ShaderModule> shaderModules, String programName) {
+   public static VkPipelineShaderStageCreateInfo.Buffer createPipelineShaderInfo(MemoryStack stack, List<ShaderModule> shaderModules, String programName) {
       int numModules = shaderModules.size();
       ByteBuffer main = stack.UTF8(programName);
       VkPipelineShaderStageCreateInfo.Buffer shaderStages = VkPipelineShaderStageCreateInfo.calloc(numModules, stack);
       for (int i = 0; i < numModules; i++) {
          shaderStages.get(i)
-                 .sType(VK14.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+                 .sType$Default()
                  .stage(shaderModules.get(i).shaderStage())
                  .module(shaderModules.get(i).handle())
                  .pName(main);
@@ -142,10 +151,10 @@ public final class StructureUtils {
 
    public static VkPipelineColorBlendStateCreateInfo createColorBlendStateInfo(MemoryStack stack, int numColorAttachments, final int colorWriteMask) {
       VkPipelineColorBlendAttachmentState.Buffer colorBlendAttachBuffer = VkPipelineColorBlendAttachmentState.calloc(numColorAttachments, stack);
-      colorBlendAttachBuffer.forEach(c -> c.colorWriteMask(colorWriteMask));
+      colorBlendAttachBuffer.forEach(c -> c.colorWriteMask(colorWriteMask).blendEnable(false));
 
       return VkPipelineColorBlendStateCreateInfo.calloc(stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
+              .sType$Default()
               .pAttachments(colorBlendAttachBuffer);
    }
 
@@ -166,7 +175,7 @@ public final class StructureUtils {
 
    public static long createPipelineInfo(MemoryStack stack,
                                          VkPipelineShaderStageCreateInfo.Buffer shaderStages,
-                                         BaseVertexInputStateInfo vertexInputStateInfo,
+                                         VkPipelineVertexInputStateCreateInfo vertexInputStateInfo,
                                          VkPipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo,
                                          VkPipelineViewportStateCreateInfo viewportStateCreateInfo,
                                          VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo,
@@ -176,13 +185,14 @@ public final class StructureUtils {
                                          VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo,
                                          long layoutId,
                                          long renderPass,
+                                         VkPipelineRenderingCreateInfo renderingCreateInfo,
                                          VkDevice device,
                                          long cacheId) {
       LongBuffer lb = stack.mallocLong(1);
       VkGraphicsPipelineCreateInfo.Buffer pipeline = VkGraphicsPipelineCreateInfo.calloc(1, stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+              .sType$Default()
               .pStages(shaderStages)
-              .pVertexInputState(vertexInputStateInfo.getInfo())
+              .pVertexInputState(vertexInputStateInfo)
               .pInputAssemblyState(assemblyStateCreateInfo)
               .pViewportState(viewportStateCreateInfo)
               .pRasterizationState(rasterizationStateCreateInfo)
@@ -190,7 +200,8 @@ public final class StructureUtils {
               .pColorBlendState(colorBlendInfo)
               .pDynamicState(dynamicStateCreateInfo)
               .layout(layoutId)
-              .renderPass(renderPass);
+              .renderPass(renderPass)
+              .pNext(renderingCreateInfo);
       if (depthStencilStateCreateInfo != null) {
          pipeline.pDepthStencilState(depthStencilStateCreateInfo);
       }
@@ -431,7 +442,7 @@ public final class StructureUtils {
 
    public static VkPipelineDepthStencilStateCreateInfo createDepthStencilStateInfo(MemoryStack stack) {
       return VkPipelineDepthStencilStateCreateInfo.calloc(stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+              .sType$Default()
               .depthTestEnable(true)
               .depthWriteEnable(true)
               .depthCompareOp(VK14.VK_COMPARE_OP_LESS_OR_EQUAL)
@@ -439,11 +450,12 @@ public final class StructureUtils {
               .stencilTestEnable(false);
    }
 
-   public static VkPushConstantRange.Buffer createConstantRangeBuffer(MemoryStack stack, int constantsSize) {
-      return VkPushConstantRange.calloc(1, stack)
-              .stageFlags(VK14.VK_SHADER_STAGE_VERTEX_BIT)
-              .offset(0)
-              .size(constantsSize);
+   public static VkPushConstantRange.Buffer createConstantRangeBuffer(MemoryStack stack, List<PushConstantRange> constantsSizes) {
+      VkPushConstantRange.Buffer rangeBuffer = VkPushConstantRange.calloc(constantsSizes.size(), stack);
+      for(PushConstantRange range : constantsSizes) {
+         rangeBuffer.stageFlags(range.stage()).offset(range.offset()).size(range.size());
+      }
+      return rangeBuffer;
    }
 
    public static void recordCopyBuffer(MemoryStack stack, VulkanCommandBuffer cmd, VulkanBuffer data, VulkanImage image) {
@@ -495,5 +507,144 @@ public final class StructureUtils {
       barrier.dstAccessMask(dstAccessMask);
 
       VK14.vkCmdPipelineBarrier(cmd.getBuffer(), srcStage, dstStage, 0,null,null,barrier);
+   }
+
+   public static long createDescriptorPoolInfo(MemoryStack stack, LogicalDevice device, int maxSets, List<DescriptorTypeCount> typeCounts) {
+      VkDescriptorPoolSize.Buffer typeCountsBuffer = VkDescriptorPoolSize.calloc(typeCounts.size(), stack);
+      for(DescriptorTypeCount count : typeCounts) {
+         maxSets += count.count();
+         typeCountsBuffer.get().type(count.type()).descriptorCount(count.count());
+      }
+      VkDescriptorPoolCreateInfo createInfo = VkDescriptorPoolCreateInfo.calloc(stack)
+              .sType$Default()
+              .flags(VK14.VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)
+              .pPoolSizes(typeCountsBuffer)
+              .maxSets(maxSets);
+      LongBuffer memLoc = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK14.vkCreateDescriptorPool(device.getDevice(), createInfo, null, memLoc), "Failed to create descriptor pool!");
+      return memLoc.get(0);
+   }
+
+   public static long createDescriptorSetLayout(MemoryStack stack, LogicalDevice device, List<LayoutInfo> layoutInfoList) {
+      VkDescriptorSetLayoutBinding.Buffer layoutBuffer = VkDescriptorSetLayoutBinding.calloc(layoutInfoList.size(), stack);
+      for(LayoutInfo info : layoutInfoList) {
+         layoutBuffer.get().binding(info.binding())
+                 .descriptorType(info.type())
+                 .descriptorCount(info.count())
+                 .stageFlags(info.stage());
+      }
+      VkDescriptorSetLayoutCreateInfo createInfo = VkDescriptorSetLayoutCreateInfo.calloc(stack)
+              .sType$Default()
+              .pBindings(layoutBuffer);
+      LongBuffer memLoc = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK14.vkCreateDescriptorSetLayout(device.getDevice(), createInfo, null, memLoc), "Failed to create a descriptor set layout!");
+      return memLoc.get(0);
+   }
+
+   public static long createTextureSamplerInfo(MemoryStack stack, LogicalDevice device, TextureSamplerInfo info, float maxAnsiotropy) {
+      VkSamplerCreateInfo createInfo = VkSamplerCreateInfo.calloc(stack)
+              .sType$Default()
+              .magFilter(VK14.VK_FILTER_NEAREST)
+              .minFilter(VK14.VK_FILTER_NEAREST)
+              .addressModeU(info.addressMode())
+              .addressModeV(info.addressMode())
+              .addressModeW(info.addressMode())
+              .borderColor(info.borderColor())
+              .unnormalizedCoordinates(false)
+              .compareEnable(false)
+              .compareOp(VK14.VK_COMPARE_OP_NEVER)
+              .mipmapMode(VK14.VK_SAMPLER_MIPMAP_MODE_NEAREST)
+              .minLod(0f)
+              .maxLod(info.mipLevels())
+              .mipLodBias(0f);
+      if(info.ansiotropy() && device.isSamplerAnsiotropy()) {
+         createInfo.anisotropyEnable(true).maxAnisotropy(maxAnsiotropy);
+      }
+
+      LongBuffer memLoc = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK14.vkCreateSampler(device.getDevice(), createInfo, null, memLoc), "Failed to create texture sampler!");
+      return memLoc.get(0);
+   }
+
+   public static long createDescriptorSet(MemoryStack stack, LogicalDevice device, long poolId, long layoutId) {
+      LongBuffer layoutIdBuffer = stack.mallocLong(1);
+      layoutIdBuffer.put(0, layoutId);
+      VkDescriptorSetAllocateInfo allocateInfo = VkDescriptorSetAllocateInfo.calloc(stack)
+              .sType$Default()
+              .descriptorPool(poolId)
+              .pSetLayouts(layoutIdBuffer);
+      LongBuffer memLoc = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK14.vkAllocateDescriptorSets(device.getDevice(), allocateInfo, memLoc), "Failed to create a descriptor set!");
+      return memLoc.get(0);
+   }
+
+   public static void updateDescriptorBuffer(MemoryStack stack, LogicalDevice device, VulkanBuffer buffer, long descriptorSetId, long range, int binding, int type) {
+      VkDescriptorBufferInfo.Buffer descriptorBufferInfo = VkDescriptorBufferInfo.calloc(1, stack)
+              .buffer(buffer.getId())
+              .offset(0)
+              .range(range);
+      VkWriteDescriptorSet.Buffer descriptorSetBuffer = VkWriteDescriptorSet.calloc(1, stack);
+      descriptorSetBuffer.get(0)
+              .sType$Default()
+              .dstSet(descriptorSetId)
+              .dstBinding(binding)
+              .descriptorType(type)
+              .descriptorCount(1)
+              .pBufferInfo(descriptorBufferInfo);
+      VK14.vkUpdateDescriptorSets(device.getDevice(), descriptorSetBuffer, null);
+   }
+
+   public static void updateDescriptorImageBuffer(MemoryStack stack, LogicalDevice device, long descriptorSetId, List<VulkanImageView> imageViews, long textureSamplerId, int baseBinding) {
+      VkWriteDescriptorSet.Buffer descriptorSetBuffer = VkWriteDescriptorSet.calloc(imageViews.size(), stack);
+      imageViews.forEach(CommonUtils.withIndex((index, imageView) -> {
+         VkDescriptorImageInfo.Buffer imageInfoBuffer = VkDescriptorImageInfo.calloc(1, stack)
+                  .imageView(imageView.getId())
+                  .sampler(textureSamplerId);
+         if(imageView.getData().isDepthImage()) {
+            imageInfoBuffer.imageLayout(VK14.VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+         } else {
+            imageInfoBuffer.imageLayout(VK14.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+         }
+         descriptorSetBuffer.get()
+                 .sType$Default()
+                 .dstSet(descriptorSetId)
+                 .dstBinding(baseBinding + index)
+                 .descriptorType(VK14.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                 .descriptorCount(1)
+                 .pImageInfo(imageInfoBuffer);
+      }));
+      VK14.vkUpdateDescriptorSets(device.getDevice(), descriptorSetBuffer, null);
+   }
+
+   public static void updateDescriptorImageBufferArray(MemoryStack stack, LogicalDevice device, long descriptorSetId, List<VulkanImageView> imageViews, long textureSamplerId, int baseBinding) {
+      VkDescriptorImageInfo.Buffer imageInfoBuffer = VkDescriptorImageInfo.calloc(imageViews.size(), stack);
+      imageViews.forEach(CommonUtils.withIndex((index, imageView) -> {
+         imageInfoBuffer.imageView(imageView.getId()).sampler(textureSamplerId);
+
+         if(imageView.getData().isDepthImage()) {
+            imageInfoBuffer.imageLayout(VK14.VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+         } else {
+            imageInfoBuffer.imageLayout(VK14.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+         }
+      }));
+      VkWriteDescriptorSet.Buffer descriptorSetBuffer = VkWriteDescriptorSet.calloc(1, stack);
+      descriptorSetBuffer.get(0)
+              .sType$Default()
+              .dstSet(descriptorSetId)
+              .dstBinding(baseBinding)
+              .dstArrayElement(0)
+              .descriptorType(VK14.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+              .descriptorCount(imageViews.size())
+              .pImageInfo(imageInfoBuffer);
+      VK14.vkUpdateDescriptorSets(device.getDevice(), descriptorSetBuffer, null);
+   }
+
+   public static VkPipelineRenderingCreateInfo createPipelineRenderingInfo(MemoryStack stack, int colorFormat) {
+      IntBuffer colorFormatBuffer = stack.mallocInt(1);
+      colorFormatBuffer.put(colorFormat);
+      return VkPipelineRenderingCreateInfo.calloc(stack)
+              .sType$Default()
+              .colorAttachmentCount(1)
+              .pColorAttachmentFormats(colorFormatBuffer);
    }
 }

@@ -19,7 +19,6 @@ import java.nio.ByteBuffer;
 
 public class VulkanTexture extends BaseTexture {
     private static final Logger logger = LoggerFactory.getLogger(VulkanTexture.class);
-    private String fileName;
     private VulkanImage image;
     private VulkanImageView imageView;
     private int mipLevels;
@@ -33,11 +32,12 @@ public class VulkanTexture extends BaseTexture {
         this.fileName = fileName;
         this.device = device;
         this.imageFormat = imageFormat;
-        loadTexture(fileName);
+        loadTexture();
     }
 
     @Override
     protected void generateTexture(int width, int height, ByteBuffer buffer, int mipLevels) {
+        this.mipLevels = mipLevels;
         createStagingBuffer(buffer);
         VulkanImageData imageData = new VulkanImageData();
         imageData.setFormat(imageFormat);
@@ -75,10 +75,6 @@ public class VulkanTexture extends BaseTexture {
         buf.put(data);
         data.flip();
         stagingBuffer.unmap();
-    }
-
-    public String getFileName() {
-        return fileName;
     }
 
     public VulkanImageView getImageView() {

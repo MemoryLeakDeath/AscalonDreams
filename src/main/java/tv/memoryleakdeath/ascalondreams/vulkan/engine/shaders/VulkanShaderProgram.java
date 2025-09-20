@@ -39,7 +39,7 @@ public class VulkanShaderProgram {
       try (MemoryStack stack = MemoryStack.stackPush()) {
          ByteBuffer codePointer = stack.malloc(code.length).put(0, code);
          VkShaderModuleCreateInfo createInfo = VkShaderModuleCreateInfo.calloc(stack)
-                 .sType(VK14.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
+                 .sType$Default()
                  .pCode(codePointer);
          LongBuffer lb = stack.mallocLong(1);
          VulkanUtils.failIfNeeded(VK14.vkCreateShaderModule(device.getDevice(), createInfo, null, lb), "Failed to create shader module!");
@@ -49,8 +49,5 @@ public class VulkanShaderProgram {
 
    public List<ShaderModule> getShaderModules() {
       return shaderModules;
-   }
-
-   public record ShaderModule(int shaderStage, long handle) {
    }
 }

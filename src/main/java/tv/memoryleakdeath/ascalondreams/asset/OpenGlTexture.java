@@ -19,7 +19,8 @@ public class OpenGlTexture extends BaseTexture {
 
     public OpenGlTexture(String path) {
         this.path = path;
-        loadTexture(path);
+        this.fileName = path;
+        loadTexture();
     }
 
     public int getId() {

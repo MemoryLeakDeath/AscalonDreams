@@ -3,15 +3,12 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.utils;
 import org.apache.commons.collections4.IterableUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.vulkan.KHRSurface;
-import org.lwjgl.vulkan.VK14;
-import org.lwjgl.vulkan.VkInstance;
-import org.lwjgl.vulkan.VkPhysicalDevice;
-import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
-import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import org.lwjgl.vulkan.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanCommandBuffer;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
@@ -71,6 +68,16 @@ public final class VulkanUtils {
          }
       }
       return matchingIndex;
+   }
+
+   public static void recordTransferCommand(VulkanCommandBuffer cmd, VulkanBuffer sourceBuffer, VulkanBuffer destinationBuffer) {
+      try(MemoryStack stack = MemoryStack.stackPush()) {
+         VkBufferCopy.Buffer copyRegion = VkBufferCopy.calloc(1, stack)
+                 .srcOffset(0)
+                 .dstOffset(0)
+                 .size(sourceBuffer.getRequestedSize());
+         VK14.vkCmdCopyBuffer(cmd.getBuffer(), sourceBuffer.getId(), destinationBuffer.getId(), copyRegion);
+      }
    }
 }
 

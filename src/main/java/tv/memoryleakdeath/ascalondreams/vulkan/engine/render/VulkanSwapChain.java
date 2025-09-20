@@ -117,6 +117,7 @@ public class VulkanSwapChain {
       VulkanImageViewData viewData = new VulkanImageViewData();
       viewData.setFormat(format);
       viewData.setAspectMask(VK14.VK_IMAGE_ASPECT_COLOR_BIT);
+      viewData.setDepthImage(false);
       List<VulkanImageView> images = new ArrayList<>();
       for (int i = 0; i < numImages; i++) {
          images.add(new VulkanImageView(device, swapChainImages.get(i), viewData));

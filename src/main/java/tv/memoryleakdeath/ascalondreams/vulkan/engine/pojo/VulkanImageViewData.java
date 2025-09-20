@@ -9,6 +9,7 @@ public class VulkanImageViewData {
    private int layerCount = 1;
    private int mipLevels = 1;
    private int viewType = VK14.VK_IMAGE_VIEW_TYPE_2D;
+   private boolean depthImage;
 
    public int getAspectMask() {
       return aspectMask;
@@ -56,5 +57,13 @@ public class VulkanImageViewData {
 
    public void setViewType(int viewType) {
       this.viewType = viewType;
+   }
+
+   public boolean isDepthImage() {
+      return depthImage;
+   }
+
+   public void setDepthImage(boolean depthImage) {
+      this.depthImage = depthImage;
    }
 }

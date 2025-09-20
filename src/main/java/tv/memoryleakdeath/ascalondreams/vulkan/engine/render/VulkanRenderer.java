@@ -40,7 +40,7 @@ public class VulkanRenderer {
       this.swapChain = new VulkanSwapChain(device, surface, window, VulkanSwapChain.TRIPLE_BUFFERING, true, presentationQueue, List.of(graphicsQueue));
       this.commandPool = new VulkanCommandPool(device, graphicsQueue.getQueueFamilyIndex());
       this.pipelineCache = new PipelineCache(device);
-      this.forwardRenderer = new ForwardRenderer(swapChain, commandPool, pipelineCache, scene);
+      this.forwardRenderer = new ForwardRenderer(swapChain, commandPool, pipelineCache, scene, surface);
    }
 
    public void cleanup() {

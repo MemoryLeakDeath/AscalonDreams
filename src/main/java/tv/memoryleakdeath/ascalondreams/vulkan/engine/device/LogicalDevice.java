@@ -15,6 +15,7 @@ public class LogicalDevice {
    private static final Logger logger = LoggerFactory.getLogger(LogicalDevice.class);
    private VkDevice device;
    private PhysicalDevice physicalDevice;
+   private boolean samplerAnsiotropy;
 
    public LogicalDevice(PhysicalDevice physicalDevice) {
       this.physicalDevice = physicalDevice;
@@ -24,12 +25,17 @@ public class LogicalDevice {
          PointerBuffer requiredExtensions = StructureUtils.initRequiredExtensions(stack, physicalDevice.getPhysicalDevice());
 
          // required features
-         VkPhysicalDeviceFeatures features = VkPhysicalDeviceFeatures.calloc(stack);
+         VkPhysicalDeviceFeatures requestedFeatures = VkPhysicalDeviceFeatures.calloc(stack);
+         VkPhysicalDeviceFeatures deviceSupportedFeatures = physicalDevice.getDeviceFeatures();
+         if(deviceSupportedFeatures.samplerAnisotropy()) {
+            this.samplerAnsiotropy = true;
+            requestedFeatures.samplerAnisotropy(samplerAnsiotropy);
+         }
 
          // turn on all queue families
          VkQueueFamilyProperties.Buffer queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
          VkDeviceQueueCreateInfo.Buffer queueCreationInfo = StructureUtils.initQueueFamilies(stack, queueFamilyProperties);
-         this.device = StructureUtils.createDevice(stack, requiredExtensions, features, queueCreationInfo, physicalDevice.getPhysicalDevice());
+         this.device = StructureUtils.createDevice(stack, requiredExtensions, requestedFeatures, queueCreationInfo, physicalDevice.getPhysicalDevice());
          logger.debug("created logical device with address: {}",device.address());
       }
    }
@@ -51,5 +57,9 @@ public class LogicalDevice {
 
    public PhysicalDevice getPhysicalDevice() {
       return physicalDevice;
+   }
+
+   public boolean isSamplerAnsiotropy() {
+      return samplerAnsiotropy;
    }
 }
