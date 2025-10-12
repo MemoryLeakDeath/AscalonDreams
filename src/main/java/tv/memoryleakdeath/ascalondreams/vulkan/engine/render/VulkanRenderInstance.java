@@ -18,16 +18,15 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 public class VulkanRenderInstance {
    private static final Logger logger = LoggerFactory.getLogger(VulkanRenderInstance.class);
-
    private VkInstance vkInstance;
-
    private VkDebugUtilsMessengerCreateInfoEXT debugUtils;
    private long vulkanDebugHandle;
 
    public VulkanRenderInstance(boolean validation) {
+      logger.info("creating vulkan instance... Validation: {}", validation);
       try (MemoryStack stack = MemoryStack.stackPush()) {
          // app info
-         VkApplicationInfo appInfo = StructureUtils.createApplicationInfo(stack, "AscalonDreams", 1, 0);
+         VkApplicationInfo appInfo = StructureUtils.createApplicationInfo(stack);
 
          // set required validation layers
          RequiredValidationLayerResults requiredLayersResults = DebugUtils.getRequiredValidationLayers(stack, validation);

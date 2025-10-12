@@ -4,6 +4,7 @@ import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.asset.ModelRenderer;
 import tv.memoryleakdeath.ascalondreams.common.asset.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.common.model.Entity;
 import tv.memoryleakdeath.ascalondreams.common.model.Mesh;
@@ -19,11 +20,6 @@ import java.util.List;
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
     public static final String MODEL_FILE = "/home/memdev/development/models/scifi-ship/FBX/ship.fbx";
-    private static final int LOGIC_UPDATES_PER_SECOND = 30;
-    private static final int DEFAULT_FRAMES_PER_SECOND = 60;
-    private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;
-    private static final long FPS_FRAME_TIME = 1_000_000_000L / DEFAULT_FRAMES_PER_SECOND;
-    private static final float MOVEMENT_INCREMENT = 0.02f;
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
@@ -37,64 +33,66 @@ public class VulkanEngine {
         logger.debug("==== VULKAN ENGINE STARTUP ====");
         window = new VulkanWindow(600, 600);
         scene = new VulkanScene(window.getWidth(), window.getHeight());
+        initModel(scene);
         renderer = new VulkanRenderer(window, scene);
     }
 
-    private VulkanModel createTestModel() {
-        Mesh meshData = new Mesh();
-        meshData.setVertices(new float[]{
-                -0.5f, 0.5f, 0.5f,
-                -0.5f, -0.5f, 0.5f,
-                0.5f, -0.5f, 0.5f,
-                0.5f, 0.5f, 0.5f,
-                -0.5f, 0.5f, -0.5f,
-                0.5f, 0.5f, -0.5f,
-                -0.5f, -0.5f, -0.5f,
-                0.5f, -0.5f, -0.5f,
-        });
-        meshData.setTexCoords(List.of(new float[]{
-                0.0f, 0.0f,
-                0.5f, 0.0f,
-                1.0f, 0.0f,
-                1.0f, 0.5f,
-                1.0f, 1.0f,
-                0.5f, 1.0f,
-                0.0f, 1.0f,
-                0.0f, 0.5f,
-        }));
-        meshData.setIndexes(new int[]{
-                // Front face
-                0, 1, 3, 3, 1, 2,
-                // Top Face
-                4, 0, 3, 5, 4, 3,
-                // Right face
-                3, 2, 7, 5, 3, 7,
-                // Left face
-                6, 1, 0, 6, 0, 4,
-                // Bottom face
-                2, 1, 6, 2, 6, 7,
-                // Back face
-                7, 6, 4, 7, 4, 5,
-        });
-        Model model = new Model("CubeModel", List.of(meshData), Collections.emptyList());
-        return new VulkanModel("CubeModel", model);
+    private void initModel(VulkanScene scene) {
+       ModelLoader loader = new ModelLoader();
+       Model model = loader.load("ship", MODEL_FILE, null, List.of(ModelRenderer.TEXTURE_PATH));
+       createTestEntity(scene);
     }
 
-    private void createTestEntity() {
-        Entity cubeEntity = new Entity("CubeEntity", "CubeModel", new Vector3f(0f, 0f, 0f));
-        cubeEntity.setPosition(0f, 0f, -2f);
-        scene.addEntity(cubeEntity);
-    }
+//    private VulkanModel createTestModel() {
+//        Mesh meshData = new Mesh();
+//        meshData.setVertices(new float[]{
+//                -0.5f, 0.5f, 0.5f,
+//                -0.5f, -0.5f, 0.5f,
+//                0.5f, -0.5f, 0.5f,
+//                0.5f, 0.5f, 0.5f,
+//                -0.5f, 0.5f, -0.5f,
+//                0.5f, 0.5f, -0.5f,
+//                -0.5f, -0.5f, -0.5f,
+//                0.5f, -0.5f, -0.5f,
+//        });
+//        meshData.setTexCoords(List.of(new float[]{
+//                0.0f, 0.0f,
+//                0.5f, 0.0f,
+//                1.0f, 0.0f,
+//                1.0f, 0.5f,
+//                1.0f, 1.0f,
+//                0.5f, 1.0f,
+//                0.0f, 1.0f,
+//                0.0f, 0.5f,
+//        }));
+//        meshData.setIndexes(new int[]{
+//                // Front face
+//                0, 1, 3, 3, 1, 2,
+//                // Top Face
+//                4, 0, 3, 5, 4, 3,
+//                // Right face
+//                3, 2, 7, 5, 3, 7,
+//                // Left face
+//                6, 1, 0, 6, 0, 4,
+//                // Bottom face
+//                2, 1, 6, 2, 6, 7,
+//                // Back face
+//                7, 6, 4, 7, 4, 5,
+//        });
+//        Model model = new Model("CubeModel", List.of(meshData), Collections.emptyList());
+//        return new VulkanModel("CubeModel", model);
+//    }
 
-    private void loadModel() {
-        ModelLoader loader = new ModelLoader();
-        //model = loader.load("ship", MODEL_FILE);
+    private void createTestEntity(VulkanScene scene) {
+        Entity shipEntity = new Entity("ShipEntity", "ShipModel", new Vector3f(0f, 0f, 0f));
+        shipEntity.setPosition(0f, 0f, -2f);
+        scene.addEntity(shipEntity);
     }
 
     public void mainLoop() {
         //GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
-        renderer.loadModels(List.of(createTestModel()));
-        createTestEntity();
+//        renderer.loadModels(List.of(createTestModel()));
+//        createTestEntity();
 
         // rendering loop
         while (!window.shouldClose()) {
@@ -117,7 +115,7 @@ public class VulkanEngine {
 
     private boolean shouldRender() {
         long now = System.nanoTime();
-        if (now - lastFrameUpdateTimer >= FPS_FRAME_TIME) {
+        if (now - lastFrameUpdateTimer >= VulkanEngineConfiguration.getInstance().getFpsFrameTime()) {
             lastFrameUpdateTimer = now;
             return true;
         }
@@ -126,7 +124,7 @@ public class VulkanEngine {
 
     private boolean shouldRunLogic() {
         long now = System.nanoTime();
-        if (now - lastLogicUpdateTimer >= LOGIC_FRAME_TIME) {
+        if (now - lastLogicUpdateTimer >= VulkanEngineConfiguration.getInstance().getLogicFrameTime()) {
             lastLogicUpdateTimer = now;
             return true;
         }

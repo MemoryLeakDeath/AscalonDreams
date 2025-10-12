@@ -8,6 +8,7 @@ import org.lwjgl.vulkan.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.common.CommonUtils;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanEngineConfiguration;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.TextureSampler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.asset.TextureSamplerInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.DescriptorTypeCount;
@@ -19,10 +20,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQ
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pipeline.PushConstantRange;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.BaseVertexInputStateInfo;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanCommandBuffer;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImage;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImageView;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.*;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModule;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.VulkanShaderProgram;
 
@@ -30,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -271,7 +270,7 @@ public final class StructureUtils {
 
    public static long createPoolInfo(MemoryStack stack, VkDevice device, int queueFamilyIndex) {
       VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo.calloc(stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO)
+              .sType$Default()
               .flags(VK14.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
               .queueFamilyIndex(queueFamilyIndex);
       LongBuffer buf = stack.mallocLong(1);
@@ -309,14 +308,14 @@ public final class StructureUtils {
       return imageViewPointer.get(0);
    }
 
-   public static VkApplicationInfo createApplicationInfo(MemoryStack stack, String appName, int appVersion, int engineVersion) {
-      ByteBuffer appShortName = stack.UTF8(appName);
+   public static VkApplicationInfo createApplicationInfo(MemoryStack stack) {
+      ByteBuffer appShortName = stack.UTF8(VulkanEngineConfiguration.getInstance().getApplicationName());
       VkApplicationInfo appInfo = VkApplicationInfo.calloc(stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_APPLICATION_INFO)
+              .sType$Default()
               .pApplicationName(appShortName)
-              .applicationVersion(appVersion)
+              .applicationVersion(VulkanEngineConfiguration.getInstance().getApplicationVersion())
               .pEngineName(appShortName)
-              .engineVersion(engineVersion)
+              .engineVersion(VulkanEngineConfiguration.getInstance().getEngineVersion())
               .apiVersion(VK14.VK_API_VERSION_1_4);
       return appInfo;
    }
@@ -325,7 +324,7 @@ public final class StructureUtils {
                                            VkApplicationInfo appInfo, PointerBuffer requiredLayers,
                                            PointerBuffer requiredExtensions, boolean usePortabilityExt) {
       VkInstanceCreateInfo instanceInfo = VkInstanceCreateInfo.calloc(stack)
-              .sType(VK14.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
+              .sType$Default()
               .pNext(loggingExtension)
               .pApplicationInfo(appInfo)
               .ppEnabledLayerNames(requiredLayers)
@@ -646,5 +645,55 @@ public final class StructureUtils {
               .sType$Default()
               .colorAttachmentCount(1)
               .pColorAttachmentFormats(colorFormatBuffer);
+   }
+
+   public static List<VkRenderingAttachmentInfo.Buffer> createColorAttachmentsInfo(VulkanSwapChain swapChain, VkClearValue clearValue) {
+      List<VkRenderingAttachmentInfo.Buffer> attachments = new ArrayList<>();
+      int numImages = swapChain.getNumImages();
+      for(int i = 0; i < numImages; i++) {
+         attachments.add(VkRenderingAttachmentInfo.calloc(1)
+                 .sType$Default()
+                 .imageView(swapChain.getImageViews().get(i).getId())
+                 .imageLayout(KHRSynchronization2.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR)
+                 .loadOp(VK14.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                 .storeOp(VK14.VK_ATTACHMENT_STORE_OP_STORE)
+                 .clearValue(clearValue));
+      }
+      return attachments;
+   }
+
+   public static List<VkRenderingAttachmentInfo> createDepthAttachmentsInfo(VulkanSwapChain swapChain, List<VulkanAttachment> attachments, VkClearValue clearValue) {
+      List<VkRenderingAttachmentInfo> attachmentInfos = new ArrayList<>();
+      int numImages = swapChain.getNumImages();
+      for(int i = 0; i < numImages; i++) {
+         attachmentInfos.add(VkRenderingAttachmentInfo.calloc()
+                 .sType$Default()
+                 .imageView(attachments.get(i).getView().getId())
+                 .imageLayout(VK14.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                 .loadOp(VK14.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                 .storeOp(VK14.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+                 .clearValue(clearValue));
+      }
+      return attachmentInfos;
+   }
+
+   public static List<VkRenderingInfo> createRenderingInfo(VulkanSwapChain swapChain, List<VkRenderingAttachmentInfo.Buffer> colorAttachments, List<VkRenderingAttachmentInfo> depthAttachments) {
+      List<VkRenderingInfo> renderingInfos = new ArrayList<>();
+      int numImages = swapChain.getNumImages();
+
+      try(MemoryStack stack = MemoryStack.stackPush()) {
+         VkExtent2D extent = swapChain.getExtent();
+         VkRect2D renderArea = VkRect2D.calloc(stack).extent(extent);
+
+         for(int i = 0; i < numImages; i++) {
+            renderingInfos.add(VkRenderingInfo.calloc()
+                    .sType$Default()
+                    .renderArea(renderArea)
+                    .layerCount(1)
+                    .pColorAttachments(colorAttachments.get(i))
+                    .pDepthAttachment(depthAttachments.get(i)));
+         }
+      }
+      return renderingInfos;
    }
 }

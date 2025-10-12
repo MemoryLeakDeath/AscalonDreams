@@ -32,4 +32,8 @@ public class VulkanCommandPool {
    public long getId() {
       return id;
    }
+
+   public void reset(LogicalDevice device) {
+      VK14.vkResetCommandPool(device.getDevice(), id, 0);
+   }
 }

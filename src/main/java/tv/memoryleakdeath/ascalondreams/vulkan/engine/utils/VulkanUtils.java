@@ -1,15 +1,22 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.utils;
 
 import org.apache.commons.collections4.IterableUtils;
+import org.joml.Matrix4f;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.DescriptorAllocator;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.DescriptorSet;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptors.DescriptorSetLayout;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanCommandBuffer;
 
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +85,20 @@ public final class VulkanUtils {
                  .size(sourceBuffer.getRequestedSize());
          VK14.vkCmdCopyBuffer(cmd.getBuffer(), sourceBuffer.getId(), destinationBuffer.getId(), copyRegion);
       }
+   }
+
+   public static VulkanBuffer createHostVisibleBuffer(LogicalDevice device, DescriptorAllocator allocator, long size, int usage, String id, DescriptorSetLayout layout) {
+      VulkanBuffer buffer = new VulkanBuffer(device, size, usage, VK14.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK14.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+      DescriptorSet set = allocator.addDescriptorSets(device, id, 1, layout).getFirst();
+      set.setBuffer(device, buffer, buffer.getRequestedSize(), layout.getLayoutInfo().binding(), layout.getLayoutInfo().type());
+      return buffer;
+   }
+
+   public static void copyMatrixToBuffer(VulkanBuffer buffer, Matrix4f matrix, int offset) {
+      long mappedMem = buffer.map();
+      ByteBuffer matrixBuffer = MemoryUtil.memByteBuffer(mappedMem, (int)buffer.getRequestedSize());
+      matrix.get(offset, matrixBuffer);
+      buffer.unmap();
    }
 }
 

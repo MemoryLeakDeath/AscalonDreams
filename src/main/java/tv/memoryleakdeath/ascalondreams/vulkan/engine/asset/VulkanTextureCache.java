@@ -8,6 +8,7 @@ import java.util.Map;
 
 public class VulkanTextureCache {
     private ListOrderedMap<String, VulkanTexture> cache = new ListOrderedMap<>();
+    public static final int MAX_TEXTURES = 100;
 
     public VulkanTexture createTexture(LogicalDevice device, String fullPathFile, int format) {
         VulkanTexture texture = cache.get(fullPathFile);
