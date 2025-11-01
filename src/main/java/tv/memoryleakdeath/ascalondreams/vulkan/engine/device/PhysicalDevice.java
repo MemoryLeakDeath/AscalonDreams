@@ -2,8 +2,9 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.device;
 
 import org.apache.commons.collections4.IterableUtils;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
-import org.lwjgl.vulkan.VK14;
+import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkExtensionProperties;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkPhysicalDevice;
@@ -11,12 +12,15 @@ import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanSurface;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 import java.nio.IntBuffer;
 import java.util.List;
+import java.util.Set;
 
 public final class PhysicalDevice {
+   public static final Set<String> REQUIRED_EXTENSIONS = Set.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
    private VkExtensionProperties.Buffer deviceExtensions;
    private VkPhysicalDeviceMemoryProperties memoryProperties;
    private final VkPhysicalDevice physicalDevice;
@@ -40,22 +44,22 @@ public final class PhysicalDevice {
          IntBuffer intBuffer = stack.mallocInt(1);
          if (deviceProperties == null) {
             deviceProperties = VkPhysicalDeviceProperties.calloc();
-            VK14.vkGetPhysicalDeviceProperties(physicalDevice, deviceProperties);
+            VK13.vkGetPhysicalDeviceProperties(physicalDevice, deviceProperties);
          }
 
-         VulkanUtils.failIfNeeded(VK14.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, null), "Failed to get number of device extension properties!");
+         VulkanUtils.failIfNeeded(VK13.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, null), "Failed to get number of device extension properties!");
          deviceExtensions = VkExtensionProperties.calloc(intBuffer.get(0));
-         VulkanUtils.failIfNeeded(VK14.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, deviceExtensions), "Failed to get device extension properties!");
+         VulkanUtils.failIfNeeded(VK13.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, deviceExtensions), "Failed to get device extension properties!");
 
-         VK14.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, intBuffer, null);
+         VK13.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, intBuffer, null);
          queueFamilyProperties = VkQueueFamilyProperties.calloc(intBuffer.get(0));
-         VK14.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, intBuffer, queueFamilyProperties);
-
+         VK13.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, intBuffer, queueFamilyProperties);
          deviceFeatures = VkPhysicalDeviceFeatures.calloc();
-         VK14.vkGetPhysicalDeviceFeatures(physicalDevice, deviceFeatures);
+
+         VK13.vkGetPhysicalDeviceFeatures(physicalDevice, deviceFeatures);
 
          memoryProperties = VkPhysicalDeviceMemoryProperties.calloc();
-         VK14.vkGetPhysicalDeviceMemoryProperties(physicalDevice, memoryProperties);
+         VK13.vkGetPhysicalDeviceMemoryProperties(physicalDevice, memoryProperties);
       }
    }
 
@@ -104,7 +108,7 @@ public final class PhysicalDevice {
 
    private boolean hasGraphicsQueueFamily() {
       return queueFamilyProperties.stream()
-              .anyMatch(p -> (p.queueFlags() & VK14.VK_QUEUE_GRAPHICS_BIT) != 0);
+              .anyMatch(p -> (p.queueFlags() & VK13.VK_QUEUE_GRAPHICS_BIT) != 0);
    }
 
    private boolean hasKHRSwapChainExtension() {
@@ -137,10 +141,29 @@ public final class PhysicalDevice {
    }
 
    public int getGraphicsQueueIndex() {
-      int index = IterableUtils.indexOf(queueFamilyProperties, p -> (p.queueFlags() & VK14.VK_QUEUE_GRAPHICS_BIT) != 0);
+      int index = IterableUtils.indexOf(queueFamilyProperties, p -> (p.queueFlags() & VK13.VK_QUEUE_GRAPHICS_BIT) != 0);
       if (index < 0) {
          throw new RuntimeException("No graphics queue family found!");
       }
       return index;
+   }
+
+   public int getPresentationQueueIndex(VulkanSurface surface) {
+      int numQueueFamilies = getQueueFamilyProperties().capacity();
+      int foundIndex = -1;
+      try(var stack = MemoryStack.stackPush()) {
+         IntBuffer buf = stack.mallocInt(1);
+         for(int i = 0; i < numQueueFamilies; i++) {
+            KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface.getId(), buf);
+            if(buf.get(0) == VK13.VK_TRUE) {
+               foundIndex = i;
+               break;
+            }
+         }
+      }
+      if(foundIndex < 0) {
+         throw new RuntimeException("Failed to get Presentation Queue family index");
+      }
+      return foundIndex;
    }
 }
