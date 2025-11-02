@@ -3,13 +3,16 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.utils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK13;
+import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo;
 import org.lwjgl.vulkan.VkCommandBufferInheritanceInfo;
 import org.lwjgl.vulkan.VkCommandBufferInheritanceRenderingInfo;
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo;
+import org.lwjgl.vulkan.VkDependencyInfo;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkDeviceCreateInfo;
 import org.lwjgl.vulkan.VkDeviceQueueCreateInfo;
+import org.lwjgl.vulkan.VkImageMemoryBarrier2;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures2;
 import org.lwjgl.vulkan.VkPhysicalDeviceVulkan13Features;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
@@ -86,5 +89,29 @@ public final class StructureUtils {
       LongBuffer buf = stack.mallocLong(1);
       VulkanUtils.failIfNeeded(VK13.vkCreateCommandPool(device.getDevice(), info, null, buf), "Failed to create command pool!");
       return buf.get(0);
+   }
+
+   public static void imageBarrier(MemoryStack stack, VkCommandBuffer commandHandle, long image, int oldLayout, int newLayout,
+                                   long sourceStage, long destinationStage, long sourceAccess, long destinationAccess, int aspectMask) {
+      var imageBarrier = VkImageMemoryBarrier2.calloc(1, stack)
+              .sType$Default()
+              .oldLayout(oldLayout)
+              .newLayout(newLayout)
+              .srcStageMask(sourceStage)
+              .dstStageMask(destinationStage)
+              .srcAccessMask(sourceAccess)
+              .dstAccessMask(destinationAccess)
+              .srcQueueFamilyIndex(VK13.VK_QUEUE_FAMILY_IGNORED)
+              .dstQueueFamilyIndex(VK13.VK_QUEUE_FAMILY_IGNORED)
+              .subresourceRange(r -> r.aspectMask(aspectMask)
+                      .baseMipLevel(0)
+                      .levelCount(VK13.VK_REMAINING_MIP_LEVELS)
+                      .baseArrayLayer(0)
+                      .layerCount(VK13.VK_REMAINING_ARRAY_LAYERS))
+              .image(image);
+      var dependencyInfo = VkDependencyInfo.calloc(stack)
+              .sType$Default()
+              .pImageMemoryBarriers(imageBarrier);
+      VK13.vkCmdPipelineBarrier2(commandHandle, dependencyInfo);
    }
 }

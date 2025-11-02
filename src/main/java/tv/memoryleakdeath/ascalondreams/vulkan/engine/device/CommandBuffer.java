@@ -69,4 +69,8 @@ public class CommandBuffer {
          queue.submit(commands, null, null, fence);
       }
    }
+
+   public VkCommandBuffer getCommandBuffer() {
+      return commandBuffer;
+   }
 }
