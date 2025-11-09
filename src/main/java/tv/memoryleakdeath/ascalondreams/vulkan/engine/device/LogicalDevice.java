@@ -5,6 +5,8 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkExtensionProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
@@ -13,6 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class LogicalDevice {
+   private static final Logger logger = LoggerFactory.getLogger(LogicalDevice.class);
    private VkDevice device;
    private PhysicalDevice physicalDevice;
 
@@ -32,6 +35,7 @@ public class LogicalDevice {
 
    private PointerBuffer createRequiredDeviceExtensions(MemoryStack stack) {
       Set<String> deviceExtensions = getDeviceExtensions(stack);
+      logger.debug("Found device extensions: {}", deviceExtensions);
       var extensionsList = PhysicalDevice.REQUIRED_EXTENSIONS.stream().map(stack::ASCII).toList();
       PointerBuffer requiredExtensions = stack.mallocPointer(extensionsList.size());
       extensionsList.forEach(requiredExtensions::put);

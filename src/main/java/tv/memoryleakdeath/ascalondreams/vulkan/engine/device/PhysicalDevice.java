@@ -10,8 +10,10 @@ import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
-import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
+import org.lwjgl.vulkan.VkPhysicalDeviceProperties2;
 import org.lwjgl.vulkan.VkQueueFamilyProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanSurface;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
@@ -20,12 +22,13 @@ import java.util.List;
 import java.util.Set;
 
 public final class PhysicalDevice {
+   private static final Logger logger = LoggerFactory.getLogger(PhysicalDevice.class);
    public static final Set<String> REQUIRED_EXTENSIONS = Set.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
    private VkExtensionProperties.Buffer deviceExtensions;
    private VkPhysicalDeviceMemoryProperties memoryProperties;
    private final VkPhysicalDevice physicalDevice;
    private VkPhysicalDeviceFeatures deviceFeatures;
-   private VkPhysicalDeviceProperties deviceProperties;
+   private VkPhysicalDeviceProperties2 deviceProperties;
    private VkQueueFamilyProperties.Buffer queueFamilyProperties;
 
    private PhysicalDevice(VkPhysicalDevice physicalDevice) {
@@ -33,19 +36,11 @@ public final class PhysicalDevice {
       init();
    }
 
-   private PhysicalDevice(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties properties) {
-      this.physicalDevice = physicalDevice;
-      this.deviceProperties = properties;
-      init();
-   }
-
    private void init() {
       try (MemoryStack stack = MemoryStack.stackPush()) {
          IntBuffer intBuffer = stack.mallocInt(1);
-         if (deviceProperties == null) {
-            deviceProperties = VkPhysicalDeviceProperties.calloc();
-            VK13.vkGetPhysicalDeviceProperties(physicalDevice, deviceProperties);
-         }
+         deviceProperties = VkPhysicalDeviceProperties2.calloc().sType$Default();
+         VK13.vkGetPhysicalDeviceProperties2(physicalDevice, deviceProperties);
 
          VulkanUtils.failIfNeeded(VK13.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, null), "Failed to get number of device extension properties!");
          deviceExtensions = VkExtensionProperties.calloc(intBuffer.get(0));
@@ -60,12 +55,8 @@ public final class PhysicalDevice {
 
          memoryProperties = VkPhysicalDeviceMemoryProperties.calloc();
          VK13.vkGetPhysicalDeviceMemoryProperties(physicalDevice, memoryProperties);
+         logger.debug("Created Physical Device with name: {}", getDeviceName());
       }
-   }
-
-   public static PhysicalDevice getInstanceForDeviceName(List<VkPhysicalDevice> devices, String deviceName) {
-      VulkanDeviceAndProperties deviceAndProperties = VulkanUtils.getPhysicalDeviceAndPropertiesByDeviceName(devices, deviceName);
-      return new PhysicalDevice(deviceAndProperties.physicalDevice(), deviceAndProperties.deviceProperties());
    }
 
    public static PhysicalDevice getInstance(VkInstance instance) {
@@ -75,6 +66,7 @@ public final class PhysicalDevice {
          if (devices.isEmpty()) {
             throw new RuntimeException("No physical devices found!");
          }
+
          for (VkPhysicalDevice device : devices) {
             selectedDevice = new PhysicalDevice(device);
             if (selectedDevice.isGameReady()) {
@@ -99,11 +91,11 @@ public final class PhysicalDevice {
    }
 
    public String getDeviceName() {
-      return deviceProperties.deviceNameString();
+      return deviceProperties.properties().deviceNameString();
    }
 
    public boolean isGameReady() {
-      return (hasGraphicsQueueFamily() && hasKHRSwapChainExtension());
+      return (hasGraphicsQueueFamily() && hasKHRSwapChainExtension() && hasDiscreteGPU());
    }
 
    private boolean hasGraphicsQueueFamily() {
@@ -114,6 +106,10 @@ public final class PhysicalDevice {
    private boolean hasKHRSwapChainExtension() {
       return deviceExtensions.stream()
               .anyMatch(e -> KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME.equals(e.extensionNameString()));
+   }
+
+   private boolean hasDiscreteGPU() {
+      return (deviceProperties.properties().deviceType() == VK13.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
    }
 
    public VkExtensionProperties.Buffer getDeviceExtensions() {
@@ -132,7 +128,7 @@ public final class PhysicalDevice {
       return deviceFeatures;
    }
 
-   public VkPhysicalDeviceProperties getDeviceProperties() {
+   public VkPhysicalDeviceProperties2 getDeviceProperties() {
       return deviceProperties;
    }
 

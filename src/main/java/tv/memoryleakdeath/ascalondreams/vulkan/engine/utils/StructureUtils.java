@@ -45,7 +45,7 @@ public final class StructureUtils {
               .dynamicRendering(true)
               .synchronization2(true);
       var vulkanFeatures2 = VkPhysicalDeviceFeatures2.calloc(stack).sType$Default();
-      vulkanFeatures2.pNext(vulkan13Features);
+      vulkanFeatures2.pNext(vulkan13Features.address());
 
       return VkDeviceCreateInfo.calloc(stack)
               .sType$Default()
