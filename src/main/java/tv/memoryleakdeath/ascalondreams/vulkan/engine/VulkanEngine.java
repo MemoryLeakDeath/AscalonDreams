@@ -39,19 +39,19 @@ public class VulkanEngine {
 
         // rendering loop
         while (!window.shouldClose()) {
-            if (shouldRunLogic()) {
-            }
-            if (shouldRender()) {
-                render();
-                window.update();
-            } else {
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            window.pollEvents();
+           window.pollEvents();
+           if (shouldRunLogic()) {
+           }
+           if (shouldRender()) {
+              render();
+              window.update();
+           } else {
+              try {
+                 Thread.sleep(1);
+              } catch (InterruptedException e) {
+                 Thread.currentThread().interrupt();
+              }
+           }
         }
         cleanup();
     }
@@ -79,8 +79,8 @@ public class VulkanEngine {
     }
 
     private void cleanup() {
-        window.cleanup();
-        renderer.cleanup();
+       renderer.cleanup();
+       window.cleanup();
     }
 
     private void registerKeyboardCallbacks() {

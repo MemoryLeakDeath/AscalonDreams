@@ -1,13 +1,11 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.render;
 
-import org.apache.commons.exec.OS;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.EXTDebugUtils;
-import org.lwjgl.vulkan.KHRPortabilitySubset;
-import org.lwjgl.vulkan.VK14;
+import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkApplicationInfo;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCreateInfoEXT;
@@ -34,8 +32,6 @@ public class VulkanRenderInstance {
    public static final int MESSAGE_TYPE_MASK = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
            | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
            | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-   private static final String PORTABILITY_EXTENSION = "VK_KHR_portability_enumeration";
-   private static final int VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR = 0x00000001;
    private static final List<String> VALIDATION_FALLBACK_LAYERS = List.of("VK_LAYER_GOOGLE_threading",
            "VK_LAYER_LUNARG_parameter_validation",
            "VK_LAYER_LUNARG_object_tracker",
@@ -53,12 +49,12 @@ public class VulkanRenderInstance {
 
          // app info
          VkApplicationInfo appInfo = VkApplicationInfo.calloc(stack)
-                 .sType(VK14.VK_STRUCTURE_TYPE_APPLICATION_INFO)
+                 .sType$Default()
                  .pApplicationName(appShortName)
                  .applicationVersion(1)
                  .pEngineName(appShortName)
                  .engineVersion(0)
-                 .apiVersion(VK14.VK_API_VERSION_1_2);
+                 .apiVersion(VK13.VK_API_VERSION_1_3);
 
          // validation layers
          List<String> validationLayers = getSupportedValidationLayers();
@@ -82,8 +78,7 @@ public class VulkanRenderInstance {
          if (glfwExtensions == null) {
             throw new RuntimeException("GLFW extensions were not found!");
          }
-         boolean usePortabilityExt = (instanceExtensions.contains(PORTABILITY_EXTENSION) && OS.isFamilyMac());
-         PointerBuffer requiredExtensions = getRequiredExtensions(instanceExtensions, supportsValidation, usePortabilityExt, glfwExtensions, stack);
+         PointerBuffer requiredExtensions = getRequiredExtensions(instanceExtensions, supportsValidation, glfwExtensions, stack);
          long loggingExtension = MemoryUtil.NULL;
          if (supportsValidation) {
             debugUtils = createDebugCallback();
@@ -92,20 +87,17 @@ public class VulkanRenderInstance {
 
          // create instance info
          VkInstanceCreateInfo instanceInfo = VkInstanceCreateInfo.calloc(stack)
-                 .sType(VK14.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
+                 .sType$Default()
                  .pNext(loggingExtension)
                  .pApplicationInfo(appInfo)
                  .ppEnabledLayerNames(requiredLayers)
                  .ppEnabledExtensionNames(requiredExtensions);
-         if (usePortabilityExt) {
-            instanceInfo.flags(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR);
-         }
 
          PointerBuffer instanceBuf = stack.mallocPointer(1);
-         VulkanUtils.failIfNeeded(VK14.vkCreateInstance(instanceInfo, null, instanceBuf), "Cannot create instance!");
+         VulkanUtils.failIfNeeded(VK13.vkCreateInstance(instanceInfo, null, instanceBuf), "Cannot create instance!");
          vkInstance = new VkInstance(instanceBuf.get(0), instanceInfo);
 
-         vulkanDebugHandle = VK14.VK_NULL_HANDLE;
+         vulkanDebugHandle = VK13.VK_NULL_HANDLE;
          if (supportsValidation) {
             LongBuffer longBuf = stack.mallocLong(1);
             VulkanUtils.failIfNeeded(EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(vkInstance, debugUtils, null, longBuf), "Cannot create debug utils!");
@@ -117,10 +109,10 @@ public class VulkanRenderInstance {
    }
 
    public void cleanup() {
-      if (vulkanDebugHandle != VK14.VK_NULL_HANDLE) {
+      if (vulkanDebugHandle != VK13.VK_NULL_HANDLE) {
          EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vkInstance, vulkanDebugHandle, null);
       }
-      VK14.vkDestroyInstance(vkInstance, null);
+      VK13.vkDestroyInstance(vkInstance, null);
       if (debugUtils != null) {
          debugUtils.pfnUserCallback().free();
          debugUtils.free();
@@ -130,12 +122,12 @@ public class VulkanRenderInstance {
    private List<String> getSupportedValidationLayers() {
       try (MemoryStack stack = MemoryStack.stackPush()) {
          IntBuffer numLayersArray = stack.callocInt(1);
-         VK14.vkEnumerateInstanceLayerProperties(numLayersArray, null);
+         VK13.vkEnumerateInstanceLayerProperties(numLayersArray, null);
          int numLayers = numLayersArray.get(0);
          logger.debug("Number of supported validation layers: {}", numLayers);
 
          VkLayerProperties.Buffer props = VkLayerProperties.calloc(numLayers, stack);
-         VK14.vkEnumerateInstanceLayerProperties(numLayersArray, props);
+         VK13.vkEnumerateInstanceLayerProperties(numLayersArray, props);
          List<String> supportedLayers = props.stream().map(VkLayerProperties::layerNameString).toList();
          if (logger.isDebugEnabled()) {
             logger.debug("Supported Layers: {}", supportedLayers);
@@ -167,12 +159,12 @@ public class VulkanRenderInstance {
       Set<String> extensions = new HashSet<>();
       try (MemoryStack stack = MemoryStack.stackPush()) {
          IntBuffer numExtensionsArray = stack.callocInt(1);
-         VK14.vkEnumerateInstanceExtensionProperties((String) null, numExtensionsArray, null);
+         VK13.vkEnumerateInstanceExtensionProperties((String) null, numExtensionsArray, null);
          int numExtensions = numExtensionsArray.get(0);
          logger.debug("Number of supported extensions: {}", numExtensions);
 
          VkExtensionProperties.Buffer props = VkExtensionProperties.calloc(numExtensions, stack);
-         VK14.vkEnumerateInstanceExtensionProperties((String) null, numExtensionsArray, props);
+         VK13.vkEnumerateInstanceExtensionProperties((String) null, numExtensionsArray, props);
          extensions = props.stream().map(VkExtensionProperties::extensionNameString).collect(Collectors.toUnmodifiableSet());
          if (logger.isDebugEnabled()) {
             logger.debug("Supported Extensions: {}", extensions);
@@ -181,23 +173,17 @@ public class VulkanRenderInstance {
       return extensions;
    }
 
-   private PointerBuffer getRequiredExtensions(Set<String> instanceExtensions, boolean supportsValidation, boolean usePortabilityExt, PointerBuffer glfwExtensions, MemoryStack stack) {
+   private PointerBuffer getRequiredExtensions(Set<String> instanceExtensions, boolean supportsValidation, PointerBuffer glfwExtensions, MemoryStack stack) {
       PointerBuffer requiredExtensions = null;
       if (supportsValidation) {
          ByteBuffer debugUtilsExt = stack.UTF8(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-         int numExtensions = (usePortabilityExt ? glfwExtensions.remaining() + 2 : glfwExtensions.remaining() + 1);
+         int numExtensions = (glfwExtensions.remaining() + 1);
          requiredExtensions = stack.mallocPointer(numExtensions);
          requiredExtensions.put(glfwExtensions).put(debugUtilsExt);
-         if (usePortabilityExt) {
-            requiredExtensions.put(stack.UTF8(PORTABILITY_EXTENSION));
-         }
       } else {
-         int numExtensions = (usePortabilityExt ? glfwExtensions.remaining() + 1 : glfwExtensions.remaining());
+         int numExtensions = glfwExtensions.remaining();
          requiredExtensions = stack.mallocPointer(numExtensions);
          requiredExtensions.put(glfwExtensions);
-         if (usePortabilityExt) {
-            requiredExtensions.put(stack.UTF8(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME));
-         }
       }
       requiredExtensions.flip();
       return requiredExtensions;
@@ -205,7 +191,7 @@ public class VulkanRenderInstance {
 
    private VkDebugUtilsMessengerCreateInfoEXT createDebugCallback() {
       return VkDebugUtilsMessengerCreateInfoEXT.calloc()
-              .sType(EXTDebugUtils.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT)
+              .sType$Default()
               .messageSeverity(MESSAGE_SEVERITY_MASK)
               .messageType(MESSAGE_TYPE_MASK)
               .pfnUserCallback(((messageSeverity, messageTypes, pCallbackData, pUserData) -> {
@@ -219,7 +205,7 @@ public class VulkanRenderInstance {
                  } else {
                     logger.debug("{}", callbackData.pMessageString());
                  }
-                 return VK14.VK_FALSE;
+                 return VK13.VK_FALSE;
               }));
    }
 

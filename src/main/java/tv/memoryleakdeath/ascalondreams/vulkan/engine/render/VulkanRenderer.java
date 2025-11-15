@@ -41,7 +41,7 @@ public class VulkanRenderer {
 
    public VulkanRenderer(VulkanWindow window) {
       this.window = window;
-      this.instance = new VulkanRenderInstance(false);
+      this.instance = new VulkanRenderInstance(true);
       this.device = new LogicalDevice(PhysicalDevice.getInstance(instance.getVkInstance()));
       this.surface = new VulkanSurface(device.getPhysicalDevice(), window.getHandle());
       this.swapChain = new VulkanSwapChain(device, surface, window, BUFFERING_SETUP, VSYNC);

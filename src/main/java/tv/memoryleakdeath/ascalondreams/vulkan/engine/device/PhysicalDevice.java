@@ -42,9 +42,11 @@ public final class PhysicalDevice {
          deviceProperties = VkPhysicalDeviceProperties2.calloc().sType$Default();
          VK13.vkGetPhysicalDeviceProperties2(physicalDevice, deviceProperties);
 
-         VulkanUtils.failIfNeeded(VK13.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, null), "Failed to get number of device extension properties!");
+         VulkanUtils.failIfNeeded(VK13.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, null),
+                 "Failed to get number of device extension properties!");
          deviceExtensions = VkExtensionProperties.calloc(intBuffer.get(0));
-         VulkanUtils.failIfNeeded(VK13.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, deviceExtensions), "Failed to get device extension properties!");
+         VulkanUtils.failIfNeeded(VK13.vkEnumerateDeviceExtensionProperties(physicalDevice, (String) null, intBuffer, deviceExtensions),
+                 "Failed to get device extension properties!");
 
          VK13.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, intBuffer, null);
          queueFamilyProperties = VkQueueFamilyProperties.calloc(intBuffer.get(0));

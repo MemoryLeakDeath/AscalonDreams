@@ -37,7 +37,7 @@ public class SceneRenderer {
       for(int i = 0; i < numImages; i++) {
          colorAttachmentInfo.add(VkRenderingAttachmentInfo.calloc(1)
                  .sType$Default()
-                 .imageView(swapChain.getImageViews().get(i).getId())
+                 .imageView(swapChain.getImageViews().get(i).getImageViewId())
                  .imageLayout(KHRSynchronization2.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR)
                  .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
                  .storeOp(VK13.VK_ATTACHMENT_STORE_OP_STORE)
@@ -65,7 +65,7 @@ public class SceneRenderer {
 
    public void render(VulkanSwapChain swapChain, CommandBuffer commandBuffer, int imageIndex) {
       try(var stack = MemoryStack.stackPush()) {
-         long swapChainImage = swapChain.getImageView(imageIndex).getId();
+         long swapChainImage = swapChain.getImageView(imageIndex).getImageId();
          var commandHandle = commandBuffer.getCommandBuffer();
          StructureUtils.imageBarrier(stack, commandHandle, swapChainImage,
                  VK13.VK_IMAGE_LAYOUT_UNDEFINED, VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

@@ -1,6 +1,7 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo;
 
-import org.lwjgl.vulkan.VK14;
+
+import org.lwjgl.vulkan.VK13;
 
 public class VulkanImageViewData {
    private int aspectMask;
@@ -8,7 +9,7 @@ public class VulkanImageViewData {
    private int format;
    private int layerCount = 1;
    private int mipLevels = 1;
-   private int viewType = VK14.VK_IMAGE_VIEW_TYPE_2D;
+   private int viewType = VK13.VK_IMAGE_VIEW_TYPE_2D;
 
    public int getAspectMask() {
       return aspectMask;
