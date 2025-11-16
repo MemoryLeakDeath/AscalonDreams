@@ -4,7 +4,6 @@ import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.asset.Model;
-import tv.memoryleakdeath.ascalondreams.asset.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
 
@@ -30,8 +29,8 @@ public class VulkanEngine {
     }
 
     private void loadModel() {
-        ModelLoader loader = new ModelLoader();
-        model = loader.load("ship", MODEL_FILE);
+       String modelId = "Triangle";
+       // todo: meshData and modelData
     }
 
     public void mainLoop() {

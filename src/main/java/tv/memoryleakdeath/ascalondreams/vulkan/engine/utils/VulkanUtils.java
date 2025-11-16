@@ -4,10 +4,12 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkInstance;
+import org.lwjgl.vulkan.VkMemoryType;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
 
 import java.nio.IntBuffer;
@@ -50,6 +52,23 @@ public final class VulkanUtils {
          return (props.deviceNameString().equals(deviceName));
       }).findFirst().orElseThrow(() -> new RuntimeException("Unable to find physical device matching name: %s".formatted(deviceName)));
       return new VulkanDeviceAndProperties(matchingDevice, props);
+   }
+
+   public static int getMemoryType(LogicalDevice device, int typeBits, int requirementsMask) {
+      int result = -1;
+      VkMemoryType.Buffer memoryTypes = device.getPhysicalDevice().getMemoryProperties().memoryTypes();
+      for(int i = 0; i < VK13.VK_MAX_MEMORY_TYPES; i++) {
+         if((typeBits & 1) == 1 && (memoryTypes.get(i).propertyFlags() & requirementsMask) == requirementsMask) {
+            result = i;
+            break;
+         }
+         typeBits >>= 1;
+      }
+
+      if(result < 0) {
+         throw new RuntimeException("Memory type not found!");
+      }
+      return result;
    }
 }
 
