@@ -4,6 +4,8 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkCommandBufferSubmitInfo;
 import org.lwjgl.vulkan.VkSemaphoreSubmitInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandPool;
@@ -13,11 +15,14 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Semaphore;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanGraphicsQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class VulkanRenderer {
+   private static final Logger logger = LoggerFactory.getLogger(VulkanRenderer.class);
    private final VulkanRenderInstance instance;
    private static final boolean VSYNC = true;
    private static final int BUFFERING_SETUP = 3;
@@ -32,6 +37,7 @@ public class VulkanRenderer {
    private final List<Fence> fences = new ArrayList<>();
    private final VulkanGraphicsQueue graphicsQueue;
    private final List<Semaphore> presentationCompleteSemaphores = new ArrayList<>();
+   private final ModelCache modelCache;
    private final VulkanPresentationQueue presentationQueue;
    private final List<Semaphore> renderingCompleteSemaphores = new ArrayList<>();
    private final SceneRenderer sceneRenderer;
@@ -53,8 +59,8 @@ public class VulkanRenderer {
          CommandPool pool = new CommandPool(device, graphicsQueue.getQueueFamilyIndex(), false);
          commandPools.add(pool);
          commandBuffers.add(new CommandBuffer(device, pool, true, true));
-         presentationCompleteSemaphores.add(new Semaphore(device));
          fences.add(new Fence(device, true));
+         presentationCompleteSemaphores.add(new Semaphore(device));
       }
 
       for(int i = 0; i < swapChain.getNumImages(); i++) {
@@ -62,12 +68,14 @@ public class VulkanRenderer {
       }
 
       this.sceneRenderer = new SceneRenderer(swapChain);
+      this.modelCache = new ModelCache();
    }
 
    public void cleanup() {
       device.waitIdle();
 
       sceneRenderer.cleanup();
+      modelCache.cleanup(device);
 
       renderingCompleteSemaphores.forEach(s -> s.cleanup(device));
       presentationCompleteSemaphores.forEach(s -> s.cleanup(device));
@@ -82,6 +90,12 @@ public class VulkanRenderer {
       surface.cleanup();
       device.cleanup();
       instance.cleanup();
+   }
+
+   public void initModels(List<VulkanModel> modelList) {
+      logger.debug("Loading {} models", modelList.size());
+      modelCache.loadModels(device, modelList, commandPools.getFirst(), graphicsQueue);
+      logger.debug("Models loaded!");
    }
 
    private void startRecording(CommandPool pool, CommandBuffer buf) {
@@ -104,6 +118,7 @@ public class VulkanRenderer {
       if(imageIndex < 0) {
          return;
       }
+      // TODO: add modelsCache to parameters
       sceneRenderer.render(swapChain, commandBuffer, imageIndex);
 
       stopRecording(commandBuffer);

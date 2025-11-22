@@ -1,12 +1,15 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.model;
 
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK13;
+import org.lwjgl.vulkan.VkCommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,5 +70,16 @@ public class VulkanModel {
       data.put(indicies);
       sourceBuffer.unMap(device);
       return new TransferBuffer(sourceBuffer, destinationBuffer);
+   }
+
+   public void bindMeshes(MemoryStack stack, VkCommandBuffer cmd) {
+      LongBuffer offsets = stack.mallocLong(1).put(0, 0L);
+      LongBuffer vertexBuffer = stack.mallocLong(1);
+      meshList.forEach(mesh -> {
+         vertexBuffer.put(0, mesh.vertexBuffer().getBuffer());
+         VK13.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
+         VK13.vkCmdBindIndexBuffer(cmd, mesh.indexBuffer().getBuffer(), 0, VK13.VK_INDEX_TYPE_UINT32);
+         VK13.vkCmdDrawIndexed(cmd, mesh.numIndicies(), 1, 0, 0, 0);
+      });
    }
 }

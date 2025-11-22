@@ -11,6 +11,7 @@ import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 import java.util.ArrayList;
@@ -22,6 +23,11 @@ public class SceneRenderer {
    private List<VkRenderingAttachmentInfo.Buffer> colorAttachmentInfo = new ArrayList<>();
    private List<VkRenderingInfo> renderingInfos = new ArrayList<>();
 
+   private static final String FRAGMENT_SHADER_FILE_GLSL = "resources/shaders/fragment_shader.glsl";
+   private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
+   private static final String VERTEX_SHADER_FILE_GLSL = "resources/shaders/vertex_shader.glsl";
+   private static final String VERTEX_SHADER_FILE_SPV = VERTEX_SHADER_FILE_GLSL + ".spv";
+
    public SceneRenderer(VulkanSwapChain swapChain) {
       this.clearValue = VkClearValue.calloc().color(
               c -> c.float32(0, 0f)
@@ -30,6 +36,9 @@ public class SceneRenderer {
                       .float32(3, 1f));
       initColorAttachmentsInfo(swapChain);
       initRenderInfos(swapChain);
+      //TODO: shader modules create
+      //TODO: pipeline create
+      //TODO: shader modules cleanup
    }
 
    private void initColorAttachmentsInfo(VulkanSwapChain swapChain) {
@@ -57,13 +66,21 @@ public class SceneRenderer {
       }
    }
 
+   private static void createPipeline() {
+      // TODO: finish this
+   }
+
+   private static void createShaderModules() {
+      // TODO: finish this
+   }
+
    public void cleanup() {
       renderingInfos.forEach(VkRenderingInfo::free);
       colorAttachmentInfo.forEach(VkRenderingAttachmentInfo.Buffer::free);
       clearValue.free();
    }
 
-   public void render(VulkanSwapChain swapChain, CommandBuffer commandBuffer, int imageIndex) {
+   public void render(VulkanSwapChain swapChain, CommandBuffer commandBuffer, ModelCache modelCache, int imageIndex) {
       try(var stack = MemoryStack.stackPush()) {
          long swapChainImage = swapChain.getImageView(imageIndex).getImageId();
          var commandHandle = commandBuffer.getCommandBuffer();
@@ -73,6 +90,10 @@ public class SceneRenderer {
                  VK13.VK_ACCESS_2_NONE, VK13.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                  VK13.VK_IMAGE_ASPECT_COLOR_BIT);
          VK13.vkCmdBeginRendering(commandHandle, renderingInfos.get(imageIndex));
+         // TODO: bind pipeline
+         StructureUtils.setupViewportAndScissor(stack, swapChain.getSwapChainExtent().width(), swapChain.getSwapChainExtent().height(), commandHandle);
+         modelCache.getModelMap().values().forEach(model -> model.bindMeshes(stack, commandHandle));
+
          VK13.vkCmdEndRendering(commandHandle);
          StructureUtils.imageBarrier(stack, commandHandle, swapChainImage,
                  VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,

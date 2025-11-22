@@ -21,6 +21,7 @@
 		<args4j.version>2.37</args4j.version>
 		<commonsexec.version>1.5.0</commonsexec.version>
 		<commonscollections.version>4.5.0-M3</commonscollections.version>
+        <commonsio.version>2.21.0</commonsio.version>
 	</properties>
 
 	<profiles>
@@ -212,6 +213,11 @@
 			<artifactId>commons-collections4</artifactId>
 			<version>${commonscollections.version}</version>
 		</dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commonsio.version}</version>
+        </dependency>
 	</dependencies>
 
 	<build>

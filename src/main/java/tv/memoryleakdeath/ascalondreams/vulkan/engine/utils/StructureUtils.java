@@ -12,12 +12,26 @@ import org.lwjgl.vulkan.VkDependencyInfo;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkDeviceCreateInfo;
 import org.lwjgl.vulkan.VkDeviceQueueCreateInfo;
+import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier2;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures2;
 import org.lwjgl.vulkan.VkPhysicalDeviceVulkan13Features;
+import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
+import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineRenderingCreateInfo;
+import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
+import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
+import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkViewport;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.SecondaryCommandBufferInheritanceInfo;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.PipelineCache;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -113,5 +127,75 @@ public final class StructureUtils {
               .sType$Default()
               .pImageMemoryBarriers(imageBarrier);
       VK13.vkCmdPipelineBarrier2(commandHandle, dependencyInfo);
+   }
+
+   public static void setupViewportAndScissor(MemoryStack stack, int width, int height, VkCommandBuffer cmd) {
+      var viewport = VkViewport.calloc(1, stack)
+              .x(0)
+              .y(height)
+              .height(-height)
+              .width(width)
+              .minDepth(0f)
+              .maxDepth(1f);
+      VK13.vkCmdSetViewport(cmd, 0, viewport);
+      var scissor = VkRect2D.calloc(1, stack)
+              .extent(ex -> ex.width(width).height(height))
+              .offset(off -> off.x(0).y(0));
+      VK13.vkCmdSetScissor(cmd, 0, scissor);
+   }
+
+   public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int colorFormat, VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo, long pipelineLayoutId, PipelineCache pipelineCache) {
+      var assemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
+              .sType$Default()
+              .topology(VK13.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+      var viewportStateInfo = VkPipelineViewportStateCreateInfo.calloc(stack)
+              .sType$Default()
+              .viewportCount(1)
+              .scissorCount(1);
+      var rasterizationStateInfo = VkPipelineRasterizationStateCreateInfo.calloc(stack)
+              .sType$Default()
+              .polygonMode(VK13.VK_POLYGON_MODE_FILL)
+              .cullMode(VK13.VK_CULL_MODE_NONE)
+              .frontFace(VK13.VK_FRONT_FACE_CLOCKWISE)
+              .lineWidth(1f);
+      var mutisampleStateInfo = VkPipelineMultisampleStateCreateInfo.calloc(stack)
+              .sType$Default()
+              .rasterizationSamples(VK13.VK_SAMPLE_COUNT_1_BIT);
+      var dynamicStateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack)
+              .sType$Default()
+              .pDynamicStates(stack.ints(VK13.VK_DYNAMIC_STATE_VIEWPORT, VK13.VK_DYNAMIC_STATE_SCISSOR));
+      var colorBlendStateInfo = createColorBlendStateInfo(stack);
+
+      IntBuffer colorFormats = stack.mallocInt(1);
+      colorFormats.put(0, colorFormat);
+      var renderingInfo = VkPipelineRenderingCreateInfo.calloc(stack)
+              .sType$Default()
+              .colorAttachmentCount(1)
+              .pColorAttachmentFormats(colorFormats);
+      var info = VkGraphicsPipelineCreateInfo.calloc(1, stack)
+              .sType$Default()
+              .renderPass(VK13.VK_NULL_HANDLE)
+              .pStages(stageInfo)
+              .pVertexInputState(vertexInfo)
+              .pInputAssemblyState(assemblyStateInfo)
+              .pViewportState(viewportStateInfo)
+              .pRasterizationState(rasterizationStateInfo)
+              .pColorBlendState(colorBlendStateInfo)
+              .pMultisampleState(mutisampleStateInfo)
+              .pDynamicState(dynamicStateInfo)
+              .layout(pipelineLayoutId)
+              .pNext(renderingInfo);
+      LongBuffer buf = stack.mallocLong(1);
+      VulkanUtils.failIfNeeded(VK13.vkCreateGraphicsPipelines(device.getDevice(), pipelineCache.getId(), info, null, buf), "Failed to create graphics pipeline!");
+      return buf.get(0);
+   }
+
+   public static VkPipelineColorBlendStateCreateInfo createColorBlendStateInfo(MemoryStack stack) {
+      var blendAttachState = VkPipelineColorBlendAttachmentState.calloc(1, stack)
+              .colorWriteMask(VK13.VK_COLOR_COMPONENT_R_BIT | VK13.VK_COLOR_COMPONENT_G_BIT | VK13.VK_COLOR_COMPONENT_B_BIT | VK13.VK_COLOR_COMPONENT_A_BIT)
+              .blendEnable(false);
+      return VkPipelineColorBlendStateCreateInfo.calloc(stack)
+              .sType$Default()
+              .pAttachments(blendAttachState);
    }
 }
