@@ -1,5 +1,6 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.model;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK13;
@@ -38,23 +39,32 @@ public class VulkanModel {
       return transferBuffers;
    }
 
-   public void addMesh(LogicalDevice device, String id, float[] verticies, int[] indicies) {
-      TransferBuffer vertexBuffers = createVertexBuffers(device, verticies);
+   public void addMesh(LogicalDevice device, String id, float[] verticies, float[] textureCoords, int[] indicies) {
+      TransferBuffer vertexBuffers = createVertexBuffers(device, verticies, textureCoords);
       TransferBuffer indexBuffers = createIndexBuffers(device, indicies);
       transferBuffers.add(vertexBuffers);
       transferBuffers.add(indexBuffers);
       meshList.add(new VulkanMesh(id, vertexBuffers.destinationBuffer(), indexBuffers.destinationBuffer(), indicies.length));
    }
 
-   private TransferBuffer createVertexBuffers(LogicalDevice device, float[] verticies) {
-      int numElements = verticies.length;
+   private TransferBuffer createVertexBuffers(LogicalDevice device, float[] verticies, float[] textureCoords) {
+      if(textureCoords == null || textureCoords.length == 0) {
+         textureCoords = new float[(verticies.length / 3) * 2];
+      }
+      int numElements = verticies.length + textureCoords.length;
       int bufferSize = numElements * VulkanConstants.FLOAT_SIZE;
 
       var sourceBuffer = new VulkanBuffer(device, bufferSize, VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
       var destinationBuffer = new VulkanBuffer(device, bufferSize, VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK13.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
       long mappedMemory = sourceBuffer.map(device);
       FloatBuffer data = MemoryUtil.memFloatBuffer(mappedMemory, (int)sourceBuffer.getRequestedSize());
-      data.put(verticies);
+      int rows = verticies.length / 3;
+      for(int row = 0; row < rows; row++) {
+         int vertexIndex = row * 3;
+         int textureIndex = row * 2;
+         data.put(ArrayUtils.subarray(verticies, vertexIndex, vertexIndex + 3));  // end index is exclusive thus + 3 instead of + 2
+         data.put(ArrayUtils.subarray(textureCoords, textureIndex, textureIndex + 2)); // ditto (+2 instead of +1)
+      }
       sourceBuffer.unMap(device);
       return new TransferBuffer(sourceBuffer, destinationBuffer);
    }
