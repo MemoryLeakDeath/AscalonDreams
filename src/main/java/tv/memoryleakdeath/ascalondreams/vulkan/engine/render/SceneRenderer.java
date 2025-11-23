@@ -1,6 +1,7 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.render;
 
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.util.shaderc.Shaderc;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.KHRSynchronization2;
 import org.lwjgl.vulkan.VK13;
@@ -11,7 +12,12 @@ import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VertexBufferStructure;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PipelineBuildInfo;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderCompiler;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModule;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 import java.util.ArrayList;
@@ -22,13 +28,15 @@ public class SceneRenderer {
    private VkClearValue clearValue;
    private List<VkRenderingAttachmentInfo.Buffer> colorAttachmentInfo = new ArrayList<>();
    private List<VkRenderingInfo> renderingInfos = new ArrayList<>();
+   private final Pipeline pipeline;
 
-   private static final String FRAGMENT_SHADER_FILE_GLSL = "resources/shaders/fragment_shader.glsl";
+   private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/fragment_shader.glsl";
    private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
-   private static final String VERTEX_SHADER_FILE_GLSL = "resources/shaders/vertex_shader.glsl";
+   private static final String VERTEX_SHADER_FILE_GLSL = "shaders/vertex_shader.glsl";
    private static final String VERTEX_SHADER_FILE_SPV = VERTEX_SHADER_FILE_GLSL + ".spv";
+   private static final boolean DEBUG_SHADERS = true;
 
-   public SceneRenderer(VulkanSwapChain swapChain) {
+   public SceneRenderer(VulkanSwapChain swapChain, VulkanSurface surface, PipelineCache cache, LogicalDevice device) {
       this.clearValue = VkClearValue.calloc().color(
               c -> c.float32(0, 0f)
                       .float32(1, 0f)
@@ -36,9 +44,9 @@ public class SceneRenderer {
                       .float32(3, 1f));
       initColorAttachmentsInfo(swapChain);
       initRenderInfos(swapChain);
-      //TODO: shader modules create
-      //TODO: pipeline create
-      //TODO: shader modules cleanup
+      List<ShaderModule> shaderModules = createShaderModules(device);
+      this.pipeline = createPipeline(device, shaderModules, surface, cache);
+      shaderModules.forEach(s -> s.cleanup(device));
    }
 
    private void initColorAttachmentsInfo(VulkanSwapChain swapChain) {
@@ -66,12 +74,19 @@ public class SceneRenderer {
       }
    }
 
-   private static void createPipeline() {
-      // TODO: finish this
+   private static Pipeline createPipeline(LogicalDevice device, List<ShaderModule> shaderModules, VulkanSurface surface, PipelineCache cache) {
+      var vertexBufferStructure = new VertexBufferStructure();
+      var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(), surface.getSurfaceFormat().imageFormat());
+      var pipeline = new Pipeline(device, cache, info);
+      vertexBufferStructure.cleanup();
+      return pipeline;
    }
 
-   private static void createShaderModules() {
-      // TODO: finish this
+   private static List<ShaderModule> createShaderModules(LogicalDevice device) {
+      ShaderCompiler.compileShaderIfChanged(VERTEX_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_vertex_shader, DEBUG_SHADERS);
+      ShaderCompiler.compileShaderIfChanged(FRAGMENT_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_fragment_shader, DEBUG_SHADERS);
+      return List.of(new ShaderModule(device, VK13.VK_SHADER_STAGE_VERTEX_BIT, VERTEX_SHADER_FILE_SPV),
+              new ShaderModule(device, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV));
    }
 
    public void cleanup() {
@@ -90,7 +105,7 @@ public class SceneRenderer {
                  VK13.VK_ACCESS_2_NONE, VK13.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                  VK13.VK_IMAGE_ASPECT_COLOR_BIT);
          VK13.vkCmdBeginRendering(commandHandle, renderingInfos.get(imageIndex));
-         // TODO: bind pipeline
+         VK13.vkCmdBindPipeline(commandHandle, VK13.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getId());
          StructureUtils.setupViewportAndScissor(stack, swapChain.getSwapChainExtent().width(), swapChain.getSwapChainExtent().height(), commandHandle);
          modelCache.getModelMap().values().forEach(model -> model.bindMeshes(stack, commandHandle));
 

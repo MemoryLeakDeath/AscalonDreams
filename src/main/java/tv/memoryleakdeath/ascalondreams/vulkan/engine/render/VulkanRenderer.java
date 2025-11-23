@@ -41,6 +41,7 @@ public class VulkanRenderer {
    private final VulkanPresentationQueue presentationQueue;
    private final List<Semaphore> renderingCompleteSemaphores = new ArrayList<>();
    private final SceneRenderer sceneRenderer;
+   private final PipelineCache pipelineCache;
    private int currentFrame = 0;
 
 
@@ -51,6 +52,7 @@ public class VulkanRenderer {
       this.device = new LogicalDevice(PhysicalDevice.getInstance(instance.getVkInstance()));
       this.surface = new VulkanSurface(device.getPhysicalDevice(), window.getHandle());
       this.swapChain = new VulkanSwapChain(device, surface, window, BUFFERING_SETUP, VSYNC);
+      this.pipelineCache = new PipelineCache(device);
 
       this.graphicsQueue = new VulkanGraphicsQueue(device, 0);
       this.presentationQueue = new VulkanPresentationQueue(device, surface, 0);
@@ -67,7 +69,7 @@ public class VulkanRenderer {
          renderingCompleteSemaphores.add(new Semaphore(device));
       }
 
-      this.sceneRenderer = new SceneRenderer(swapChain);
+      this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device);
       this.modelCache = new ModelCache();
    }
 
@@ -118,8 +120,7 @@ public class VulkanRenderer {
       if(imageIndex < 0) {
          return;
       }
-      // TODO: add modelsCache to parameters
-      sceneRenderer.render(swapChain, commandBuffer, imageIndex);
+      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex);
 
       stopRecording(commandBuffer);
       submit(commandBuffer, imageIndex);
@@ -150,5 +151,9 @@ public class VulkanRenderer {
    private void waitForFence() {
       var fence = fences.get(currentFrame);
       fence.fenceWait(device);
+   }
+
+   public LogicalDevice getDevice() {
+      return device;
    }
 }

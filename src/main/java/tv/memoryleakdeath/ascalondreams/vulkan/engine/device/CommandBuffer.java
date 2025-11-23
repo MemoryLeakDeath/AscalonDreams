@@ -68,6 +68,8 @@ public class CommandBuffer {
                  .commandBuffer(commandBuffer);
          queue.submit(commands, null, null, fence);
       }
+      fence.fenceWait(device);
+      fence.cleanup(device);
    }
 
    public VkCommandBuffer getCommandBuffer() {

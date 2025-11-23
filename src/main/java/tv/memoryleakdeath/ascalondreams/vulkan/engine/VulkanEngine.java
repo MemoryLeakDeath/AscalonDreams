@@ -5,7 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
+
+import java.util.List;
 
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
@@ -26,11 +29,18 @@ public class VulkanEngine {
     public void init() {
         window = new VulkanWindow(600, 600);
         renderer = new VulkanRenderer(window);
+        renderer.initModels(loadModel());
     }
 
-    private void loadModel() {
+    private List<VulkanModel> loadModel() {
        String modelId = "Triangle";
-       // todo: meshData and modelData
+       VulkanModel model = new VulkanModel(modelId);
+       model.addMesh(renderer.getDevice(), "triangle-mesh", new float[] {
+               -0.5f, -0.5f, 0f,
+               0f, 0.5f, 0f,
+               0.5f, -0.5f, 0f},
+               new int[] { 0, 1, 2});
+       return List.of(model);
     }
 
     public void mainLoop() {

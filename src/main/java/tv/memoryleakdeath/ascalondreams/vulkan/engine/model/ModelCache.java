@@ -5,10 +5,11 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandPool;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class ModelCache {
    private Map<String, VulkanModel> modelMap = new HashMap<>();
@@ -27,7 +28,7 @@ public class ModelCache {
    }
 
    public void loadModels(LogicalDevice device, List<VulkanModel> modelList, CommandPool pool, BaseDeviceQueue queue) {
-      List<VulkanBuffer> stagingBuffers = new ArrayList<>();
+      modelMap = modelList.stream().collect(Collectors.toMap(VulkanModel::getId, Function.identity()));
       var command = new CommandBuffer(device, pool, true, true);
       List<TransferBuffer> transferBuffers = modelList.stream().flatMap(model -> model.getTransferBuffers().stream()).toList();
       command.beginRecording();
