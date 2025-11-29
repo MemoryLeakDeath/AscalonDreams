@@ -8,7 +8,8 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModule;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public record PipelineBuildInfo(List<ShaderModule> shaderModules, VkPipelineVertexInputStateCreateInfo info, int colorFormat) {
+public record PipelineBuildInfo(List<ShaderModule> shaderModules, VkPipelineVertexInputStateCreateInfo info, int colorFormat,
+                                int depthFormat, List<PushConstantRange> pushConstantRanges) {
    public VkPipelineShaderStageCreateInfo.Buffer createShaderStages(MemoryStack stack) {
       int numModules = shaderModules.size();
       ByteBuffer main = stack.UTF8("main");

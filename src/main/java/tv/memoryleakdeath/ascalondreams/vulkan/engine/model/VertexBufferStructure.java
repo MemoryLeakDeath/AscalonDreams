@@ -10,7 +10,8 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 public class VertexBufferStructure {
    private static final Logger logger = LoggerFactory.getLogger(VertexBufferStructure.class);
-   private static final int NUM_ATTRIBUTES = 1;
+   private static final int TEXTURE_COORD_COMPONENTS = 2;
+   private static final int NUM_ATTRIBUTES = 2;
    private static final int POSITION_COMPONENTS = 3;
 
    private final VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo;
@@ -22,15 +23,23 @@ public class VertexBufferStructure {
       this.vertexInputBindings = VkVertexInputBindingDescription.calloc(1);
       this.vertexInputStateCreateInfo = VkPipelineVertexInputStateCreateInfo.calloc();
 
+      // position
       vertexInputAttributes.get(0)
               .binding(0)
               .location(0)
               .format(VK13.VK_FORMAT_R32G32B32_SFLOAT)
               .offset(0);
+      // texture coords
+      vertexInputAttributes.get(1)
+              .binding(0)
+              .location(1)
+              .format(VK13.VK_FORMAT_R32G32_SFLOAT)
+              .offset(POSITION_COMPONENTS * VulkanConstants.FLOAT_SIZE);
 
+      int stride = (POSITION_COMPONENTS * VulkanConstants.FLOAT_SIZE) + TEXTURE_COORD_COMPONENTS * VulkanConstants.FLOAT_SIZE;
       vertexInputBindings.get(0)
               .binding(0)
-              .stride(POSITION_COMPONENTS * VulkanConstants.FLOAT_SIZE)
+              .stride(stride)
               .inputRate(VK13.VK_VERTEX_INPUT_RATE_VERTEX);
 
       vertexInputStateCreateInfo
@@ -42,6 +51,7 @@ public class VertexBufferStructure {
    public void cleanup() {
       vertexInputBindings.free();
       vertexInputAttributes.free();
+      vertexInputStateCreateInfo.free();
    }
 
    public VkPipelineVertexInputStateCreateInfo getVertexInputStateCreateInfo() {

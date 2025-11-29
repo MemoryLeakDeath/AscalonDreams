@@ -3,6 +3,7 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.render;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkCommandBufferSubmitInfo;
+import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkSemaphoreSubmitInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanGraphicsQueue
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +31,8 @@ public class VulkanRenderer {
    private static final int MAX_IN_FLIGHT = 2;
    private VulkanWindow window;
    private final LogicalDevice device;
-   private final VulkanSurface surface;
-   private final VulkanSwapChain swapChain;
+   private VulkanSurface surface;
+   private VulkanSwapChain swapChain;
 
    private final List<CommandBuffer> commandBuffers = new ArrayList<>();
    private final List<CommandPool> commandPools = new ArrayList<>();
@@ -43,6 +45,7 @@ public class VulkanRenderer {
    private final SceneRenderer sceneRenderer;
    private final PipelineCache pipelineCache;
    private int currentFrame = 0;
+   private boolean resize = false;
 
 
 
@@ -76,7 +79,7 @@ public class VulkanRenderer {
    public void cleanup() {
       device.waitIdle();
 
-      sceneRenderer.cleanup();
+      sceneRenderer.cleanup(device);
       modelCache.cleanup(device);
 
       renderingCompleteSemaphores.forEach(s -> s.cleanup(device));
@@ -109,24 +112,57 @@ public class VulkanRenderer {
       buf.endRecording();
    }
 
-   public void render() {
+   public void render(VulkanScene scene) {
       waitForFence();
       var commandPool = commandPools.get(currentFrame);
       var commandBuffer = commandBuffers.get(currentFrame);
 
       startRecording(commandPool, commandBuffer);
 
-      int imageIndex = swapChain.acquireNextImage(device, presentationCompleteSemaphores.get(currentFrame));
-      if(imageIndex < 0) {
+      int imageIndex;
+      if(resize || (imageIndex = swapChain.acquireNextImage(device, presentationCompleteSemaphores.get(currentFrame))) < 0) {
+         resize(window.getWidth(), window.getHeight(), scene);
          return;
       }
-      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex);
+      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene);
 
       stopRecording(commandBuffer);
       submit(commandBuffer, imageIndex);
-      swapChain.presentImage(presentationQueue, renderingCompleteSemaphores.get(imageIndex), imageIndex);
+      resize = swapChain.presentImage(presentationQueue, renderingCompleteSemaphores.get(imageIndex), imageIndex);
 
       currentFrame = (currentFrame + 1) % MAX_IN_FLIGHT;
+   }
+
+   private void resize(int width, int height, VulkanScene scene) {
+      if(width == 0 && height == 0) {
+         return;
+      }
+      resize = false;
+      device.waitIdle();
+      doResizeCleanup(scene);
+   }
+
+   private void doResizeCleanup(VulkanScene scene) {
+      swapChain.cleanup();
+      surface.cleanup();
+      surface = new VulkanSurface(device.getPhysicalDevice(), window.getHandle());
+      swapChain = new VulkanSwapChain(device, surface, window, BUFFERING_SETUP, VSYNC);
+
+      renderingCompleteSemaphores.forEach(s -> s.cleanup(device));
+      presentationCompleteSemaphores.forEach(s -> s.cleanup(device));
+      renderingCompleteSemaphores.clear();
+      presentationCompleteSemaphores.clear();
+
+      for(int i = 0; i < MAX_IN_FLIGHT; i++) {
+         presentationCompleteSemaphores.add(new Semaphore(device));
+      }
+      for(int i = 0; i < swapChain.getNumImages(); i++) {
+         renderingCompleteSemaphores.add(new Semaphore(device));
+      }
+
+      VkExtent2D extent = swapChain.getSwapChainExtent();
+      scene.getProjection().resize(extent.width(), extent.height());
+      sceneRenderer.resize(device, swapChain);
    }
 
    private void submit(CommandBuffer buf, int imageIndex) {

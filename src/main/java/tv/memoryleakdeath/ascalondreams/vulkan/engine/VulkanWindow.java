@@ -11,6 +11,9 @@ import org.slf4j.LoggerFactory;
 public class VulkanWindow {
     private static final Logger logger = LoggerFactory.getLogger(VulkanWindow.class);
     private static final String WINDOW_TITLE = "Ascalon Dreams";
+    private static final float FOV = 60.0f;
+    private static final float ZNEAR = 1.0f;
+    private static final float ZFAR = 50.0f;
 
     private int width;
     private int height;
@@ -42,6 +45,14 @@ public class VulkanWindow {
         GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
         GLFW.glfwWindowHint(GLFW.GLFW_MAXIMIZED, GLFW.GLFW_FALSE);
 
+       // get resolution of primary monitor
+       GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
+       if(vidMode == null) {
+          throw new RuntimeException("Error getting primary monitor");
+       }
+       width = vidMode.width();
+       height = vidMode.height();
+
         // create window
         handle = GLFW.glfwCreateWindow(width, height, WINDOW_TITLE, MemoryUtil.NULL, MemoryUtil.NULL);
         if (handle == MemoryUtil.NULL) {
@@ -49,11 +60,12 @@ public class VulkanWindow {
             throw new RuntimeException("Unable to create game window!");
         }
 
-        // get resolution of primary monitor
-        GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
-
         // center window
-        GLFW.glfwSetWindowPos(handle, (vidMode.width() - width) / 2, (vidMode.height() - height) / 2);
+        //GLFW.glfwSetWindowPos(handle, (vidMode.width() - width) / 2, (vidMode.height() - height) / 2);
+       GLFW.glfwSetFramebufferSizeCallback(handle, ((window, w, h) -> {
+          width = w;
+          height = h;
+       }));
 
         // make window visible
         GLFW.glfwShowWindow(handle);
@@ -94,5 +106,17 @@ public class VulkanWindow {
 
     public long getHandle() {
         return handle;
+    }
+
+    public float getFov() {
+       return FOV;
+    }
+
+    public float getZNear() {
+       return ZNEAR;
+    }
+
+    public float getZFar() {
+       return ZFAR;
     }
 }

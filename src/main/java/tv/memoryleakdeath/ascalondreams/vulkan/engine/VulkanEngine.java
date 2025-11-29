@@ -8,6 +8,8 @@ import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
 import java.util.List;
 
@@ -21,7 +23,6 @@ public class VulkanEngine {
     private static final float MOVEMENT_INCREMENT = 0.02f;
     private final Vector3f rotationAngle = new Vector3f(1,1,1);
     private float angle = 0;
-    // TODO: cube entity
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
@@ -29,9 +30,12 @@ public class VulkanEngine {
     private long lastLogicUpdateTimer;
     private long lastFrameUpdateTimer;
     private KeyboardCallback kb;
+    private VulkanScene scene;
+    private Entity cubeEntity;
 
     public void init() {
         window = new VulkanWindow(600, 600);
+        this.scene = new VulkanScene(window);
         renderer = new VulkanRenderer(window);
         renderer.initModels(loadModel());
     }
@@ -74,8 +78,8 @@ public class VulkanEngine {
        String modelId = "Cube";
        VulkanModel model = new VulkanModel(modelId);
        model.addMesh(renderer.getDevice(), "cube-mesh", verticies, textureCoords, indicies);
-       // todo: create entity
-       // todo: scene addEntity?
+       cubeEntity = new Entity("CubeEntity", modelId, new Vector3f(0f, 0f, -2f));
+       scene.addEntity(cubeEntity);
        return List.of(model);
     }
 
@@ -121,7 +125,7 @@ public class VulkanEngine {
     }
 
     private void render() {
-        renderer.render();
+        renderer.render(scene);
     }
 
     private void gameLogic() {
@@ -129,7 +133,8 @@ public class VulkanEngine {
        if(angle >= 360) {
           angle = angle - 360;
        }
-       // todo: entity update model matrix
+       cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(angle), rotationAngle);
+       cubeEntity.updateModelMatrix();
     }
 
     private void cleanup() {
