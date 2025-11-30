@@ -19,6 +19,7 @@
 		<logback.version>1.5.18</logback.version>
 		<commonslang.version>3.17.0</commonslang.version>
 		<args4j.version>2.37</args4j.version>
+        <jackson.version>3.0.0</jackson.version>
 		<commonsexec.version>1.5.0</commonsexec.version>
 		<commonscollections.version>4.5.0-M3</commonscollections.version>
         <commonsio.version>2.21.0</commonsio.version>
@@ -203,6 +204,11 @@
 			<artifactId>args4j</artifactId>
 			<version>${args4j.version}</version>
 		</dependency>
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-exec</artifactId>

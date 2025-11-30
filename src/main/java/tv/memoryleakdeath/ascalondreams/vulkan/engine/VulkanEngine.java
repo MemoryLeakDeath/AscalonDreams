@@ -26,7 +26,6 @@ public class VulkanEngine {
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
-    private Model model;
     private long lastLogicUpdateTimer;
     private long lastFrameUpdateTimer;
     private KeyboardCallback kb;
@@ -41,43 +40,7 @@ public class VulkanEngine {
     }
 
     private List<VulkanModel> loadModel() {
-       float[] verticies = new float[] {
-               -0.5f, 0.5f, 0.5f,
-               -0.5f, -0.5f, 0.5f,
-               0.5f, -0.5f, 0.5f,
-               0.5f, 0.5f, 0.5f,
-               -0.5f, 0.5f, -0.5f,
-               0.5f, 0.5f, -0.5f,
-               -0.5f, -0.5f, -0.5f,
-               0.5f, -0.5f, -0.5f
-       };
-       float[] textureCoords = new float[] {
-               0f, 0f,
-               0.5f, 0f,
-               1f, 0f,
-               1f, 0.5f,
-               1f, 1f,
-               0.5f, 1f,
-               0f, 1f,
-               0f, 0.5f
-       };
-       int[] indicies = new int[] {
-               // front
-               0, 1, 3, 3, 1, 2,
-               // top
-               4, 0, 3, 5, 4, 3,
-               // right
-               3, 2, 7, 5, 3, 7,
-               // left
-               6, 1, 0, 6, 0, 4,
-               // bottom
-               2, 1, 6, 2, 6, 7,
-               // back
-               7, 6, 4, 7, 4, 5
-       };
-       String modelId = "Cube";
-       VulkanModel model = new VulkanModel(modelId);
-       model.addMesh(renderer.getDevice(), "cube-mesh", verticies, textureCoords, indicies);
+       // todo: load model (model loader)
        cubeEntity = new Entity("CubeEntity", modelId, new Vector3f(0f, 0f, -2f));
        scene.addEntity(cubeEntity);
        return List.of(model);
