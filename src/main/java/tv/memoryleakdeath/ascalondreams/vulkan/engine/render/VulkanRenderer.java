@@ -16,7 +16,10 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Semaphore;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanGraphicsQueue;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMaterial;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
@@ -40,6 +43,8 @@ public class VulkanRenderer {
    private final VulkanGraphicsQueue graphicsQueue;
    private final List<Semaphore> presentationCompleteSemaphores = new ArrayList<>();
    private final ModelCache modelCache;
+   private final MaterialCache materialCache;
+   private final TextureCache textureCache;
    private final VulkanPresentationQueue presentationQueue;
    private final List<Semaphore> renderingCompleteSemaphores = new ArrayList<>();
    private final SceneRenderer sceneRenderer;
@@ -74,6 +79,8 @@ public class VulkanRenderer {
 
       this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device);
       this.modelCache = new ModelCache();
+      this.textureCache = new TextureCache();
+      this.materialCache = new MaterialCache();
    }
 
    public void cleanup() {
@@ -81,6 +88,8 @@ public class VulkanRenderer {
 
       sceneRenderer.cleanup(device);
       modelCache.cleanup(device);
+      textureCache.cleanup(device);
+      materialCache.cleanup(device);
 
       renderingCompleteSemaphores.forEach(s -> s.cleanup(device));
       presentationCompleteSemaphores.forEach(s -> s.cleanup(device));
@@ -101,6 +110,17 @@ public class VulkanRenderer {
       logger.debug("Loading {} models", modelList.size());
       modelCache.loadModels(device, modelList, commandPools.getFirst(), graphicsQueue);
       logger.debug("Models loaded!");
+   }
+
+   public void initMaterials(List<VulkanMaterial> materials) {
+      logger.debug("Loading {} materials", materials.size());
+      materialCache.loadMaterials(device, materials, textureCache, commandPools.getFirst(), graphicsQueue);
+      logger.debug("Materials loaded!");
+      // todo: scene renderer load materials call
+   }
+
+   public void initTextures() {
+      // TODO: finish this
    }
 
    private void startRecording(CommandPool pool, CommandBuffer buf) {
