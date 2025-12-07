@@ -4,6 +4,7 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkDevice;
+import org.lwjgl.vulkan.VkDeviceCreateInfo;
 import org.lwjgl.vulkan.VkExtensionProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ public class LogicalDevice {
    private static final Logger logger = LoggerFactory.getLogger(LogicalDevice.class);
    private VkDevice device;
    private PhysicalDevice physicalDevice;
+   private boolean samplerAnisotropy;
 
    public LogicalDevice(PhysicalDevice physicalDevice) {
       this.physicalDevice = physicalDevice;
@@ -25,11 +27,12 @@ public class LogicalDevice {
 
          // required extensions
          PointerBuffer requiredExtensions = createRequiredDeviceExtensions(stack);
-         var deviceCreateInfo = StructureUtils.createDeviceInfo(stack, requiredExtensions, physicalDevice);
+         Object[] deviceCreateInfo = StructureUtils.createDeviceInfo(stack, requiredExtensions, physicalDevice);
+         this.samplerAnisotropy = (boolean) deviceCreateInfo[1];
 
          PointerBuffer logicalDevicePointer = stack.mallocPointer(1);
-         VulkanUtils.failIfNeeded(VK13.vkCreateDevice(physicalDevice.getPhysicalDevice(), deviceCreateInfo, null, logicalDevicePointer), "Failed to create logical device!");
-         this.device = new VkDevice(logicalDevicePointer.get(0), physicalDevice.getPhysicalDevice(), deviceCreateInfo);
+         VulkanUtils.failIfNeeded(VK13.vkCreateDevice(physicalDevice.getPhysicalDevice(), (VkDeviceCreateInfo) deviceCreateInfo[0], null, logicalDevicePointer), "Failed to create logical device!");
+         this.device = new VkDevice(logicalDevicePointer.get(0), physicalDevice.getPhysicalDevice(), (VkDeviceCreateInfo) deviceCreateInfo[0]);
       }
    }
 
@@ -69,5 +72,9 @@ public class LogicalDevice {
       VK13.vkEnumerateDeviceExtensionProperties(physicalDevice.getPhysicalDevice(), (String) null, numExtensionsBuf, extensionProperties);
       return extensionProperties.stream()
               .map(VkExtensionProperties::extensionNameString).collect(Collectors.toUnmodifiableSet());
+   }
+
+   public boolean isSamplerAnisotropy() {
+      return samplerAnisotropy;
    }
 }

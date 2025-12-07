@@ -14,6 +14,7 @@ import org.lwjgl.vulkan.VkDeviceCreateInfo;
 import org.lwjgl.vulkan.VkDeviceQueueCreateInfo;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier2;
+import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures2;
 import org.lwjgl.vulkan.VkPhysicalDeviceVulkan13Features;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
@@ -41,7 +42,7 @@ import java.nio.LongBuffer;
 public final class StructureUtils {
    private StructureUtils() {}
 
-   public static VkDeviceCreateInfo createDeviceInfo(MemoryStack stack, PointerBuffer requiredExtensions, PhysicalDevice physicalDevice) {
+   public static Object[] createDeviceInfo(MemoryStack stack, PointerBuffer requiredExtensions, PhysicalDevice physicalDevice) {
       // enable all queue families
       var queuePropertiesBuffer = physicalDevice.getQueueFamilyProperties();
       int numFamilies = queuePropertiesBuffer.capacity();
@@ -60,13 +61,22 @@ public final class StructureUtils {
               .dynamicRendering(true)
               .synchronization2(true);
       var vulkanFeatures2 = VkPhysicalDeviceFeatures2.calloc(stack).sType$Default();
+
+      var features = vulkanFeatures2.features();
+      VkPhysicalDeviceFeatures supportedFeatures = physicalDevice.getDeviceFeatures();
+      boolean samplerAnisotrophy = supportedFeatures.samplerAnisotropy();
+      if(samplerAnisotrophy) {
+         features.samplerAnisotropy(true);
+      }
+
       vulkanFeatures2.pNext(vulkan13Features.address());
 
-      return VkDeviceCreateInfo.calloc(stack)
+      VkDeviceCreateInfo info = VkDeviceCreateInfo.calloc(stack)
               .sType$Default()
               .pNext(vulkanFeatures2.address())
               .ppEnabledExtensionNames(requiredExtensions)
               .pQueueCreateInfos(queueCreationInfoBuf);
+      return new Object[] {info, samplerAnisotrophy};
    }
 
    public static long createCommandBufferAllocateInfo(MemoryStack stack, VkDevice logicalDevice, long commandPoolId, boolean primary) {
