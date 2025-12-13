@@ -75,7 +75,7 @@ public class VulkanSwapChain {
       viewData.setAspectMask(VK13.VK_IMAGE_ASPECT_COLOR_BIT);
       List<VulkanImageView> images = new ArrayList<>();
       for (int i = 0; i < numImages; i++) {
-         images.add(new VulkanImageView(device, swapChainImages.get(i), viewData));
+         images.add(new VulkanImageView(device, swapChainImages.get(i), viewData, false));
       }
       this.imageViews = Collections.unmodifiableList(images);
    }

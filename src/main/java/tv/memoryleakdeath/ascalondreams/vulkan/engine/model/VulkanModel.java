@@ -39,12 +39,12 @@ public class VulkanModel {
       return transferBuffers;
    }
 
-   public void addMesh(LogicalDevice device, String id, float[] verticies, float[] textureCoords, int[] indicies) {
-      TransferBuffer vertexBuffers = createVertexBuffers(device, verticies, textureCoords);
-      TransferBuffer indexBuffers = createIndexBuffers(device, indicies);
+   public void addMesh(LogicalDevice device, String id, VulkanMeshData meshData) {
+      TransferBuffer vertexBuffers = createVertexBuffers(device, meshData.getVerticies(), meshData.getTextureCoords());
+      TransferBuffer indexBuffers = createIndexBuffers(device, meshData.getIndicies());
       transferBuffers.add(vertexBuffers);
       transferBuffers.add(indexBuffers);
-      meshList.add(new VulkanMesh(id, vertexBuffers.destinationBuffer(), indexBuffers.destinationBuffer(), indicies.length));
+      meshList.add(new VulkanMesh(id, vertexBuffers.destinationBuffer(), indexBuffers.destinationBuffer(), meshData.getIndicies().length, meshData.getMaterialId()));
    }
 
    private TransferBuffer createVertexBuffers(LogicalDevice device, float[] verticies, float[] textureCoords) {

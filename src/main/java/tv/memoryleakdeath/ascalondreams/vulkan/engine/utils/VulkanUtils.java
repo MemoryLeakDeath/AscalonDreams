@@ -1,7 +1,9 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.utils;
 
+import org.joml.Matrix4f;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkMemoryType;
@@ -9,9 +11,14 @@ import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSet;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
 
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +27,20 @@ public final class VulkanUtils {
    private static final Logger logger = LoggerFactory.getLogger(VulkanUtils.class);
 
    private VulkanUtils() {
+   }
+
+   public static void copyMatrixToBuffer(LogicalDevice device, VulkanBuffer buffer, Matrix4f matrix, int offset) {
+      long mappedMemory = buffer.map(device);
+      ByteBuffer matrixBuf = MemoryUtil.memByteBuffer(mappedMemory, (int)buffer.getRequestedSize());
+      matrix.get(offset, matrixBuf);
+      buffer.unMap(device);
+   }
+
+   public static VulkanBuffer createHostVisibleBuffer(LogicalDevice device, DescriptorAllocator allocator, long size, int usage, String id, DescriptorSetLayout layout) {
+      var buf = new VulkanBuffer(device, size, usage, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+      DescriptorSet set = allocator.addDescriptorSet(device, id, layout);
+      set.setBuffer(device, buf, buf.getRequestedSize(), layout.getLayoutInfo().binding(), layout.getLayoutInfo().descriptorType());
+      return buf;
    }
 
    public static void failIfNeeded(int resultCode, String errorMsg) {

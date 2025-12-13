@@ -6,6 +6,7 @@ import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPushConstantRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PushConstantRange;
@@ -13,6 +14,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 import java.nio.LongBuffer;
+import java.util.List;
 
 public class Pipeline {
    private static final Logger logger = LoggerFactory.getLogger(Pipeline.class);
@@ -38,8 +40,14 @@ public class Pipeline {
             }
          }
 
+         List<DescriptorSetLayout> descriptorSetLayouts = info.descriptorSetLayouts();
+         int numLayouts = descriptorSetLayouts != null ? descriptorSetLayouts.size() : 0;
+         LongBuffer layoutBuf = stack.mallocLong(numLayouts);
+         layoutBuf.put(descriptorSetLayouts.stream().mapToLong(DescriptorSetLayout::getId).toArray());
+
          var pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
                  .sType$Default()
+                 .pSetLayouts(layoutBuf)
                  .pPushConstantRanges(pushConstantRangeBuf);
          VulkanUtils.failIfNeeded(VK13.vkCreatePipelineLayout(device.getDevice(), pipelineLayoutInfo, null, buf), "Failed to create pipeline layout");
          this.layoutId = buf.get(0);

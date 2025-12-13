@@ -3,13 +3,14 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo;
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModule;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public record PipelineBuildInfo(List<ShaderModule> shaderModules, VkPipelineVertexInputStateCreateInfo info, int colorFormat,
-                                int depthFormat, List<PushConstantRange> pushConstantRanges) {
+                                int depthFormat, List<PushConstantRange> pushConstantRanges, List<DescriptorSetLayout> descriptorSetLayouts) {
    public VkPipelineShaderStageCreateInfo.Buffer createShaderStages(MemoryStack stack) {
       int numModules = shaderModules.size();
       ByteBuffer main = stack.UTF8("main");
