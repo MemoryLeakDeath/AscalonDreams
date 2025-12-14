@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImageView;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
@@ -52,11 +53,11 @@ public class DescriptorSet {
       }
    }
 
-   public void setImage(LogicalDevice device, VulkanImageView imageView, TextureSampler sampler, int binding) {
+   public void setImage(LogicalDevice device, VulkanImageView imageView, VulkanTextureSampler sampler, int binding) {
       setImages(device, List.of(imageView), sampler, binding);
    }
 
-   public void setImages(LogicalDevice device, List<VulkanImageView> imageViews, TextureSampler sampler, int binding) {
+   public void setImages(LogicalDevice device, List<VulkanImageView> imageViews, VulkanTextureSampler sampler, int binding) {
       try (var stack = MemoryStack.stackPush()) {
          int numImages = imageViews.size();
          var buf = VkWriteDescriptorSet.calloc(numImages, stack);
@@ -83,7 +84,7 @@ public class DescriptorSet {
       }
    }
 
-   public void setImagesArray(LogicalDevice device, List<VulkanImageView> imageViews, TextureSampler sampler, int binding) {
+   public void setImagesArray(LogicalDevice device, List<VulkanImageView> imageViews, VulkanTextureSampler sampler, int binding) {
       try(var stack = MemoryStack.stackPush()) {
          int numImages = imageViews.size();
          var infos = VkDescriptorImageInfo.calloc(numImages, stack);

@@ -2,8 +2,10 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.model;
 
 import org.apache.commons.lang3.StringUtils;
 import org.joml.Vector4f;
+import org.lwjgl.vulkan.VK13;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 import java.nio.ByteBuffer;
@@ -22,9 +24,9 @@ public class VulkanMaterial {
       this.diffuseColor = diffuseColor;
    }
 
-   public void load(ByteBuffer dataBuf, int offset, TextureCache cache) {
+   public void load(LogicalDevice device, ByteBuffer dataBuf, int offset, TextureCache cache) {
       if(hasTexture()) {
-         // todo: texturecache addTexture
+         cache.addTexture(device, texturePath, texturePath, VK13.VK_FORMAT_R8G8B8A8_SRGB);
       }
       diffuseColor.get(offset, dataBuf);
       dataBuf.putInt(offset + VulkanConstants.VEC4_SIZE, hasTexture() ? 1 : 0);

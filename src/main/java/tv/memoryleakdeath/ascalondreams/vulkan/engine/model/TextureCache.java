@@ -19,7 +19,7 @@ import java.util.UUID;
 public class TextureCache {
    private static final Logger logger = LoggerFactory.getLogger(TextureCache.class);
    public static final int MAX_TEXTURES = 100;
-   public static final String PADDING_TEXTURE_PATH = "";  // todo: fill this out
+   public static final String PADDING_TEXTURE_PATH = "models/default/default.png";
    private final Map<String, VulkanTexture> textureMap = new LinkedHashMap<>();
 
    public VulkanTexture addTexture(LogicalDevice device, String id, ImageSource source, int format) {
@@ -69,9 +69,8 @@ public class TextureCache {
       int numTextures = textureMap.size();
       if(numTextures < MAX_TEXTURES) {
          int paddingCount = MAX_TEXTURES - numTextures;
-         String paddingTexturePath = PADDING_TEXTURE_PATH;
          for(int i = 0; i < paddingCount; i++) {
-            addTexture(device, UUID.randomUUID().toString(), paddingTexturePath, VK13.VK_FORMAT_R8G8B8A8_SRGB);
+            addTexture(device, UUID.randomUUID().toString(), PADDING_TEXTURE_PATH, VK13.VK_FORMAT_R8G8B8A8_SRGB);
          }
       }
       var commandBuffer = new CommandBuffer(device, cmd, true, true);

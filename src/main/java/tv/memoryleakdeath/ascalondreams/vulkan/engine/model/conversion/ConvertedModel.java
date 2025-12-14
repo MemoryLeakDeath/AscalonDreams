@@ -6,27 +6,10 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMeshData;
 import java.util.List;
 
 public class ConvertedModel {
-   private int indexOffset;
-   private int vertexOffset;
    private List<VulkanMaterial> materials;
    private List<VulkanMeshData> meshData;
    private String texturePath;
-
-   public int getIndexOffset() {
-      return indexOffset;
-   }
-
-   public void setIndexOffset(int indexOffset) {
-      this.indexOffset = indexOffset;
-   }
-
-   public int getVertexOffset() {
-      return vertexOffset;
-   }
-
-   public void setVertexOffset(int vertexOffset) {
-      this.vertexOffset = vertexOffset;
-   }
+   private String id;
 
    public List<VulkanMaterial> getMaterials() {
       return materials;
@@ -52,14 +35,21 @@ public class ConvertedModel {
       this.texturePath = texturePath;
    }
 
+   public String getId() {
+      return id;
+   }
+
+   public void setId(String id) {
+      this.id = id;
+   }
+
    @Override
    public String toString() {
       return "ConvertedModel{" +
-              "indexOffset=" + indexOffset +
-              ", vertexOffset=" + vertexOffset +
-              ", materials=" + materials +
+              "materials=" + materials +
               ", meshData=" + meshData +
               ", texturePath='" + texturePath + '\'' +
+              ", id='" + id + '\'' +
               '}';
    }
 }

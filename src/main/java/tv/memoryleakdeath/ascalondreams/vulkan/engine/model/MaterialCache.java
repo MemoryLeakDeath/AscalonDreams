@@ -21,6 +21,17 @@ public class MaterialCache {
 
    private final Map<String, VulkanMaterial> materialMap = new LinkedHashMap<>();
    private VulkanBuffer materialsBuffer;
+   private static MaterialCache materialCache;
+
+   private MaterialCache() {
+   }
+
+   public static MaterialCache getInstance() {
+      if(materialCache == null) {
+         materialCache = new MaterialCache();
+      }
+      return materialCache;
+   }
 
    public void cleanup(LogicalDevice device) {
       if(materialsBuffer != null) {
@@ -30,6 +41,10 @@ public class MaterialCache {
 
    public VulkanMaterial getMaterial(String id) {
       return materialMap.get(id);
+   }
+
+   public boolean materialExists(String id) {
+      return materialMap.containsKey(id);
    }
 
    public VulkanBuffer getMaterialsBuffer() {
@@ -55,7 +70,7 @@ public class MaterialCache {
 
       int offset = 0;
       for(VulkanMaterial material : materials) {
-         material.load(materialDataBuffer, offset, textureCache);
+         material.load(device, materialDataBuffer, offset, textureCache);
          offset += MATERIAL_SIZE;
       }
       sourceBuffer.unMap(device);

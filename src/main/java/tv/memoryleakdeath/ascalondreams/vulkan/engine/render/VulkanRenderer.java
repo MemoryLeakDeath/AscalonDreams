@@ -8,6 +8,7 @@ import org.lwjgl.vulkan.VkSemaphoreSubmitInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandPool;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.Fence;
@@ -19,8 +20,8 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanPresentationQ
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMaterial;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
 import java.util.ArrayList;
@@ -51,16 +52,20 @@ public class VulkanRenderer {
    private final PipelineCache pipelineCache;
    private int currentFrame = 0;
    private boolean resize = false;
+   private VulkanScene currentScene;
+   private final DescriptorAllocator descriptorAllocator;
 
 
 
-   public VulkanRenderer(VulkanWindow window) {
+   public VulkanRenderer(VulkanWindow window, VulkanScene scene) {
       this.window = window;
+      this.currentScene = scene;
       this.instance = new VulkanRenderInstance(true);
       this.device = new LogicalDevice(PhysicalDevice.getInstance(instance.getVkInstance()));
       this.surface = new VulkanSurface(device.getPhysicalDevice(), window.getHandle());
       this.swapChain = new VulkanSwapChain(device, surface, window, BUFFERING_SETUP, VSYNC);
       this.pipelineCache = new PipelineCache(device);
+      this.descriptorAllocator = new DescriptorAllocator(device.getPhysicalDevice(), device);
 
       this.graphicsQueue = new VulkanGraphicsQueue(device, 0);
       this.presentationQueue = new VulkanPresentationQueue(device, surface, 0);
@@ -77,10 +82,10 @@ public class VulkanRenderer {
          renderingCompleteSemaphores.add(new Semaphore(device));
       }
 
-      this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device);
+      this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device, descriptorAllocator, scene);
       this.modelCache = new ModelCache();
       this.textureCache = new TextureCache();
-      this.materialCache = new MaterialCache();
+      this.materialCache = MaterialCache.getInstance();
    }
 
    public void cleanup() {
@@ -100,27 +105,31 @@ public class VulkanRenderer {
          commandPools.get(i).cleanup(device);
       }
 
+      descriptorAllocator.cleanup(device);
+      pipelineCache.cleanup(device);
       swapChain.cleanup();
       surface.cleanup();
       device.cleanup();
       instance.cleanup();
    }
 
-   public void initModels(List<VulkanModel> modelList) {
-      logger.debug("Loading {} models", modelList.size());
-      modelCache.loadModels(device, modelList, commandPools.getFirst(), graphicsQueue);
+   public void initModels(ConvertedModel convertedModel) {
+      logger.debug("Loading {} materials", convertedModel.getMaterials().size());
+      materialCache.loadMaterials(device, convertedModel.getMaterials(), textureCache, commandPools.getFirst(), graphicsQueue);
+      logger.debug("Loaded materials.");
+
+      logger.debug("Transitioning textures....");
+      textureCache.recordTextureTransitions(device, commandPools.getFirst(), graphicsQueue);
+      logger.debug("textures transitioned.");
+
+      logger.debug("Loading model...");
+      VulkanModel model = new VulkanModel("CubeModel");
+      model.addMeshes(device, convertedModel.getMeshData());
+
+      modelCache.loadModels(device, List.of(model), commandPools.getFirst(), graphicsQueue);
       logger.debug("Models loaded!");
-   }
 
-   public void initMaterials(List<VulkanMaterial> materials) {
-      logger.debug("Loading {} materials", materials.size());
-      materialCache.loadMaterials(device, materials, textureCache, commandPools.getFirst(), graphicsQueue);
-      logger.debug("Materials loaded!");
-      // todo: scene renderer load materials call
-   }
-
-   public void initTextures() {
-      // TODO: finish this
+      sceneRenderer.loadMaterials(device, descriptorAllocator, materialCache, textureCache);
    }
 
    private void startRecording(CommandPool pool, CommandBuffer buf) {
@@ -144,7 +153,7 @@ public class VulkanRenderer {
          resize(window.getWidth(), window.getHeight(), scene);
          return;
       }
-      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene);
+      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene, descriptorAllocator);
 
       stopRecording(commandBuffer);
       submit(commandBuffer, imageIndex);
@@ -182,7 +191,7 @@ public class VulkanRenderer {
 
       VkExtent2D extent = swapChain.getSwapChainExtent();
       scene.getProjection().resize(extent.width(), extent.height());
-      sceneRenderer.resize(device, swapChain);
+      sceneRenderer.resize(device, swapChain, scene);
    }
 
    private void submit(CommandBuffer buf, int imageIndex) {

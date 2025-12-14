@@ -4,18 +4,17 @@ import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.asset.Model;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
-import java.util.List;
-
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
     public static final String MODEL_FILE = "/home/mem/development/models/scifi-ship/FBX/ship.fbx";
+    private static final String CUBE_MODEL_FILE = "models/cube/cube.json";
     private static final int LOGIC_UPDATES_PER_SECOND = 30;
     private static final int DEFAULT_FRAMES_PER_SECOND = 60;
     private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;
@@ -35,15 +34,15 @@ public class VulkanEngine {
     public void init() {
         window = new VulkanWindow(600, 600);
         this.scene = new VulkanScene(window);
-        renderer = new VulkanRenderer(window);
-        renderer.initModels(loadModel());
+        renderer = new VulkanRenderer(window, scene);
+        renderer.initModels(loadModel(CUBE_MODEL_FILE));
     }
 
-    private List<VulkanModel> loadModel() {
-       // todo: load model (model loader)
-       cubeEntity = new Entity("CubeEntity", modelId, new Vector3f(0f, 0f, -2f));
+    private ConvertedModel loadModel(String modelFile) {
+       ConvertedModel convertedModel = ModelLoader.loadModel(modelFile);
+       cubeEntity = new Entity("CubeEntity", convertedModel.getId(), new Vector3f(0f, 0f, -2f));
        scene.addEntity(cubeEntity);
-       return List.of(model);
+       return convertedModel;
     }
 
     public void mainLoop() {

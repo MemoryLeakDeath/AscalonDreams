@@ -1,6 +1,5 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -12,16 +11,15 @@ import org.lwjgl.assimp.AIMesh;
 import org.lwjgl.assimp.AIScene;
 import org.lwjgl.assimp.AIString;
 import org.lwjgl.assimp.AITexture;
-import org.lwjgl.assimp.AIVector3D;
 import org.lwjgl.assimp.Assimp;
 import org.lwjgl.system.MemoryStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMaterial;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMeshData;
 
 import java.io.File;
-import java.io.IO;
 import java.io.IOException;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
@@ -57,6 +55,7 @@ public class ModelConverter {
 
       String modelId = FilenameUtils.getBaseName(modelFile);
       ConvertedModel convertedModel = new ConvertedModel();
+      convertedModel.setId(modelId);
 
       int numMaterials = scene.mNumMaterials();
       logger.debug("Number of materials: {}", numMaterials);
@@ -75,7 +74,12 @@ public class ModelConverter {
          meshDataList.add(processMesh(aiMesh, parsedMaterials, i));
       }
 
-      // todo: write the file
+      convertedModel.setMaterials(parsedMaterials);
+      convertedModel.setMeshData(meshDataList);
+      convertedModel.setTexturePath(parentDirectory.getPath());
+      File outputFile = new File("%s.json".formatted(modelId));
+      ObjectMapper mapper = new ObjectMapper();
+      mapper.writeValue(outputFile, convertedModel);
    }
 
    private static VulkanMaterial processMaterial(AIScene scene, AIMaterial material, String modelId, String textureDir, int index)
@@ -135,6 +139,10 @@ public class ModelConverter {
          materialId = materialList.get(materialIndex).getId();
       }
       returnData.setMaterialId(materialId);
+
+      String meshId = "%s_%d".formatted(mesh.mName().dataString(), position);
+      returnData.setId(meshId);
+
       return returnData;
    }
 

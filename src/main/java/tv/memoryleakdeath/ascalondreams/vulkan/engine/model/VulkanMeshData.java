@@ -7,6 +7,7 @@ public class VulkanMeshData {
    private float[] textureCoords;
    private int[] indicies;
    private String materialId;
+   private String id;
 
    public float[] getVerticies() {
       return verticies;
@@ -40,6 +41,14 @@ public class VulkanMeshData {
       this.materialId = materialId;
    }
 
+   public String getId() {
+      return id;
+   }
+
+   public void setId(String id) {
+      this.id = id;
+   }
+
    @Override
    public String toString() {
       return "VulkanMeshData{" +
@@ -47,6 +56,7 @@ public class VulkanMeshData {
               ", textureCoords=" + Arrays.toString(textureCoords) +
               ", indicies=" + Arrays.toString(indicies) +
               ", materialId='" + materialId + '\'' +
+              ", id='" + id + '\'' +
               '}';
    }
 }
