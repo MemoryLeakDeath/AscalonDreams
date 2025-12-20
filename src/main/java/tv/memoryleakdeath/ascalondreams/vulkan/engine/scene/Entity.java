@@ -20,6 +20,7 @@ public class Entity {
       this.id = id;
       this.modelId = modelId;
       this.position = position;
+      updateModelMatrix();
    }
 
    public void updateModelMatrix() {

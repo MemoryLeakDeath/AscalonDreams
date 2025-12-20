@@ -1,5 +1,6 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.StringUtils;
 import org.joml.Vector4f;
 import org.lwjgl.vulkan.VK13;
@@ -16,7 +17,12 @@ public class VulkanMaterial {
    private String id;
    private String texturePath;
    private Vector4f diffuseColor;
+
+   @JsonIgnore
    private TransferBuffer transferBuffer;
+
+   public VulkanMaterial() {
+   }
 
    public VulkanMaterial(String id, String texturePath, Vector4f diffuseColor) {
       this.id = id;
@@ -30,7 +36,8 @@ public class VulkanMaterial {
       }
       diffuseColor.get(offset, dataBuf);
       dataBuf.putInt(offset + VulkanConstants.VEC4_SIZE, hasTexture() ? 1 : 0);
-      dataBuf.putInt(offset + VulkanConstants.VEC4_SIZE + VulkanConstants.INT_SIZE, cache.getPosition(texturePath));
+      int cachePosition = cache.getPosition(texturePath);
+      dataBuf.putInt(offset + VulkanConstants.VEC4_SIZE + VulkanConstants.INT_SIZE, cachePosition);
 
       // padding
       dataBuf.putInt(offset + VulkanConstants.VEC4_SIZE + VulkanConstants.INT_SIZE * 2, 0);
@@ -55,5 +62,26 @@ public class VulkanMaterial {
 
    public TransferBuffer getTransferBuffer() {
       return transferBuffer;
+   }
+
+   public void setId(String id) {
+      this.id = id;
+   }
+
+   public void setTexturePath(String texturePath) {
+      this.texturePath = texturePath;
+   }
+
+   public void setDiffuseColor(Vector4f diffuseColor) {
+      this.diffuseColor = diffuseColor;
+   }
+
+   @Override
+   public String toString() {
+      return "VulkanMaterial{" +
+              "diffuseColor=" + diffuseColor +
+              ", texturePath='" + texturePath + '\'' +
+              ", id='" + id + '\'' +
+              '}';
    }
 }

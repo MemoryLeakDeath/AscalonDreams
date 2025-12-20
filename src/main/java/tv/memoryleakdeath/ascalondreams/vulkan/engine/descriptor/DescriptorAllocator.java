@@ -38,7 +38,7 @@ public class DescriptorAllocator {
       List<DescriptorTypeCount> typeCounts = descriptorLimits.entrySet().stream()
               .map(e -> new DescriptorTypeCount(e.getKey(), e.getValue())).toList();
       var descriptorPool = new DescriptorPool(device, typeCounts);
-      return new DescriptorPoolInfo(Map.copyOf(descriptorLimits), descriptorPool);
+      return new DescriptorPoolInfo(new HashMap<>(descriptorLimits), descriptorPool);
    }
 
    public synchronized DescriptorSet addDescriptorSet(LogicalDevice device, String id, DescriptorSetLayout layout) {

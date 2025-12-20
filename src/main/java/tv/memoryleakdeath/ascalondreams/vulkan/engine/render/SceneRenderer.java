@@ -68,8 +68,8 @@ public class SceneRenderer {
    public SceneRenderer(VulkanSwapChain swapChain, VulkanSurface surface, PipelineCache cache, LogicalDevice device, DescriptorAllocator allocator, VulkanScene scene) {
       this.clearValueColor = VkClearValue.calloc().color(
               c -> c.float32(0, 0f)
-                      .float32(1, 0f)
-                      .float32(2, 0f)
+                      .float32(1, 0.0f)
+                      .float32(2, 0.0f)
                       .float32(3, 1f));
       this.clearValueDepth = VkClearValue.calloc().color(c -> c.float32(0, 1f));
       initDepthAttachments(swapChain, device);

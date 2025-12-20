@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class MaterialCache {
    private static final Logger logger = LoggerFactory.getLogger(MaterialCache.class);
-   private static final int MATERIAL_SIZE = VulkanConstants.VEC4_SIZE * VulkanConstants.INT_SIZE * 4;
+   private static final int MATERIAL_SIZE = VulkanConstants.VEC4_SIZE + VulkanConstants.INT_SIZE * 4;
 
    private final Map<String, VulkanMaterial> materialMap = new LinkedHashMap<>();
    private VulkanBuffer materialsBuffer;
@@ -70,6 +70,7 @@ public class MaterialCache {
 
       int offset = 0;
       for(VulkanMaterial material : materials) {
+         materialMap.put(material.getId(), material);
          material.load(device, materialDataBuffer, offset, textureCache);
          offset += MATERIAL_SIZE;
       }

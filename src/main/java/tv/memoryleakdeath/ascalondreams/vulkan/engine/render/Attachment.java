@@ -29,7 +29,7 @@ public class Attachment {
       var imageViewData = new VulkanImageViewData();
       imageViewData.setFormat(image.getFormat());
       imageViewData.setAspectMask(aspectMask);
-      this.imageView = new VulkanImageView(device, image.getId(), imageViewData);
+      this.imageView = new VulkanImageView(device, image.getId(), imageViewData, depthAttachment);
    }
 
    public void cleanup(LogicalDevice device) {

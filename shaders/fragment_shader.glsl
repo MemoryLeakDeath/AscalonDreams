@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_debug_printf : enable
 
 const int MAX_TEXTURES = 100;
 layout(location = 0) in vec2 inTextureCoords;
@@ -25,7 +26,9 @@ void main() {
     Material material = materialUniform.materials[push_constants.materialIndex];
     if(material.hasTexture == 1) {
         outFragColor = texture(textSampler[material.textureIndex], inTextureCoords);
+        debugPrintfEXT("Texture index: %d", material.textureIndex);
     } else {
         outFragColor = material.diffuseColor;
+        debugPrintfEXT("Using diffuseColor");
     }
 }

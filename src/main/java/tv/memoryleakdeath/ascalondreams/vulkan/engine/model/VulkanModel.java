@@ -1,5 +1,6 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.ArrayUtils;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
@@ -22,7 +23,12 @@ public class VulkanModel {
    private static final Logger logger = LoggerFactory.getLogger(VulkanModel.class);
    private String id;
    private List<VulkanMesh> meshList = new ArrayList<>();
+
+   @JsonIgnore
    private List<TransferBuffer> transferBuffers = new ArrayList<>();
+
+   public VulkanModel() {
+   }
 
    public VulkanModel(String id) {
       this.id = id;
@@ -38,6 +44,14 @@ public class VulkanModel {
 
    public List<VulkanMesh> getMeshList() {
       return meshList;
+   }
+
+   public void setId(String id) {
+      this.id = id;
+   }
+
+   public void setMeshList(List<VulkanMesh> meshList) {
+      this.meshList = meshList;
    }
 
    public List<TransferBuffer> getTransferBuffers() {

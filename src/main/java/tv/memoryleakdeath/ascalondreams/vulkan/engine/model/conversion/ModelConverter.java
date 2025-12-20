@@ -37,6 +37,7 @@ public class ModelConverter {
    private static final int FLAGS = Assimp.aiProcess_GenSmoothNormals | Assimp.aiProcess_JoinIdenticalVertices |
            Assimp.aiProcess_Triangulate | Assimp.aiProcess_FixInfacingNormals | Assimp.aiProcess_CalcTangentSpace |
            Assimp.aiProcess_PreTransformVertices;
+   private static final String DEFAULT_TEXTURE = "models/cube/cube.png";  // todo: get rid of this
 
    private ModelConverter() {
    }
@@ -67,6 +68,7 @@ public class ModelConverter {
       }
 
       int numMeshes = scene.mNumMeshes();
+      logger.debug("Number of meshes: {}", numMeshes);
       PointerBuffer aiMeshes = scene.mMeshes();
       List<VulkanMeshData> meshDataList = new ArrayList<>();
       for(int i = 0; i < numMeshes; i++) {
@@ -77,7 +79,7 @@ public class ModelConverter {
       convertedModel.setMaterials(parsedMaterials);
       convertedModel.setMeshData(meshDataList);
       convertedModel.setTexturePath(parentDirectory.getPath());
-      File outputFile = new File("%s.json".formatted(modelId));
+      File outputFile = new File("%s/%s.json".formatted(convertedModel.getTexturePath(), modelId));
       ObjectMapper mapper = new ObjectMapper();
       mapper.writeValue(outputFile, convertedModel);
    }
@@ -103,7 +105,7 @@ public class ModelConverter {
          Assimp.aiGetMaterialTexture(material, textureType, 0, aiTexturePath, (IntBuffer)null,
                  null, null, null, null, null);
          texturePath = aiTexturePath.dataString();
-         if(StringUtils.isNotBlank(textureDir)) {
+         if(StringUtils.isNotBlank(texturePath)) {
             Matcher matcher = GET_TEXTURE_ID.matcher(texturePath);
             int embeddedTextureIndex = matcher.matches() && matcher.groupCount() > 0 ? Integer.parseInt(matcher.group(1)) : -1;
             if(embeddedTextureIndex >= 0 && embeddedTextureIndex < numEmbeddedTextures) {
@@ -117,6 +119,9 @@ public class ModelConverter {
             } else {
                texturePath = "%s/%s".formatted(textureDir, FilenameUtils.getName(texturePath));
             }
+         } else {
+            // todo: remove this condition
+            texturePath = DEFAULT_TEXTURE;
          }
       }
       return texturePath;
@@ -149,6 +154,7 @@ public class ModelConverter {
    private static float[] processVerticies(AIMesh mesh) {
       List<Float> verticies = new ArrayList<>();
       var aiVerticies = mesh.mVertices();
+      logger.debug("Number of Verticies: {}", mesh.mNumVertices());
       while(aiVerticies.hasRemaining()) {
          var vertex = aiVerticies.get();
          verticies.add(vertex.x());
@@ -173,6 +179,7 @@ public class ModelConverter {
    private static int[] processIndices(AIMesh mesh) {
       List<Integer> indices = new ArrayList<>();
       int numFaces = mesh.mNumFaces();
+      logger.debug("Number of faces: {}", numFaces);
       var aiFaces = mesh.mFaces();
       for(int i = 0; i < numFaces; i++) {
          var face = aiFaces.get(i);

@@ -123,7 +123,7 @@ public class VulkanRenderer {
       logger.debug("textures transitioned.");
 
       logger.debug("Loading model...");
-      VulkanModel model = new VulkanModel("CubeModel");
+      VulkanModel model = new VulkanModel(convertedModel.getId());
       model.addMeshes(device, convertedModel.getMeshData());
 
       modelCache.loadModels(device, List.of(model), commandPools.getFirst(), graphicsQueue);

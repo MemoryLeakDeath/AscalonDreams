@@ -40,7 +40,7 @@ public class VulkanEngine {
 
     private ConvertedModel loadModel(String modelFile) {
        ConvertedModel convertedModel = ModelLoader.loadModel(modelFile);
-       cubeEntity = new Entity("CubeEntity", convertedModel.getId(), new Vector3f(0f, 0f, -2f));
+       cubeEntity = new Entity("CubeEntity", convertedModel.getId(), new Vector3f(0.0f, 0.0f, -2.0f));
        scene.addEntity(cubeEntity);
        return convertedModel;
     }

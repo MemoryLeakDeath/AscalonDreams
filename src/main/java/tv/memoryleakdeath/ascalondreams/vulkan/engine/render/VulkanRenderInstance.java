@@ -5,6 +5,7 @@ import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.EXTDebugUtils;
+import org.lwjgl.vulkan.EXTValidationFeatures;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkApplicationInfo;
 import org.lwjgl.vulkan.VkDebugUtilsMessengerCallbackDataEXT;
@@ -13,6 +14,7 @@ import org.lwjgl.vulkan.VkExtensionProperties;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkInstanceCreateInfo;
 import org.lwjgl.vulkan.VkLayerProperties;
+import org.lwjgl.vulkan.VkValidationFeaturesEXT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
@@ -28,7 +30,9 @@ import java.util.stream.Collectors;
 public class VulkanRenderInstance {
    private static final Logger logger = LoggerFactory.getLogger(VulkanRenderInstance.class);
    public static final int MESSAGE_SEVERITY_MASK = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
-           | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+           | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+           | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+           | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
    public static final int MESSAGE_TYPE_MASK = EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
            | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
            | EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
@@ -37,6 +41,7 @@ public class VulkanRenderInstance {
            "VK_LAYER_LUNARG_object_tracker",
            "VK_LAYER_LUNARG_core_validation",
            "VK_LAYER_GOOGLE_unique_objects");
+   public static final int SHADER_DEBUG_EXT = EXTValidationFeatures.VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
 
    private VkInstance vkInstance;
 
@@ -85,10 +90,21 @@ public class VulkanRenderInstance {
             loggingExtension = debugUtils.address();
          }
 
+         long shaderDebugExtension = MemoryUtil.NULL;
+         if(supportsValidation) {
+            IntBuffer buf = stack.callocInt(1);
+            buf.put(SHADER_DEBUG_EXT);
+            var shaderDebug = VkValidationFeaturesEXT.calloc(stack)
+                    .sType$Default()
+                    .pEnabledValidationFeatures(buf);
+            shaderDebugExtension = shaderDebug.address();
+         }
+
          // create instance info
          VkInstanceCreateInfo instanceInfo = VkInstanceCreateInfo.calloc(stack)
                  .sType$Default()
                  .pNext(loggingExtension)
+                 .pNext(shaderDebugExtension)
                  .pApplicationInfo(appInfo)
                  .ppEnabledLayerNames(requiredLayers)
                  .ppEnabledExtensionNames(requiredExtensions);

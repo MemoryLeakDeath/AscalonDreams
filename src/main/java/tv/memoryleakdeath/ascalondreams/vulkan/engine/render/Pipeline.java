@@ -43,7 +43,9 @@ public class Pipeline {
          List<DescriptorSetLayout> descriptorSetLayouts = info.descriptorSetLayouts();
          int numLayouts = descriptorSetLayouts != null ? descriptorSetLayouts.size() : 0;
          LongBuffer layoutBuf = stack.mallocLong(numLayouts);
-         layoutBuf.put(descriptorSetLayouts.stream().mapToLong(DescriptorSetLayout::getId).toArray());
+         for(int i = 0; i < numLayouts; i++) {
+            layoutBuf.put(i, descriptorSetLayouts.get(i).getId());
+         }
 
          var pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack)
                  .sType$Default()

@@ -2,6 +2,7 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.device;
 
 import org.apache.commons.collections4.IterableUtils;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.KHRShaderNonSemanticInfo;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK13;
@@ -23,7 +24,7 @@ import java.util.Set;
 
 public final class PhysicalDevice {
    private static final Logger logger = LoggerFactory.getLogger(PhysicalDevice.class);
-   public static final Set<String> REQUIRED_EXTENSIONS = Set.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+   public static final Set<String> REQUIRED_EXTENSIONS = Set.of(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME, KHRShaderNonSemanticInfo.VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
    private VkExtensionProperties.Buffer deviceExtensions;
    private VkPhysicalDeviceMemoryProperties memoryProperties;
    private final VkPhysicalDevice physicalDevice;

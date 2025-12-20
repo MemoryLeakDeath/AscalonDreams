@@ -23,6 +23,7 @@
 		<commonsexec.version>1.5.0</commonsexec.version>
 		<commonscollections.version>4.5.0-M3</commonscollections.version>
         <commonsio.version>2.21.0</commonsio.version>
+        <junit.version>6.0.1</junit.version>
 	</properties>
 
 	<profiles>
@@ -223,6 +224,14 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${commonsio.version}</version>
+        </dependency>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
         </dependency>
 	</dependencies>
 

@@ -22,6 +22,10 @@ public class TextureCache {
    public static final String PADDING_TEXTURE_PATH = "models/default/default.png";
    private final Map<String, VulkanTexture> textureMap = new LinkedHashMap<>();
 
+   public TextureCache() {
+
+   }
+
    public VulkanTexture addTexture(LogicalDevice device, String id, ImageSource source, int format) {
       if(textureMap.size() > MAX_TEXTURES) {
          logger.error("Max texture limit reached! Limit: {}", MAX_TEXTURES);

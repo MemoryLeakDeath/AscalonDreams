@@ -1,10 +1,10 @@
 package tv.memoryleakdeath.ascalondreams.asset;
 
+import org.joml.Vector4f;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.joml.Vector4f;
 
 public class Material implements Serializable {
     private static final long serialVersionUID = 1L;
