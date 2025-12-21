@@ -7,6 +7,8 @@ import org.lwjgl.glfw.GLFWVulkan;
 import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
+import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
 
 public class VulkanWindow {
     private static final Logger logger = LoggerFactory.getLogger(VulkanWindow.class);
@@ -80,8 +82,9 @@ public class VulkanWindow {
         GLFW.glfwSetErrorCallback(null).free();
     }
 
-    public void pollEvents() {
-        GLFW.glfwPollEvents(); // poll for window/input events
+    public void pollEvents(long deltaTimeMillis) {
+       KeyboardCallbackHandler.getInstance().input(deltaTimeMillis);
+       MouseCallbackHandler.getInstance().input(deltaTimeMillis);
     }
 
     public void update() {
