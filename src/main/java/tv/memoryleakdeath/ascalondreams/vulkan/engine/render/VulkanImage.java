@@ -20,10 +20,10 @@ public class VulkanImage {
    private final long id;
    private final long memoryHandle;
 
-   public VulkanImage(LogicalDevice device, int width, int height, int usage, int imageFormat) {
+   public VulkanImage(LogicalDevice device, int width, int height, int usage, int imageFormat, int mipLevels) {
       try(var stack = MemoryStack.stackPush()) {
          this.format = imageFormat;
-         this.mipLevels = 1;
+         this.mipLevels = mipLevels;
          var info = VkImageCreateInfo.calloc(stack)
                  .sType$Default()
                  .imageType(VK13.VK_IMAGE_TYPE_2D)

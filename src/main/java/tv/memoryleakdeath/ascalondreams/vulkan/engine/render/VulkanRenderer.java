@@ -23,6 +23,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +33,6 @@ public class VulkanRenderer {
    private final VulkanRenderInstance instance;
    private static final boolean VSYNC = true;
    private static final int BUFFERING_SETUP = 3;
-   private static final int MAX_IN_FLIGHT = 2;
    private VulkanWindow window;
    private final LogicalDevice device;
    private VulkanSurface surface;
@@ -70,7 +70,7 @@ public class VulkanRenderer {
       this.graphicsQueue = new VulkanGraphicsQueue(device, 0);
       this.presentationQueue = new VulkanPresentationQueue(device, surface, 0);
 
-      for(int i = 0; i < MAX_IN_FLIGHT; i++) {
+      for(int i = 0; i < VulkanConstants.MAX_IN_FLIGHT; i++) {
          CommandPool pool = new CommandPool(device, graphicsQueue.getQueueFamilyIndex(), false);
          commandPools.add(pool);
          commandBuffers.add(new CommandBuffer(device, pool, true, true));
@@ -83,7 +83,7 @@ public class VulkanRenderer {
       }
 
       this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device, descriptorAllocator, scene);
-      this.modelCache = new ModelCache();
+      this.modelCache = ModelCache.getInstance();
       this.textureCache = new TextureCache();
       this.materialCache = MaterialCache.getInstance();
    }
@@ -153,13 +153,13 @@ public class VulkanRenderer {
          resize(window.getWidth(), window.getHeight(), scene);
          return;
       }
-      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene, descriptorAllocator);
+      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene, descriptorAllocator, currentFrame, device);
 
       stopRecording(commandBuffer);
       submit(commandBuffer, imageIndex);
       resize = swapChain.presentImage(presentationQueue, renderingCompleteSemaphores.get(imageIndex), imageIndex);
 
-      currentFrame = (currentFrame + 1) % MAX_IN_FLIGHT;
+      currentFrame = (currentFrame + 1) % VulkanConstants.MAX_IN_FLIGHT;
    }
 
    private void resize(int width, int height, VulkanScene scene) {
@@ -182,7 +182,7 @@ public class VulkanRenderer {
       renderingCompleteSemaphores.clear();
       presentationCompleteSemaphores.clear();
 
-      for(int i = 0; i < MAX_IN_FLIGHT; i++) {
+      for(int i = 0; i < VulkanConstants.MAX_IN_FLIGHT; i++) {
          presentationCompleteSemaphores.add(new Semaphore(device));
       }
       for(int i = 0; i < swapChain.getNumImages(); i++) {

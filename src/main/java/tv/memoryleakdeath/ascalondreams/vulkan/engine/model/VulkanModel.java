@@ -107,20 +107,24 @@ public class VulkanModel {
       return new TransferBuffer(sourceBuffer, destinationBuffer);
    }
 
-   public void bindMeshes(MemoryStack stack, VkCommandBuffer cmd, long piplineLayoutId, Matrix4f modelMatrix) {
+   public void bindMeshes(MemoryStack stack, VkCommandBuffer cmd, long piplineLayoutId, Matrix4f modelMatrix, boolean doTransparent) {
       LongBuffer offsets = stack.mallocLong(1).put(0, 0L);
       LongBuffer vertexBuffer = stack.mallocLong(1);
+      MaterialCache materialCache = MaterialCache.getInstance();
       meshList.forEach(mesh -> {
          String materialId = mesh.materialId();
-         int materialIndex = MaterialCache.getInstance().getPosition(materialId);
+         int materialIndex = materialCache.getPosition(materialId);
+         VulkanMaterial material = materialCache.getMaterial(materialId);
          if(!MaterialCache.getInstance().materialExists(materialId)) {
             logger.warn("Mesh {} in model {} does not have a material!", mesh.id(), id);
          } else {
-            setPushConstants(cmd, modelMatrix, piplineLayoutId, materialIndex);
-            vertexBuffer.put(0, mesh.vertexBuffer().getBuffer());
-            VK13.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
-            VK13.vkCmdBindIndexBuffer(cmd, mesh.indexBuffer().getBuffer(), 0, VK13.VK_INDEX_TYPE_UINT32);
-            VK13.vkCmdDrawIndexed(cmd, mesh.numIndicies(), 1, 0, 0, 0);
+            if(material.isTransparent() == doTransparent) {
+               setPushConstants(cmd, modelMatrix, piplineLayoutId, materialIndex);
+               vertexBuffer.put(0, mesh.vertexBuffer().getBuffer());
+               VK13.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
+               VK13.vkCmdBindIndexBuffer(cmd, mesh.indexBuffer().getBuffer(), 0, VK13.VK_INDEX_TYPE_UINT32);
+               VK13.vkCmdDrawIndexed(cmd, mesh.numIndicies(), 1, 0, 0, 0);
+            }
          }
       });
    }

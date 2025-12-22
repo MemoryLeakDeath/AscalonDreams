@@ -13,6 +13,17 @@ import java.util.stream.Collectors;
 
 public class ModelCache {
    private Map<String, VulkanModel> modelMap = new HashMap<>();
+   private static ModelCache modelCache;
+
+   private ModelCache() {
+   }
+
+   public static ModelCache getInstance() {
+      if(modelCache == null) {
+         modelCache = new ModelCache();
+      }
+      return modelCache;
+   }
 
    public void cleanup(LogicalDevice device) {
       modelMap.forEach((k, t) -> t.cleanup(device));

@@ -43,6 +43,18 @@ public final class VulkanUtils {
       return buf;
    }
 
+   public static List<VulkanBuffer> createHostVisibleBuffers(LogicalDevice device, DescriptorAllocator allocator, long size, int numBuffers, int usage, String id, DescriptorSetLayout layout) {
+      List<VulkanBuffer> results = new ArrayList<>();
+      allocator.addDescriptorSets(device, id, numBuffers, layout);
+      var layoutInfo = layout.getLayoutInfo();
+      for(int i = 0; i < numBuffers; i++) {
+         var buf = new VulkanBuffer(device, size, usage, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+         allocator.getDescriptorSet(id, i).setBuffer(device, buf, buf.getRequestedSize(), layoutInfo.binding(), layoutInfo.descriptorType());
+         results.add(buf);
+      }
+      return results;
+   }
+
    public static void failIfNeeded(int resultCode, String errorMsg) {
       if (resultCode != VK13.VK_SUCCESS) {
          throw new RuntimeException(errorMsg);

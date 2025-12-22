@@ -4,6 +4,7 @@ import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.camera.Camera;
 import tv.memoryleakdeath.ascalondreams.camera.CameraInputCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
@@ -41,7 +42,7 @@ public class VulkanEngine {
         this.scene = new VulkanScene(window);
         renderer = new VulkanRenderer(window, scene);
         renderer.initModels(loadModel(SPONZA_MODEL_FILE));
-        // todo: call set camera method below
+        setCameraStartState();
     }
 
     private ConvertedModel loadModel(String modelFile) {
@@ -52,7 +53,9 @@ public class VulkanEngine {
     }
 
     private void setCameraStartState() {
-       // todo: scene getCamera (line 44 Main)
+       Camera camera = scene.getCamera();
+       camera.setPosition(0f, 5f, 0f);
+       camera.setRotation((float) Math.toRadians(20f), (float) Math.toRadians(90f));
     }
 
     public void mainLoop() {

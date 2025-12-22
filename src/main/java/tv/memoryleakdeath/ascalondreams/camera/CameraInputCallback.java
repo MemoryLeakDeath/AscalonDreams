@@ -34,27 +34,29 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
 
    @Override
    public void performAction(long deltaTimeMillis) {
+      float move = deltaTimeMillis * MOVEMENT_SPEED;
       if(pressedKeys != null) {
          if(pressedKeys.contains(GLFW.GLFW_KEY_W)) {
-            // todo: camera move forward
+            camera.moveForward(move);
          } else if(pressedKeys.contains(GLFW.GLFW_KEY_S)) {
-            // todo: camera move backward
+            camera.moveBackwards(move);
          }
 
          if(pressedKeys.contains(GLFW.GLFW_KEY_A)) {
-            // todo: camera move left
+            camera.moveLeft(move);
          } else if(pressedKeys.contains(GLFW.GLFW_KEY_D)) {
-            // todo: camera move right
+            camera.moveRight(move);
          }
 
          if(pressedKeys.contains(GLFW.GLFW_KEY_UP)) {
-            // todo: move camera up
+            camera.moveUp(move);
          } else if(pressedKeys.contains(GLFW.GLFW_KEY_DOWN)) {
-            // todo: move camera down
+            camera.moveDown(move);
          }
       }
       if(mouseMoved) {
-         // todo: camera addRotation
+         camera.addRotation((float) Math.toRadians(-deltaCursorPosition.y * MOUSE_SENSITIVITY),
+                 (float) Math.toRadians(-deltaCursorPosition.x * MOUSE_SENSITIVITY));
       }
    }
 

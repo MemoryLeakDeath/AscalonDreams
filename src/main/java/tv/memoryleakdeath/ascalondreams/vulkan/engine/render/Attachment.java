@@ -15,7 +15,7 @@ public class Attachment {
 
    public Attachment(LogicalDevice device, int width, int height, int format, int usage) {
       int imageUsage = (usage | VK13.VK_IMAGE_USAGE_SAMPLED_BIT);
-      this.image = new VulkanImage(device, width, height, imageUsage, format);
+      this.image = new VulkanImage(device, width, height, imageUsage, format, 1);
 
       int aspectMask = 0;
       if((usage & VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) > 0) {

@@ -10,7 +10,7 @@ public class ModelLoaderTest {
    @BeforeAll
    public static void testProcessFile() {
       try {
-         ModelConverter.processFile("models/cube/cube.obj");
+         ModelConverter.processFile("models/sponza/Sponza.gltf");
       } catch (Exception e) {
          Assertions.fail("Failed with Exception!", e);
       }
@@ -18,7 +18,7 @@ public class ModelLoaderTest {
 
    @Test
    public void testLoadModel() {
-      ConvertedModel model = ModelLoader.loadModel("models/cube/cube.json");
+      ConvertedModel model = ModelLoader.loadModel("models/sponza/Sponza.json");
       System.out.println(model);
    }
 }

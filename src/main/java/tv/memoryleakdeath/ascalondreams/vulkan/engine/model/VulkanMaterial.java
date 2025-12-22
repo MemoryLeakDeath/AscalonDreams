@@ -19,6 +19,9 @@ public class VulkanMaterial {
    private Vector4f diffuseColor;
 
    @JsonIgnore
+   private boolean transparent;
+
+   @JsonIgnore
    private TransferBuffer transferBuffer;
 
    public VulkanMaterial() {
@@ -32,7 +35,10 @@ public class VulkanMaterial {
 
    public void load(LogicalDevice device, ByteBuffer dataBuf, int offset, TextureCache cache) {
       if(hasTexture()) {
-         cache.addTexture(device, texturePath, texturePath, VK13.VK_FORMAT_R8G8B8A8_SRGB);
+         VulkanTexture texture = cache.addTexture(device, texturePath, texturePath, VK13.VK_FORMAT_R8G8B8A8_SRGB);
+         transparent = texture.isTransparent();
+      } else {
+         transparent = diffuseColor.w < 1.0f;
       }
       diffuseColor.get(offset, dataBuf);
       dataBuf.putInt(offset + VulkanConstants.VEC4_SIZE, hasTexture() ? 1 : 0);
@@ -76,12 +82,22 @@ public class VulkanMaterial {
       this.diffuseColor = diffuseColor;
    }
 
+   public boolean isTransparent() {
+      return transparent;
+   }
+
+   public void setTransparent(boolean transparent) {
+      this.transparent = transparent;
+   }
+
    @Override
    public String toString() {
       return "VulkanMaterial{" +
-              "diffuseColor=" + diffuseColor +
+              "id='" + id + '\'' +
               ", texturePath='" + texturePath + '\'' +
-              ", id='" + id + '\'' +
+              ", diffuseColor=" + diffuseColor +
+              ", transparent=" + transparent +
+              ", transferBuffer=" + transferBuffer +
               '}';
    }
 }

@@ -153,7 +153,7 @@ public final class StructureUtils {
       VK13.vkCmdSetScissor(cmd, 0, scissor);
    }
 
-   public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int colorFormat, VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo, long pipelineLayoutId, PipelineCache pipelineCache, int depthFormat) {
+   public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int colorFormat, VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo, long pipelineLayoutId, PipelineCache pipelineCache, int depthFormat, boolean useBlend) {
       var assemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
               .sType$Default()
               .topology(VK13.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -183,7 +183,7 @@ public final class StructureUtils {
       var dynamicStateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack)
               .sType$Default()
               .pDynamicStates(stack.ints(VK13.VK_DYNAMIC_STATE_VIEWPORT, VK13.VK_DYNAMIC_STATE_SCISSOR));
-      var colorBlendStateInfo = createColorBlendStateInfo(stack);
+      var colorBlendStateInfo = createColorBlendStateInfo(stack, useBlend);
 
       IntBuffer colorFormats = stack.mallocInt(1);
       colorFormats.put(0, colorFormat);
@@ -215,10 +215,18 @@ public final class StructureUtils {
       return buf.get(0);
    }
 
-   public static VkPipelineColorBlendStateCreateInfo createColorBlendStateInfo(MemoryStack stack) {
+   public static VkPipelineColorBlendStateCreateInfo createColorBlendStateInfo(MemoryStack stack, boolean useBlend) {
       var blendAttachState = VkPipelineColorBlendAttachmentState.calloc(1, stack)
               .colorWriteMask(VK13.VK_COLOR_COMPONENT_R_BIT | VK13.VK_COLOR_COMPONENT_G_BIT | VK13.VK_COLOR_COMPONENT_B_BIT | VK13.VK_COLOR_COMPONENT_A_BIT)
-              .blendEnable(false);
+              .blendEnable(useBlend);
+      if(useBlend) {
+         blendAttachState.get(0).colorBlendOp(VK13.VK_BLEND_OP_ADD)
+                 .alphaBlendOp(VK13.VK_BLEND_OP_ADD)
+                 .srcColorBlendFactor(VK13.VK_BLEND_FACTOR_SRC_ALPHA)
+                 .dstColorBlendFactor(VK13.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+                 .srcAlphaBlendFactor(VK13.VK_BLEND_FACTOR_SRC_ALPHA)
+                 .dstAlphaBlendFactor(VK13.VK_BLEND_FACTOR_ZERO);
+      }
       return VkPipelineColorBlendStateCreateInfo.calloc(stack)
               .sType$Default()
               .pAttachments(blendAttachState);
