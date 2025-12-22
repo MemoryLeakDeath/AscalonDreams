@@ -19,7 +19,7 @@
 		<logback.version>1.5.18</logback.version>
 		<commonslang.version>3.19.0</commonslang.version>
 		<args4j.version>2.37</args4j.version>
-        <jackson.version>3.0.0</jackson.version>
+        <jackson.version>3.0.3</jackson.version>
 		<commonsexec.version>1.6.0</commonsexec.version>
 		<commonscollections.version>4.5.0</commonscollections.version>
         <commonsio.version>2.21.0</commonsio.version>
