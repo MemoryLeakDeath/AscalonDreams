@@ -207,7 +207,7 @@ public class SceneRenderer {
          StructureUtils.setupViewportAndScissor(stack, swapChain.getSwapChainExtent().width(), swapChain.getSwapChainExtent().height(), commandHandle);
 
          VulkanUtils.copyMatrixToBuffer(device, viewMatrixBuffers.get(currentFrame), scene.getCamera().getViewMatrix(), 0);
-         LongBuffer descriptorSetsBuf = stack.mallocLong(3)
+         LongBuffer descriptorSetsBuf = stack.mallocLong(4)
                          .put(0, allocator.getDescriptorSet(DESC_ID_PROJECTION).getId())
                          .put(1, allocator.getDescriptorSet(DESC_ID_VIEW, currentFrame).getId())
                          .put(2, allocator.getDescriptorSet(DESC_ID_MATERIALS).getId())
@@ -230,6 +230,7 @@ public class SceneRenderer {
    private void renderEntities(MemoryStack stack, VulkanScene scene, CommandBuffer commandBuffer, boolean doTransparency) {
       var commandHandle = commandBuffer.getCommandBuffer();
       ModelCache modelCache = ModelCache.getInstance();
+      logger.debug("rendering entities - doTransparency: {}", doTransparency);
       scene.getEntities().forEach(e -> {
          VulkanModel model = modelCache.getModel(e.getModelId());
          model.bindMeshes(stack, commandHandle, pipeline.getLayoutId(), e.getModelMatrix(), doTransparency);

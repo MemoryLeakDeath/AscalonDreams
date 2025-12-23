@@ -2,6 +2,8 @@ package tv.memoryleakdeath.ascalondreams.camera;
 
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardInputCallback;
 import tv.memoryleakdeath.ascalondreams.input.MouseInputCallback;
 import tv.memoryleakdeath.ascalondreams.state.GameState;
@@ -9,6 +11,7 @@ import tv.memoryleakdeath.ascalondreams.state.GameState;
 import java.util.Set;
 
 public class CameraInputCallback implements KeyboardInputCallback, MouseInputCallback {
+   private static final Logger logger = LoggerFactory.getLogger(CameraInputCallback.class);
    private static final float MOUSE_SENSITIVITY = 0.1f;
    private static final float MOVEMENT_SPEED = 0.01f;
    private static final Set<Integer> KEYS = Set.of(GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_A, GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_D, GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_DOWN);
@@ -29,6 +32,7 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
       if(isHandled) {
          this.pressedKeys = pressedKeys;
       }
+      logger.debug("Camera keyboard input isHandled - {}", isHandled);
       return isHandled;
    }
 
@@ -72,6 +76,7 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
       } else {
          this.mouseMoved = false;
       }
+      logger.debug("Camera mouse input isHandled - {}", isHandled);
       return isHandled;
    }
 }

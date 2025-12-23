@@ -6,13 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 public class KeyboardCallbackHandler implements GLFWKeyCallbackI {
    private static final Logger logger = LoggerFactory.getLogger(KeyboardCallbackHandler.class);
-   private static final Set<Integer> keysPressed = new LinkedHashSet<>();
+   private static final Set<Integer> keysPressed = Collections.synchronizedSet(new LinkedHashSet<>());
    private static int modifiersPressed = -1;
    private static final List<KeyboardInputCallback> registeredCallbacks = new ArrayList<>();
    private static KeyboardCallbackHandler handler;
@@ -26,7 +27,6 @@ public class KeyboardCallbackHandler implements GLFWKeyCallbackI {
       }
       return handler;
    }
-
 
    @Override
    public void invoke(long window, int key, int scancode, int action, int mods) {
@@ -45,6 +45,7 @@ public class KeyboardCallbackHandler implements GLFWKeyCallbackI {
 
    public void input(long deltaTimeMillis) {
       GLFW.glfwPollEvents();
+      logger.debug("Poll input deltaTime: {} keysPressed: {} registered callbacks: {}", deltaTimeMillis, keysPressed, registeredCallbacks.size());
       registeredCallbacks.stream().filter(c -> c.handles(keysPressed, modifiersPressed, null))
               .forEach(callback -> callback.performAction(deltaTimeMillis));
    }

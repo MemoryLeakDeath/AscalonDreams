@@ -2,12 +2,17 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine;
 
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWCursorEnterCallback;
+import org.lwjgl.glfw.GLFWCursorPosCallback;
+import org.lwjgl.glfw.GLFWKeyCallback;
+import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.camera.Camera;
 import tv.memoryleakdeath.ascalondreams.camera.CameraInputCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
+import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
@@ -18,7 +23,7 @@ public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
     public static final String MODEL_FILE = "/home/mem/development/models/scifi-ship/FBX/ship.fbx";
     private static final String CUBE_MODEL_FILE = "models/cube/cube.json";
-    private static final String SPONZA_MODEL_FILE = "models/sponza/sponza.json";
+    private static final String SPONZA_MODEL_FILE = "models/sponza/Sponza.json";
     private static final int LOGIC_UPDATES_PER_SECOND = 30;
     private static final int DEFAULT_FRAMES_PER_SECOND = 60;
     private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;
@@ -60,10 +65,11 @@ public class VulkanEngine {
 
     public void mainLoop() {
         //GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
+       registerInputCallbacks();
 
         // rendering loop
-       long lastInputPoll = System.currentTimeMillis();
-        while (!window.shouldClose()) {
+       long lastInputPoll = System.currentTimeMillis() - 16;
+       while (!window.shouldClose()) {
            window.pollEvents(System.currentTimeMillis() - lastInputPoll); // see bottom of loop for lastInputPoll update
            if (shouldRunLogic()) {
               gameLogic();
@@ -79,8 +85,8 @@ public class VulkanEngine {
               }
            }
            lastInputPoll = System.currentTimeMillis();
-        }
-        cleanup();
+       }
+       cleanup();
     }
 
     private boolean shouldRender() {
@@ -106,12 +112,12 @@ public class VulkanEngine {
     }
 
     private void gameLogic() {
-       angle += 1.0f;
-       if(angle >= 360) {
-          angle = angle - 360;
-       }
-       cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(angle), rotationAngle);
-       cubeEntity.updateModelMatrix();
+//       angle += 1.0f;
+//       if(angle >= 360) {
+//          angle = angle - 360;
+//       }
+//       cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(angle), rotationAngle);
+//       cubeEntity.updateModelMatrix();
     }
 
     private void cleanup() {
@@ -119,25 +125,14 @@ public class VulkanEngine {
        window.cleanup();
     }
 
-    private void registerKeyboardInputCallbacks() {
-       KeyboardCallbackHandler.getInstance()
-               .registerCallback(new CameraInputCallback(null)); // todo: pass camera in here
-    }
-    private void registerKeyboardCallbacks() {
-        this.kb = new KeyboardCallback();
-        kb.addHandler(() -> {
-            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_RELEASE) {
-                window.signalClose();
-            }
-        }).addHandler(() -> {
-            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) {
-            }
-            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) {
-            }
-            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
-            }
-            if (GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) {
-            }
-        });
+    private void registerInputCallbacks() {
+       var keyHandler = KeyboardCallbackHandler.getInstance();
+       var mouseHandler = MouseCallbackHandler.getInstance();
+       keyHandler.registerCallback(new CameraInputCallback(scene.getCamera()));
+       mouseHandler.registerCallback(new CameraInputCallback(scene.getCamera()));
+       GLFW.glfwSetKeyCallback(window.getHandle(), GLFWKeyCallback.create(keyHandler));
+       GLFW.glfwSetCursorEnterCallback(window.getHandle(), GLFWCursorEnterCallback.create(mouseHandler));
+       GLFW.glfwSetCursorPosCallback(window.getHandle(), GLFWCursorPosCallback.create(mouseHandler));
+       GLFW.glfwSetMouseButtonCallback(window.getHandle(), GLFWMouseButtonCallback.create(mouseHandler));
     }
 }

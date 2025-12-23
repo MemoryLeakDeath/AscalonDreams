@@ -68,10 +68,11 @@ public class LogicalDevice {
       VK13.vkEnumerateDeviceExtensionProperties(physicalDevice.getPhysicalDevice(), (String) null, numExtensionsBuf, null);
       int numExtensions = numExtensionsBuf.get(0);
 
-      VkExtensionProperties.Buffer extensionProperties = VkExtensionProperties.calloc(numExtensions, stack);
-      VK13.vkEnumerateDeviceExtensionProperties(physicalDevice.getPhysicalDevice(), (String) null, numExtensionsBuf, extensionProperties);
-      return extensionProperties.stream()
-              .map(VkExtensionProperties::extensionNameString).collect(Collectors.toUnmodifiableSet());
+      try(var extensionProperties = VkExtensionProperties.calloc(numExtensions)) {
+         VK13.vkEnumerateDeviceExtensionProperties(physicalDevice.getPhysicalDevice(), (String) null, numExtensionsBuf, extensionProperties);
+         return extensionProperties.stream()
+                 .map(VkExtensionProperties::extensionNameString).collect(Collectors.toUnmodifiableSet());
+      }
    }
 
    public boolean isSamplerAnisotropy() {

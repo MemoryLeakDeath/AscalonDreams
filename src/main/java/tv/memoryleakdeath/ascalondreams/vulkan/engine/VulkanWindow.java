@@ -13,7 +13,7 @@ import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
 public class VulkanWindow {
     private static final Logger logger = LoggerFactory.getLogger(VulkanWindow.class);
     private static final String WINDOW_TITLE = "Ascalon Dreams";
-    private static final float FOV = 60.0f;
+    private static final float FOV = (float) Math.toRadians(60.0f);
     private static final float ZNEAR = 1.0f;
     private static final float ZFAR = 50.0f;
 
