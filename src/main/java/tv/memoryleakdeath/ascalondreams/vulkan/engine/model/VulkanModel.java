@@ -5,11 +5,13 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 import java.nio.ByteBuffer;
@@ -34,8 +36,8 @@ public class VulkanModel {
       this.id = id;
    }
 
-   public void cleanup(LogicalDevice device) {
-      meshList.forEach(mesh -> mesh.cleanup(device));
+   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      meshList.forEach(mesh -> mesh.cleanup(device, allocationUtil));
    }
 
    public String getId() {
@@ -58,30 +60,34 @@ public class VulkanModel {
       return transferBuffers;
    }
 
-   public void addMeshes(LogicalDevice device, List<VulkanMeshData> meshDataList) {
+   public void addMeshes(LogicalDevice device, MemoryAllocationUtil allocationUtil, List<VulkanMeshData> meshDataList) {
       for(VulkanMeshData data : meshDataList) {
-         addMesh(device, data.getId(), data);
+         addMesh(device, allocationUtil, data.getId(), data);
       }
    }
 
-   public void addMesh(LogicalDevice device, String id, VulkanMeshData meshData) {
-      TransferBuffer vertexBuffers = createVertexBuffers(device, meshData.getVerticies(), meshData.getTextureCoords());
-      TransferBuffer indexBuffers = createIndexBuffers(device, meshData.getIndicies());
+   public void addMesh(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, VulkanMeshData meshData) {
+      TransferBuffer vertexBuffers = createVertexBuffers(device, allocationUtil, meshData.getVerticies(), meshData.getTextureCoords());
+      TransferBuffer indexBuffers = createIndexBuffers(device, allocationUtil, meshData.getIndicies());
       transferBuffers.add(vertexBuffers);
       transferBuffers.add(indexBuffers);
       meshList.add(new VulkanMesh(id, vertexBuffers.destinationBuffer(), indexBuffers.destinationBuffer(), meshData.getIndicies().length, meshData.getMaterialId()));
    }
 
-   private TransferBuffer createVertexBuffers(LogicalDevice device, float[] verticies, float[] textureCoords) {
+   private TransferBuffer createVertexBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil, float[] verticies, float[] textureCoords) {
       if(textureCoords == null || textureCoords.length == 0) {
          textureCoords = new float[(verticies.length / 3) * 2];
       }
       int numElements = verticies.length + textureCoords.length;
       int bufferSize = numElements * VulkanConstants.FLOAT_SIZE;
 
-      var sourceBuffer = new VulkanBuffer(device, bufferSize, VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-      var destinationBuffer = new VulkanBuffer(device, bufferSize, VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK13.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-      long mappedMemory = sourceBuffer.map(device);
+      var sourceBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
+              VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Vma.VMA_MEMORY_USAGE_AUTO,
+              Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+      var destinationBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
+              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+              Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
+      long mappedMemory = sourceBuffer.map(device, allocationUtil);
       FloatBuffer data = MemoryUtil.memFloatBuffer(mappedMemory, (int)sourceBuffer.getRequestedSize());
       int rows = verticies.length / 3;
       for(int row = 0; row < rows; row++) {
@@ -90,20 +96,24 @@ public class VulkanModel {
          data.put(ArrayUtils.subarray(verticies, vertexIndex, vertexIndex + 3));  // end index is exclusive thus + 3 instead of + 2
          data.put(ArrayUtils.subarray(textureCoords, textureIndex, textureIndex + 2)); // ditto (+2 instead of +1)
       }
-      sourceBuffer.unMap(device);
+      sourceBuffer.unMap(device, allocationUtil);
       return new TransferBuffer(sourceBuffer, destinationBuffer);
    }
 
-   private TransferBuffer createIndexBuffers(LogicalDevice device, int[] indicies) {
+   private TransferBuffer createIndexBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil, int[] indicies) {
       int numIndicies = indicies.length;
       int bufferSize = numIndicies * VulkanConstants.INT_SIZE;
 
-      var sourceBuffer = new VulkanBuffer(device, bufferSize, VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-      var destinationBuffer = new VulkanBuffer(device, bufferSize, VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK13.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-      long mappedMemory = sourceBuffer.map(device);
+      var sourceBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
+              VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Vma.VMA_MEMORY_USAGE_AUTO,
+              Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+      var destinationBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
+              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+              Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
+      long mappedMemory = sourceBuffer.map(device, allocationUtil);
       IntBuffer data = MemoryUtil.memIntBuffer(mappedMemory, (int)sourceBuffer.getRequestedSize());
       data.put(indicies);
-      sourceBuffer.unMap(device);
+      sourceBuffer.unMap(device, allocationUtil);
       return new TransferBuffer(sourceBuffer, destinationBuffer);
    }
 

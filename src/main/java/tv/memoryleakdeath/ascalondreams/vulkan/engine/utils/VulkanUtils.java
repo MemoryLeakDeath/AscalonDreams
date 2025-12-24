@@ -4,6 +4,7 @@ import org.joml.Matrix4f;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkMemoryType;
@@ -29,26 +30,29 @@ public final class VulkanUtils {
    private VulkanUtils() {
    }
 
-   public static void copyMatrixToBuffer(LogicalDevice device, VulkanBuffer buffer, Matrix4f matrix, int offset) {
-      long mappedMemory = buffer.map(device);
+   public static void copyMatrixToBuffer(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanBuffer buffer, Matrix4f matrix, int offset) {
+      long mappedMemory = buffer.map(device, allocationUtil);
       ByteBuffer matrixBuf = MemoryUtil.memByteBuffer(mappedMemory, (int)buffer.getRequestedSize());
       matrix.get(offset, matrixBuf);
-      buffer.unMap(device);
+      buffer.unMap(device, allocationUtil);
    }
 
-   public static VulkanBuffer createHostVisibleBuffer(LogicalDevice device, DescriptorAllocator allocator, long size, int usage, String id, DescriptorSetLayout layout) {
-      var buf = new VulkanBuffer(device, size, usage, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+   public static VulkanBuffer createHostVisibleBuffer(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator, long size, int usage, String id, DescriptorSetLayout layout) {
+      var buf = new VulkanBuffer(device, allocationUtil, size, usage,
+              Vma.VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+              VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
       DescriptorSet set = allocator.addDescriptorSet(device, id, layout);
       set.setBuffer(device, buf, buf.getRequestedSize(), layout.getLayoutInfo().binding(), layout.getLayoutInfo().descriptorType());
       return buf;
    }
 
-   public static List<VulkanBuffer> createHostVisibleBuffers(LogicalDevice device, DescriptorAllocator allocator, long size, int numBuffers, int usage, String id, DescriptorSetLayout layout) {
+   public static List<VulkanBuffer> createHostVisibleBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator, long size, int numBuffers, int usage, String id, DescriptorSetLayout layout) {
       List<VulkanBuffer> results = new ArrayList<>();
       allocator.addDescriptorSets(device, id, numBuffers, layout);
       var layoutInfo = layout.getLayoutInfo();
       for(int i = 0; i < numBuffers; i++) {
-         var buf = new VulkanBuffer(device, size, usage, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+         var buf = new VulkanBuffer(device, allocationUtil, size, usage, Vma.VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+                 Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
          allocator.getDescriptorSet(id, i).setBuffer(device, buf, buf.getRequestedSize(), layoutInfo.binding(), layoutInfo.descriptorType());
          results.add(buf);
       }

@@ -2,6 +2,7 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.model;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkBufferImageCopy;
 import org.lwjgl.vulkan.VkDependencyInfo;
@@ -18,6 +19,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.ImageSource;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImage;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImageView;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 import java.nio.ByteBuffer;
@@ -33,17 +35,17 @@ public class VulkanTexture {
    private VulkanBuffer stagingBuffer;
    private boolean transparent = false;
 
-   public VulkanTexture(LogicalDevice device, String id, ImageSource source, int imageFormat) {
+   public VulkanTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int imageFormat) {
       this.id = id;
       this.width = source.width();
       this.height = source.height();
 
       calculateTransparency(source.data());
-      createStagingBuffer(device, source.data());
+      createStagingBuffer(device, allocationUtil, source.data());
       int mipLevels = MathUtils.calculateMipLevels(width, height);
-      this.image = new VulkanImage(device, width, height,
+      this.image = new VulkanImage(device, allocationUtil, width, height,
               VK13.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK13.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK13.VK_IMAGE_USAGE_SAMPLED_BIT,
-              imageFormat, mipLevels);
+              imageFormat, mipLevels, 0);
       var imageData = new VulkanImageViewData();
       imageData.setAspectMask(VK13.VK_IMAGE_ASPECT_COLOR_BIT);
       imageData.setFormat(image.getFormat());
@@ -64,29 +66,30 @@ public class VulkanTexture {
       }
    }
 
-   public void cleanup(LogicalDevice device) {
-      cleanupStagingBuffer(device);
+   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      cleanupStagingBuffer(device, allocationUtil);
       imageView.cleanup();
-      image.cleanup(device);
+      image.cleanup(device, allocationUtil);
    }
 
-   public void cleanupStagingBuffer(LogicalDevice device) {
+   public void cleanupStagingBuffer(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       if(stagingBuffer != null) {
-         stagingBuffer.cleanup(device);
+         stagingBuffer.cleanup(device, allocationUtil);
          stagingBuffer = null;
       }
    }
 
-   private void createStagingBuffer(LogicalDevice device, ByteBuffer data) {
+   private void createStagingBuffer(LogicalDevice device, MemoryAllocationUtil allocationUtil, ByteBuffer data) {
       int size = data.remaining();
-      this.stagingBuffer = new VulkanBuffer(device, size, VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-              VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK13.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-      long mappedMemory = stagingBuffer.map(device);
+      this.stagingBuffer = new VulkanBuffer(device, allocationUtil, size, VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+              Vma.VMA_MEMORY_USAGE_AUTO, Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+              VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+      long mappedMemory = stagingBuffer.map(device, allocationUtil);
       ByteBuffer buf = MemoryUtil.memByteBuffer(mappedMemory, (int) stagingBuffer.getRequestedSize());
       buf.put(data);
       data.flip();
 
-      stagingBuffer.unMap(device);
+      stagingBuffer.unMap(device, allocationUtil);
    }
 
    private void recordCopyBuffer(MemoryStack stack, CommandBuffer cmd, VulkanBuffer data) {

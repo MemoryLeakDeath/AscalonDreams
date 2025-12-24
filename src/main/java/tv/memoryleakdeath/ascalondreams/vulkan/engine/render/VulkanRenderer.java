@@ -23,6 +23,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 import java.util.ArrayList;
@@ -54,6 +55,7 @@ public class VulkanRenderer {
    private boolean resize = false;
    private VulkanScene currentScene;
    private final DescriptorAllocator descriptorAllocator;
+   private final MemoryAllocationUtil memoryAllocationUtil;
 
 
 
@@ -66,6 +68,7 @@ public class VulkanRenderer {
       this.swapChain = new VulkanSwapChain(device, surface, window, BUFFERING_SETUP, VSYNC);
       this.pipelineCache = new PipelineCache(device);
       this.descriptorAllocator = new DescriptorAllocator(device.getPhysicalDevice(), device);
+      this.memoryAllocationUtil = new MemoryAllocationUtil(instance, device);
 
       this.graphicsQueue = new VulkanGraphicsQueue(device, 0);
       this.presentationQueue = new VulkanPresentationQueue(device, surface, 0);
@@ -82,7 +85,7 @@ public class VulkanRenderer {
          renderingCompleteSemaphores.add(new Semaphore(device));
       }
 
-      this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device, descriptorAllocator, scene);
+      this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device, descriptorAllocator, scene, memoryAllocationUtil);
       this.modelCache = ModelCache.getInstance();
       this.textureCache = new TextureCache();
       this.materialCache = MaterialCache.getInstance();
@@ -91,10 +94,10 @@ public class VulkanRenderer {
    public void cleanup() {
       device.waitIdle();
 
-      sceneRenderer.cleanup(device);
-      modelCache.cleanup(device);
-      textureCache.cleanup(device);
-      materialCache.cleanup(device);
+      sceneRenderer.cleanup(device, memoryAllocationUtil);
+      modelCache.cleanup(device, memoryAllocationUtil);
+      textureCache.cleanup(device, memoryAllocationUtil);
+      materialCache.cleanup(device, memoryAllocationUtil);
 
       renderingCompleteSemaphores.forEach(s -> s.cleanup(device));
       presentationCompleteSemaphores.forEach(s -> s.cleanup(device));
@@ -105,6 +108,7 @@ public class VulkanRenderer {
          commandPools.get(i).cleanup(device);
       }
 
+      memoryAllocationUtil.cleanup();
       descriptorAllocator.cleanup(device);
       pipelineCache.cleanup(device);
       swapChain.cleanup();
@@ -115,18 +119,18 @@ public class VulkanRenderer {
 
    public void initModels(ConvertedModel convertedModel) {
       logger.debug("Loading {} materials", convertedModel.getMaterials().size());
-      materialCache.loadMaterials(device, convertedModel.getMaterials(), textureCache, commandPools.getFirst(), graphicsQueue);
+      materialCache.loadMaterials(device, memoryAllocationUtil, convertedModel.getMaterials(), textureCache, commandPools.getFirst(), graphicsQueue);
       logger.debug("Loaded materials.");
 
       logger.debug("Transitioning textures....");
-      textureCache.recordTextureTransitions(device, commandPools.getFirst(), graphicsQueue);
+      textureCache.recordTextureTransitions(device, memoryAllocationUtil, commandPools.getFirst(), graphicsQueue);
       logger.debug("textures transitioned.");
 
       logger.debug("Loading model...");
       VulkanModel model = new VulkanModel(convertedModel.getId());
-      model.addMeshes(device, convertedModel.getMeshData());
+      model.addMeshes(device, memoryAllocationUtil, convertedModel.getMeshData());
 
-      modelCache.loadModels(device, List.of(model), commandPools.getFirst(), graphicsQueue);
+      modelCache.loadModels(device, memoryAllocationUtil, List.of(model), commandPools.getFirst(), graphicsQueue);
       logger.debug("Models loaded!");
 
       sceneRenderer.loadMaterials(device, descriptorAllocator, materialCache, textureCache);
@@ -153,7 +157,7 @@ public class VulkanRenderer {
          resize(window.getWidth(), window.getHeight(), scene);
          return;
       }
-      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene, descriptorAllocator, currentFrame, device);
+      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil);
 
       stopRecording(commandBuffer);
       submit(commandBuffer, imageIndex);
@@ -191,7 +195,7 @@ public class VulkanRenderer {
 
       VkExtent2D extent = swapChain.getSwapChainExtent();
       scene.getProjection().resize(extent.width(), extent.height());
-      sceneRenderer.resize(device, swapChain, scene);
+      sceneRenderer.resize(device, memoryAllocationUtil, swapChain, scene);
    }
 
    private void submit(CommandBuffer buf, int imageIndex) {

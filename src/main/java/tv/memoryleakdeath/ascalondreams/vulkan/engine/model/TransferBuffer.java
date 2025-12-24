@@ -5,6 +5,7 @@ import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkBufferCopy;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 
 public record TransferBuffer(VulkanBuffer sourceBuffer, VulkanBuffer destinationBuffer) {
    public void recordTransferCommand(CommandBuffer command) {
@@ -17,11 +18,11 @@ public record TransferBuffer(VulkanBuffer sourceBuffer, VulkanBuffer destination
       }
    }
 
-   public void cleanupSourceBuffer(LogicalDevice device) {
-      sourceBuffer.cleanup(device);
+   public void cleanupSourceBuffer(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      sourceBuffer.cleanup(device, allocationUtil);
    }
 
-   public void cleanupDestinationBuffer(LogicalDevice device) {
-      destinationBuffer.cleanup(device);
+   public void cleanupDestinationBuffer(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      destinationBuffer.cleanup(device, allocationUtil);
    }
 }

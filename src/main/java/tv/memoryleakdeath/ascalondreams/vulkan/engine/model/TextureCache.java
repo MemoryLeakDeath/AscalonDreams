@@ -9,6 +9,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandPool;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.ImageSource;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.GraphicsUtils;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -26,7 +27,7 @@ public class TextureCache {
 
    }
 
-   public VulkanTexture addTexture(LogicalDevice device, String id, ImageSource source, int format) {
+   public VulkanTexture addTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int format) {
       if(textureMap.size() > MAX_TEXTURES) {
          logger.error("Max texture limit reached! Limit: {}", MAX_TEXTURES);
          throw new RuntimeException("Texture cache is full");
@@ -34,17 +35,17 @@ public class TextureCache {
       if(textureMap.containsKey(id)) {
          return textureMap.get(id);
       }
-      var texture = new VulkanTexture(device, id, source, format);
+      var texture = new VulkanTexture(device, allocationUtil, id, source, format);
       textureMap.put(id, texture);
       return texture;
    }
 
-   public VulkanTexture addTexture(LogicalDevice device, String id, String texturePath, int format) {
+   public VulkanTexture addTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, String texturePath, int format) {
       ImageSource source = null;
       VulkanTexture texture = null;
       try {
          source = GraphicsUtils.loadImage(texturePath);
-         texture = addTexture(device, id, source, format);
+         texture = addTexture(device, allocationUtil, id, source, format);
       } catch (IOException e) {
          logger.error("Could not load texture file: %s".formatted(texturePath), e);
       } finally {
@@ -55,8 +56,8 @@ public class TextureCache {
       return texture;
    }
 
-   public void cleanup(LogicalDevice device) {
-      textureMap.forEach((k, v) -> v.cleanup(device));
+   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      textureMap.forEach((k, v) -> v.cleanup(device, allocationUtil));
       textureMap.clear();
    }
 
@@ -68,13 +69,13 @@ public class TextureCache {
       return List.copyOf(textureMap.keySet()).indexOf(id);
    }
 
-   public void recordTextureTransitions(LogicalDevice device, CommandPool cmd, BaseDeviceQueue queue) {
+   public void recordTextureTransitions(LogicalDevice device, MemoryAllocationUtil allocationUtil, CommandPool cmd, BaseDeviceQueue queue) {
       logger.debug("Recording texture transitions...");
       int numTextures = textureMap.size();
       if(numTextures < MAX_TEXTURES) {
          int paddingCount = MAX_TEXTURES - numTextures;
          for(int i = 0; i < paddingCount; i++) {
-            addTexture(device, UUID.randomUUID().toString(), PADDING_TEXTURE_PATH, VK13.VK_FORMAT_R8G8B8A8_SRGB);
+            addTexture(device, allocationUtil, UUID.randomUUID().toString(), PADDING_TEXTURE_PATH, VK13.VK_FORMAT_R8G8B8A8_SRGB);
          }
       }
       var commandBuffer = new CommandBuffer(device, cmd, true, true);
@@ -83,7 +84,7 @@ public class TextureCache {
       commandBuffer.endRecording();
       commandBuffer.submitAndWait(device, queue);
       commandBuffer.cleanup(device, cmd);
-      textureMap.forEach((k, v) -> v.cleanupStagingBuffer(device));
+      textureMap.forEach((k, v) -> v.cleanupStagingBuffer(device, allocationUtil));
       logger.debug("Recorded texture transitions!");
    }
 }

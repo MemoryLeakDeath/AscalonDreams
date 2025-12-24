@@ -1,13 +1,15 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.render;
 
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.util.vma.Vma;
+import org.lwjgl.util.vma.VmaAllocationCreateInfo;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkImageCreateInfo;
-import org.lwjgl.vulkan.VkMemoryAllocateInfo;
-import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 import java.nio.LongBuffer;
@@ -18,12 +20,14 @@ public class VulkanImage {
    private final int format;
    private final int mipLevels;
    private final long id;
-   private final long memoryHandle;
+   private final int memoryUsage;
+   private final long vmaAllocator;
 
-   public VulkanImage(LogicalDevice device, int width, int height, int usage, int imageFormat, int mipLevels) {
+   public VulkanImage(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int usage, int imageFormat, int mipLevels, int memoryUsage) {
       try(var stack = MemoryStack.stackPush()) {
          this.format = imageFormat;
          this.mipLevels = mipLevels;
+         this.memoryUsage = memoryUsage;
          var info = VkImageCreateInfo.calloc(stack)
                  .sType$Default()
                  .imageType(VK13.VK_IMAGE_TYPE_2D)
@@ -36,32 +40,21 @@ public class VulkanImage {
                  .sharingMode(VK13.VK_SHARING_MODE_EXCLUSIVE)
                  .tiling(VK13.VK_IMAGE_TILING_OPTIMAL)
                  .usage(usage);
+         var vmaAllocCreateInfo = VmaAllocationCreateInfo.calloc(1, stack)
+                 .get(0)
+                 .usage(Vma.VMA_MEMORY_USAGE_AUTO)
+                 .flags(this.memoryUsage)
+                 .priority(1.0f);
+         PointerBuffer allocBuf = stack.callocPointer(1);
          LongBuffer buf = stack.mallocLong(1);
-         VulkanUtils.failIfNeeded(VK13.vkCreateImage(device.getDevice(), info, null, buf), "Failed to create image!");
+         VulkanUtils.failIfNeeded(Vma.vmaCreateImage(allocationUtil.getVmaAllocator(), info, vmaAllocCreateInfo, buf, allocBuf, null), "Failed to create image!");
          this.id = buf.get(0);
-
-         // get memory requirements
-         VkMemoryRequirements requirements = VkMemoryRequirements.calloc(stack);
-         VK13.vkGetImageMemoryRequirements(device.getDevice(), id, requirements);
-
-         // memory size and type
-         var allocInfo = VkMemoryAllocateInfo.calloc(stack)
-                 .sType$Default()
-                 .allocationSize(requirements.size())
-                 .memoryTypeIndex(VulkanUtils.getMemoryType(device, requirements.memoryTypeBits(), 0));
-
-         // allocate
-         VulkanUtils.failIfNeeded(VK13.vkAllocateMemory(device.getDevice(), allocInfo, null, buf), "Failed to allocate memory!");
-         this.memoryHandle = buf.get(0);
-
-         // bind
-         VulkanUtils.failIfNeeded(VK13.vkBindImageMemory(device.getDevice(), id, memoryHandle, 0), "Failed to bind image memory!");
+         this.vmaAllocator = allocBuf.get(0);
       }
    }
 
-   public void cleanup(LogicalDevice device) {
-      VK13.vkDestroyImage(device.getDevice(), id, null);
-      VK13.vkFreeMemory(device.getDevice(), memoryHandle, null);
+   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      Vma.vmaDestroyImage(allocationUtil.getVmaAllocator(), id, vmaAllocator);
    }
 
    public int getFormat() {

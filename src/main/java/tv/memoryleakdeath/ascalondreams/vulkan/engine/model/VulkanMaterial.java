@@ -7,6 +7,7 @@ import org.lwjgl.vulkan.VK13;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 import java.nio.ByteBuffer;
@@ -33,9 +34,9 @@ public class VulkanMaterial {
       this.diffuseColor = diffuseColor;
    }
 
-   public void load(LogicalDevice device, ByteBuffer dataBuf, int offset, TextureCache cache) {
+   public void load(LogicalDevice device, MemoryAllocationUtil allocationUtil, ByteBuffer dataBuf, int offset, TextureCache cache) {
       if(hasTexture()) {
-         VulkanTexture texture = cache.addTexture(device, texturePath, texturePath, VK13.VK_FORMAT_R8G8B8A8_SRGB);
+         VulkanTexture texture = cache.addTexture(device, allocationUtil, texturePath, texturePath, VK13.VK_FORMAT_R8G8B8A8_SRGB);
          transparent = texture.isTransparent();
       } else {
          transparent = diffuseColor.w < 1.0f;

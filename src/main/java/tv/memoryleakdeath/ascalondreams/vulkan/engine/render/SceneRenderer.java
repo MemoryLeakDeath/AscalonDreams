@@ -31,6 +31,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PushConstantRange;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderCompiler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModule;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
@@ -67,14 +68,14 @@ public class SceneRenderer {
    private static final String DESC_ID_TEXTURE = "SCN_DESC_ID_TEX";
    private static final String DESC_ID_VIEW = "SCN_DESC_ID_VIEW";
 
-   public SceneRenderer(VulkanSwapChain swapChain, VulkanSurface surface, PipelineCache cache, LogicalDevice device, DescriptorAllocator allocator, VulkanScene scene) {
+   public SceneRenderer(VulkanSwapChain swapChain, VulkanSurface surface, PipelineCache cache, LogicalDevice device, DescriptorAllocator allocator, VulkanScene scene, MemoryAllocationUtil allocationUtil) {
       this.clearValueColor = VkClearValue.calloc().color(
               c -> c.float32(0, 0f)
                       .float32(1, 0.0f)
                       .float32(2, 0.0f)
                       .float32(3, 1f));
       this.clearValueDepth = VkClearValue.calloc().color(c -> c.float32(0, 1f));
-      initDepthAttachments(swapChain, device);
+      initDepthAttachments(swapChain, device, allocationUtil);
       initColorAttachmentsInfo(swapChain);
       initDepthAttachmentsInfo(swapChain);
       initRenderInfos(swapChain);
@@ -82,11 +83,11 @@ public class SceneRenderer {
 
       this.vertexUniformLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
               0, 1, VK13.VK_SHADER_STAGE_VERTEX_BIT));
-      this.projectionMatrixBuffer = VulkanUtils.createHostVisibleBuffer(device, allocator, VulkanConstants.MAT4X4_SIZE,
+      this.projectionMatrixBuffer = VulkanUtils.createHostVisibleBuffer(device, allocationUtil, allocator, VulkanConstants.MAT4X4_SIZE,
               VK13.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, DESC_ID_PROJECTION, vertexUniformLayout);
-      VulkanUtils.copyMatrixToBuffer(device, projectionMatrixBuffer, scene.getProjection().getProjectionMatrix(), 0);
+      VulkanUtils.copyMatrixToBuffer(device, allocationUtil, projectionMatrixBuffer, scene.getProjection().getProjectionMatrix(), 0);
 
-      this.viewMatrixBuffers = VulkanUtils.createHostVisibleBuffers(device, allocator, VulkanConstants.MAT4X4_SIZE,
+      this.viewMatrixBuffers = VulkanUtils.createHostVisibleBuffers(device, allocationUtil, allocator, VulkanConstants.MAT4X4_SIZE,
               VulkanConstants.MAX_IN_FLIGHT, VK13.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, DESC_ID_VIEW, vertexUniformLayout);
 
       this.fragmentStorageLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -114,10 +115,10 @@ public class SceneRenderer {
       }
    }
 
-   private void initDepthAttachments(VulkanSwapChain swapChain, LogicalDevice device) {
+   private void initDepthAttachments(VulkanSwapChain swapChain, LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       VkExtent2D extent = swapChain.getSwapChainExtent();
       for(int i = 0; i < swapChain.getNumImages(); i++) {
-         this.attachmentDepth.add(new Attachment(device, extent.width(), extent.height(),
+         this.attachmentDepth.add(new Attachment(device, allocationUtil, extent.width(), extent.height(),
                  DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
       }
    }
@@ -168,10 +169,10 @@ public class SceneRenderer {
               new ShaderModule(device, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV));
    }
 
-   public void cleanup(LogicalDevice device) {
+   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       pipeline.cleanup(device);
-      viewMatrixBuffers.forEach(b -> b.cleanup(device));
-      projectionMatrixBuffer.cleanup(device);
+      viewMatrixBuffers.forEach(b -> b.cleanup(device, allocationUtil));
+      projectionMatrixBuffer.cleanup(device, allocationUtil);
       vertexUniformLayout.cleanup(device);
       fragmentStorageLayout.cleanup(device);
       textureLayout.cleanup(device);
@@ -179,14 +180,14 @@ public class SceneRenderer {
       renderingInfos.forEach(VkRenderingInfo::free);
       attachmentInfoDepth.forEach(VkRenderingAttachmentInfo::free);
       attachmentInfoColor.forEach(VkRenderingAttachmentInfo.Buffer::free);
-      attachmentDepth.forEach(a -> a.cleanup(device));
+      attachmentDepth.forEach(a -> a.cleanup(device, allocationUtil));
       VulkanPushConstantsHandler.free();
       clearValueDepth.free();
       clearValueColor.free();
    }
 
    public void render(VulkanSwapChain swapChain, CommandBuffer commandBuffer, ModelCache modelCache,
-                      int imageIndex, VulkanScene scene, DescriptorAllocator allocator, int currentFrame, LogicalDevice device) {
+                      int imageIndex, VulkanScene scene, DescriptorAllocator allocator, int currentFrame, LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       try(var stack = MemoryStack.stackPush()) {
          long swapChainImage = swapChain.getImageView(imageIndex).getImageId();
          var commandHandle = commandBuffer.getCommandBuffer();
@@ -206,7 +207,7 @@ public class SceneRenderer {
          VK13.vkCmdBindPipeline(commandHandle, VK13.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getId());
          StructureUtils.setupViewportAndScissor(stack, swapChain.getSwapChainExtent().width(), swapChain.getSwapChainExtent().height(), commandHandle);
 
-         VulkanUtils.copyMatrixToBuffer(device, viewMatrixBuffers.get(currentFrame), scene.getCamera().getViewMatrix(), 0);
+         VulkanUtils.copyMatrixToBuffer(device, allocationUtil, viewMatrixBuffers.get(currentFrame), scene.getCamera().getViewMatrix(), 0);
          LongBuffer descriptorSetsBuf = stack.mallocLong(4)
                          .put(0, allocator.getDescriptorSet(DESC_ID_PROJECTION).getId())
                          .put(1, allocator.getDescriptorSet(DESC_ID_VIEW, currentFrame).getId())
@@ -237,16 +238,16 @@ public class SceneRenderer {
       });
    }
 
-   public void resize(LogicalDevice device, VulkanSwapChain swapChain, VulkanScene scene) {
+   public void resize(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain, VulkanScene scene) {
       renderingInfos.forEach(VkRenderingInfo::free);
       attachmentInfoDepth.forEach(VkRenderingAttachmentInfo::free);
       attachmentInfoColor.forEach(VkRenderingAttachmentInfo.Buffer::free);
-      attachmentDepth.forEach(a -> a.cleanup(device));
-      initDepthAttachments(swapChain, device);
+      attachmentDepth.forEach(a -> a.cleanup(device, allocationUtil));
+      initDepthAttachments(swapChain, device, allocationUtil);
       initColorAttachmentsInfo(swapChain);
       initDepthAttachmentsInfo(swapChain);
       initRenderInfos(swapChain);
-      VulkanUtils.copyMatrixToBuffer(device, projectionMatrixBuffer, scene.getProjection().getProjectionMatrix(), 0);
+      VulkanUtils.copyMatrixToBuffer(device, allocationUtil, projectionMatrixBuffer, scene.getProjection().getProjectionMatrix(), 0);
    }
 
    public void loadMaterials(LogicalDevice device, DescriptorAllocator allocator, MaterialCache materialCache, TextureCache textureCache) {
