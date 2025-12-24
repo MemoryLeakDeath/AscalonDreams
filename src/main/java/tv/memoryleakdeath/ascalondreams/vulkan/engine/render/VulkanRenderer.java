@@ -22,7 +22,9 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.postprocess.PostProcessingRenderer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.swapchain.SwapChainRender;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
@@ -45,11 +47,13 @@ public class VulkanRenderer {
    private final VulkanGraphicsQueue graphicsQueue;
    private final List<Semaphore> presentationCompleteSemaphores = new ArrayList<>();
    private final ModelCache modelCache;
+   private final PostProcessingRenderer postProcessingRenderer;
    private final MaterialCache materialCache;
    private final TextureCache textureCache;
    private final VulkanPresentationQueue presentationQueue;
    private final List<Semaphore> renderingCompleteSemaphores = new ArrayList<>();
    private final SceneRenderer sceneRenderer;
+   private final SwapChainRender swapChainRender;
    private final PipelineCache pipelineCache;
    private int currentFrame = 0;
    private boolean resize = false;
@@ -85,7 +89,9 @@ public class VulkanRenderer {
          renderingCompleteSemaphores.add(new Semaphore(device));
       }
 
-      this.sceneRenderer = new SceneRenderer(swapChain, surface, pipelineCache, device, descriptorAllocator, scene, memoryAllocationUtil);
+      this.sceneRenderer = new SceneRenderer(swapChain, pipelineCache, device, descriptorAllocator, scene, memoryAllocationUtil);
+      this.postProcessingRenderer = new PostProcessingRenderer(device, memoryAllocationUtil, descriptorAllocator, swapChain, pipelineCache, sceneRenderer.getAttachmentColor());
+      this.swapChainRender = new SwapChainRender(device, descriptorAllocator, swapChain, surface, pipelineCache, postProcessingRenderer.getColorAttachment());
       this.modelCache = ModelCache.getInstance();
       this.textureCache = new TextureCache();
       this.materialCache = MaterialCache.getInstance();
@@ -95,6 +101,8 @@ public class VulkanRenderer {
       device.waitIdle();
 
       sceneRenderer.cleanup(device, memoryAllocationUtil);
+      postProcessingRenderer.cleanup(device, memoryAllocationUtil);
+      swapChainRender.cleanup(device);
       modelCache.cleanup(device, memoryAllocationUtil);
       textureCache.cleanup(device, memoryAllocationUtil);
       materialCache.cleanup(device, memoryAllocationUtil);
@@ -152,12 +160,16 @@ public class VulkanRenderer {
 
       startRecording(commandPool, commandBuffer);
 
+      sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil);
+      postProcessingRenderer.render(swapChain, descriptorAllocator, commandBuffer, sceneRenderer.getAttachmentColor());
+
       int imageIndex;
       if(resize || (imageIndex = swapChain.acquireNextImage(device, presentationCompleteSemaphores.get(currentFrame))) < 0) {
          resize(window.getWidth(), window.getHeight(), scene);
          return;
       }
-      sceneRenderer.render(swapChain, commandBuffer, modelCache, imageIndex, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil);
+
+      swapChainRender.render(swapChain, descriptorAllocator, commandBuffer, postProcessingRenderer.getColorAttachment(), imageIndex);
 
       stopRecording(commandBuffer);
       submit(commandBuffer, imageIndex);
@@ -196,6 +208,8 @@ public class VulkanRenderer {
       VkExtent2D extent = swapChain.getSwapChainExtent();
       scene.getProjection().resize(extent.width(), extent.height());
       sceneRenderer.resize(device, memoryAllocationUtil, swapChain, scene);
+      postProcessingRenderer.resize(device, memoryAllocationUtil, swapChain, descriptorAllocator, sceneRenderer.getAttachmentColor());
+      swapChainRender.resize(device, swapChain, descriptorAllocator, postProcessingRenderer.getColorAttachment());
    }
 
    private void submit(CommandBuffer buf, int imageIndex) {

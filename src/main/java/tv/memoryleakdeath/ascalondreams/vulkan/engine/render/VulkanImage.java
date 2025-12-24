@@ -22,12 +22,16 @@ public class VulkanImage {
    private final long id;
    private final int memoryUsage;
    private final long vmaAllocator;
+   private final int width;
+   private final int height;
 
    public VulkanImage(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int usage, int imageFormat, int mipLevels, int memoryUsage) {
       try(var stack = MemoryStack.stackPush()) {
          this.format = imageFormat;
          this.mipLevels = mipLevels;
          this.memoryUsage = memoryUsage;
+         this.width = width;
+         this.height = height;
          var info = VkImageCreateInfo.calloc(stack)
                  .sType$Default()
                  .imageType(VK13.VK_IMAGE_TYPE_2D)
@@ -67,5 +71,13 @@ public class VulkanImage {
 
    public long getId() {
       return id;
+   }
+
+   public int getWidth() {
+      return width;
+   }
+
+   public int getHeight() {
+      return height;
    }
 }

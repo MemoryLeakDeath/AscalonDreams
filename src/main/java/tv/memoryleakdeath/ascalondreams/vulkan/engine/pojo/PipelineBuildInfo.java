@@ -22,6 +22,9 @@ public record PipelineBuildInfo(List<ShaderModule> shaderModules, VkPipelineVert
                  .stage(module.getStage())
                  .module(module.getId())
                  .pName(main);
+         if(module.getSpecializationInfo() != null) {
+            info.get(i).pSpecializationInfo(module.getSpecializationInfo());
+         }
       }
       return info;
    }

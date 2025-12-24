@@ -48,10 +48,10 @@ public class VulkanSurface {
 
          VkSurfaceFormatKHR.Buffer surfaceFormats = VkSurfaceFormatKHR.calloc(numFormats, stack);
          VulkanUtils.failIfNeeded(KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(device.getPhysicalDevice(), id, buf, surfaceFormats), "Unable to get surface formats!");
-         int imageFormat = VK13.VK_FORMAT_B8G8R8A8_SRGB;
+         int imageFormat = VK13.VK_FORMAT_B8G8R8A8_UNORM;
          int colorSpace = surfaceFormats.get(0).colorSpace();
          return surfaceFormats.stream()
-                 .filter(f -> f.format() == VK13.VK_FORMAT_B8G8R8A8_SRGB && f.colorSpace() == KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                 .filter(f -> f.format() == VK13.VK_FORMAT_B8G8R8A8_UNORM && f.colorSpace() == KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
                  .findFirst()
                  .map(f -> new SurfaceFormat(f.format(), f.colorSpace()))
                  .orElse(new SurfaceFormat(imageFormat, colorSpace));
