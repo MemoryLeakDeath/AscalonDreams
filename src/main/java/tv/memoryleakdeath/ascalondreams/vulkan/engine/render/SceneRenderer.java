@@ -230,7 +230,7 @@ public class SceneRenderer {
    private void renderEntities(MemoryStack stack, VulkanScene scene, CommandBuffer commandBuffer, boolean doTransparency) {
       var commandHandle = commandBuffer.getCommandBuffer();
       ModelCache modelCache = ModelCache.getInstance();
-      logger.debug("rendering entities - doTransparency: {}", doTransparency);
+      logger.trace("rendering entities - doTransparency: {}", doTransparency);
       scene.getEntities().forEach(e -> {
          VulkanModel model = modelCache.getModel(e.getModelId());
          model.bindMeshes(stack, commandHandle, pipeline.getLayoutId(), e.getModelMatrix(), doTransparency);

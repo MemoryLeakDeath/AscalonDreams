@@ -2,14 +2,11 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine;
 
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWCursorEnterCallback;
-import org.lwjgl.glfw.GLFWCursorPosCallback;
-import org.lwjgl.glfw.GLFWKeyCallback;
-import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.camera.Camera;
 import tv.memoryleakdeath.ascalondreams.camera.CameraInputCallback;
+import tv.memoryleakdeath.ascalondreams.input.InputTimer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
 import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
@@ -64,13 +61,12 @@ public class VulkanEngine {
     }
 
     public void mainLoop() {
-        //GLFW.glfwSetKeyCallback(window.getHandle(), registerKeyboardCallbacks());
+       InputTimer.getInstance().tick();
        registerInputCallbacks();
 
         // rendering loop
-       long lastInputPoll = System.currentTimeMillis() - 16;
        while (!window.shouldClose()) {
-           window.pollEvents(System.currentTimeMillis() - lastInputPoll); // see bottom of loop for lastInputPoll update
+          window.pollEvents();
            if (shouldRunLogic()) {
               gameLogic();
            }
@@ -84,7 +80,7 @@ public class VulkanEngine {
                  Thread.currentThread().interrupt();
               }
            }
-           lastInputPoll = System.currentTimeMillis();
+           InputTimer.getInstance().tick();
        }
        cleanup();
     }
@@ -126,13 +122,15 @@ public class VulkanEngine {
     }
 
     private void registerInputCallbacks() {
-       var keyHandler = KeyboardCallbackHandler.getInstance();
-       var mouseHandler = MouseCallbackHandler.getInstance();
+       var keyHandler = KeyboardCallbackHandler.getInstance(window.getHandle());
+       var mouseHandler = MouseCallbackHandler.getInstance(window.getHandle());
+       var mouseEnteredHandler = mouseHandler.getEnteredHandler();
+       var mouseButtonHandler = mouseHandler.getButtonHandler();
        keyHandler.registerCallback(new CameraInputCallback(scene.getCamera()));
        mouseHandler.registerCallback(new CameraInputCallback(scene.getCamera()));
-       GLFW.glfwSetKeyCallback(window.getHandle(), GLFWKeyCallback.create(keyHandler));
-       GLFW.glfwSetCursorEnterCallback(window.getHandle(), GLFWCursorEnterCallback.create(mouseHandler));
-       GLFW.glfwSetCursorPosCallback(window.getHandle(), GLFWCursorPosCallback.create(mouseHandler));
-       GLFW.glfwSetMouseButtonCallback(window.getHandle(), GLFWMouseButtonCallback.create(mouseHandler));
+       GLFW.glfwSetKeyCallback(window.getHandle(), keyHandler);
+       GLFW.glfwSetCursorEnterCallback(window.getHandle(), mouseEnteredHandler);
+       GLFW.glfwSetCursorPosCallback(window.getHandle(), mouseHandler);
+       GLFW.glfwSetMouseButtonCallback(window.getHandle(), mouseButtonHandler);
     }
 }

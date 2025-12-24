@@ -31,14 +31,17 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
       boolean isHandled = KEYS.stream().anyMatch(pressedKeys::contains);
       if(isHandled) {
          this.pressedKeys = pressedKeys;
+         logger.trace("Camera keyboard input isHandled - {} - pressedKeys: {}", isHandled, this.pressedKeys);
       }
-      logger.debug("Camera keyboard input isHandled - {}", isHandled);
       return isHandled;
    }
 
    @Override
    public void performAction(long deltaTimeMillis) {
-      float move = deltaTimeMillis * MOVEMENT_SPEED;
+      float move = 0.17f;
+      if(move > 0) {
+         logger.trace("DeltaTime: {} Move: {}", deltaTimeMillis, move);
+      }
       if(pressedKeys != null) {
          if(pressedKeys.contains(GLFW.GLFW_KEY_W)) {
             camera.moveForward(move);
@@ -59,8 +62,10 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
          }
       }
       if(mouseMoved) {
-         camera.addRotation((float) Math.toRadians(-deltaCursorPosition.y * MOUSE_SENSITIVITY),
-                 (float) Math.toRadians(-deltaCursorPosition.x * MOUSE_SENSITIVITY));
+         Vector2f delta = getDeltaCursorPosition();
+         logger.debug("Delta: {}", delta);
+         camera.addRotation((float) Math.toRadians(-delta.y * MOUSE_SENSITIVITY),
+                 (float) Math.toRadians(-delta.x * MOUSE_SENSITIVITY));
       }
    }
 
@@ -70,13 +75,20 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
       boolean isHandled = (deltaCursorPosition.x >= 0 || deltaCursorPosition.y >= 0);
       if(isHandled) {
          this.currentCursorPosition = currentCursorPosition;
-         this.deltaCursorPosition = deltaCursorPosition;
+         setDeltaCursorPosition(deltaCursorPosition);
          this.buttonsPressed = buttonsPressed;
          this.mouseMoved = true;
       } else {
          this.mouseMoved = false;
       }
-      logger.debug("Camera mouse input isHandled - {}", isHandled);
       return isHandled;
+   }
+
+   public synchronized Vector2f getDeltaCursorPosition() {
+      return deltaCursorPosition;
+   }
+
+   public synchronized void setDeltaCursorPosition(Vector2f deltaCursorPosition) {
+      this.deltaCursorPosition = deltaCursorPosition;
    }
 }

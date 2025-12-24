@@ -52,7 +52,7 @@ public class Camera {
    }
 
    public void moveRight(float inc) {
-      viewMatrix.positiveY(right).mul(inc);
+      viewMatrix.positiveX(right).mul(inc);
       position.add(right);
       recalculateMatrix();
    }

@@ -82,9 +82,9 @@ public class VulkanWindow {
         GLFW.glfwSetErrorCallback(null).free();
     }
 
-    public void pollEvents(long deltaTimeMillis) {
-       KeyboardCallbackHandler.getInstance().input(deltaTimeMillis);
-       MouseCallbackHandler.getInstance().input(deltaTimeMillis);
+    public void pollEvents() {
+       KeyboardCallbackHandler.getInstance(handle).input();
+       MouseCallbackHandler.getInstance(handle).input();
     }
 
     public void update() {

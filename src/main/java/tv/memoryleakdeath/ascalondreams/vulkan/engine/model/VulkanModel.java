@@ -119,7 +119,7 @@ public class VulkanModel {
             logger.warn("Mesh {} in model {} does not have a material!", mesh.id(), id);
          } else {
             if(material.isTransparent() == doTransparent) {
-               logger.debug("Rendering material: {}", materialId);
+               logger.trace("Rendering material: {}", materialId);
                setPushConstants(cmd, modelMatrix, piplineLayoutId, materialIndex);
                vertexBuffer.put(0, mesh.vertexBuffer().getBuffer());
                VK13.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);

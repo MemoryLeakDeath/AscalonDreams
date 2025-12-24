@@ -5,14 +5,13 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCursorEnterCallbackI;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
-import org.lwjgl.system.libffi.FFICIF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MouseCallbackHandler implements GLFWCursorEnterCallbackI, GLFWCursorPosCallbackI, GLFWMouseButtonCallbackI {
+public class MouseCallbackHandler implements GLFWCursorPosCallbackI {
    private static final Logger logger = LoggerFactory.getLogger(MouseCallbackHandler.class);
    private static Vector2f currentCursorPosition = new Vector2f();
    private static Vector2f previousCursorPosition = new Vector2f(-1f, -1f);
@@ -22,49 +21,39 @@ public class MouseCallbackHandler implements GLFWCursorEnterCallbackI, GLFWCurso
    private static int modifierKeys = -1;
    private static List<MouseInputCallback> callbacks = new ArrayList<>();
    private static MouseCallbackHandler handler;
+   private MouseEnteredHandler enteredHandler;
+   private MouseButtonHandler buttonHandler;
+   private static long windowHandle;
 
-   private MouseCallbackHandler() {
+   private MouseCallbackHandler(long windowHandle) {
+      this.windowHandle = windowHandle;
+      this.enteredHandler = new MouseEnteredHandler();
+      this.buttonHandler = new MouseButtonHandler();
    }
 
-   public static MouseCallbackHandler getInstance() {
+   public static MouseCallbackHandler getInstance(long windowHandle) {
       if(handler == null) {
-         handler = new MouseCallbackHandler();
+         handler = new MouseCallbackHandler(windowHandle);
       }
       return handler;
    }
 
-   @Override
-   public FFICIF getCallInterface() {
-      return GLFWCursorEnterCallbackI.super.getCallInterface();
+   public MouseEnteredHandler getEnteredHandler() {
+      return enteredHandler;
    }
 
-   @Override
-   public void callback(long ret, long args) {
-      GLFWCursorEnterCallbackI.super.callback(ret, args);
-   }
-
-   @Override
-   public void invoke(long window, boolean entered) {
-      // cursor entered invocation
-      cursorInWindow = entered;
+   public MouseButtonHandler getButtonHandler() {
+      return buttonHandler;
    }
 
    @Override
    public void invoke(long window, double xpos, double ypos) {
+      if(window != windowHandle) {
+         return;
+      }
       // cursor moved invocation
       currentCursorPosition.x = (float) xpos;
       currentCursorPosition.y = (float) ypos;
-   }
-
-   @Override
-   public void invoke(long window, int button, int action, int mods) {
-      // mouse button invocations
-      switch(action) {
-         case GLFW.GLFW_PRESS -> buttonsPressed[button] = true;
-         case GLFW.GLFW_RELEASE -> buttonsPressed[button] = false;
-         default -> {}
-      }
-      modifierKeys = mods;
    }
 
    public MouseCallbackHandler registerCallback(MouseInputCallback callback) {
@@ -72,7 +61,7 @@ public class MouseCallbackHandler implements GLFWCursorEnterCallbackI, GLFWCurso
       return this;
    }
 
-   public void input(long deltaTimeMillis) {
+   public void input() {
       deltaCursorPosition.x = 0f;
       deltaCursorPosition.y = 0f;
       if(previousCursorPosition.x >= 0 && previousCursorPosition.y >= 0 && cursorInWindow) {
@@ -84,7 +73,35 @@ public class MouseCallbackHandler implements GLFWCursorEnterCallbackI, GLFWCurso
 
       if(cursorInWindow) {
          callbacks.stream().filter(c -> c.handles(currentCursorPosition, deltaCursorPosition, buttonsPressed, modifierKeys))
-                 .forEach(callback -> callback.performAction(deltaTimeMillis));
+                 .forEach(callback -> callback.performAction(InputTimer.getInstance().delta()));
+      }
+   }
+
+   class MouseEnteredHandler implements GLFWCursorEnterCallbackI {
+
+      @Override
+      public void invoke(long window, boolean entered) {
+         if(window != windowHandle) {
+            return;
+         }
+         // cursor entered invocation
+         cursorInWindow = entered;
+      }
+   }
+
+   class MouseButtonHandler implements GLFWMouseButtonCallbackI {
+      @Override
+      public void invoke(long window, int button, int action, int mods) {
+         if(window != windowHandle) {
+            return;
+         }
+         // mouse button invocations
+         switch(action) {
+            case GLFW.GLFW_PRESS -> buttonsPressed[button] = true;
+            case GLFW.GLFW_RELEASE -> buttonsPressed[button] = false;
+            default -> {}
+         }
+         modifierKeys = mods;
       }
    }
 }

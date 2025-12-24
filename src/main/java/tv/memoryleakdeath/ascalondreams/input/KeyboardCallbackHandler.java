@@ -17,25 +17,34 @@ public class KeyboardCallbackHandler implements GLFWKeyCallbackI {
    private static int modifiersPressed = -1;
    private static final List<KeyboardInputCallback> registeredCallbacks = new ArrayList<>();
    private static KeyboardCallbackHandler handler;
+   private static long windowHandle;
 
-   private KeyboardCallbackHandler() {
+   private KeyboardCallbackHandler(long windowHandle) {
+      this.windowHandle = windowHandle;
    }
 
-   public static KeyboardCallbackHandler getInstance() {
+   public static KeyboardCallbackHandler getInstance(long windowHandle) {
       if(handler == null) {
-         handler = new KeyboardCallbackHandler();
+         handler = new KeyboardCallbackHandler(windowHandle);
       }
       return handler;
    }
 
    @Override
    public void invoke(long window, int key, int scancode, int action, int mods) {
+      if(window != windowHandle) {
+         return;
+      }
       switch(action) {
          case GLFW.GLFW_PRESS -> keysPressed.add(key);
          case GLFW.GLFW_RELEASE -> keysPressed.remove(key);
          default -> {}
       }
       modifiersPressed = mods;
+      if(!keysPressed.isEmpty()) {
+         registeredCallbacks.stream().filter(c -> c.handles(keysPressed, modifiersPressed, null))
+                 .forEach(callback -> callback.performAction(InputTimer.getInstance().delta()));
+      }
    }
 
    public KeyboardCallbackHandler registerCallback(KeyboardInputCallback callback) {
@@ -43,10 +52,7 @@ public class KeyboardCallbackHandler implements GLFWKeyCallbackI {
       return this;
    }
 
-   public void input(long deltaTimeMillis) {
+   public void input() {
       GLFW.glfwPollEvents();
-      logger.debug("Poll input deltaTime: {} keysPressed: {} registered callbacks: {}", deltaTimeMillis, keysPressed, registeredCallbacks.size());
-      registeredCallbacks.stream().filter(c -> c.handles(keysPressed, modifiersPressed, null))
-              .forEach(callback -> callback.performAction(deltaTimeMillis));
    }
 }
