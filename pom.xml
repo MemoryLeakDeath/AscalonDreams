@@ -24,6 +24,7 @@
 		<commonscollections.version>4.5.0</commonscollections.version>
         <commonsio.version>2.21.0</commonsio.version>
         <junit.version>6.0.1</junit.version>
+        <imgui.version>1.90.0</imgui.version>
 	</properties>
 
 	<profiles>
@@ -119,6 +120,11 @@
             <groupId>org.lwjgl</groupId>
             <artifactId>lwjgl-vma</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.github.spair</groupId>
+            <artifactId>imgui-java-binding</artifactId>
+            <version>${imgui.version}</version>
+        </dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl</artifactId>
@@ -179,8 +185,14 @@
             <artifactId>lwjgl-vma</artifactId>
             <classifier>${lwjgl.natives}</classifier>
         </dependency>
+        <dependency>
+            <groupId>io.github.spair</groupId>
+            <artifactId>imgui-java-${lwjgl.natives}</artifactId>
+            <version>${imgui.version}</version>
+            <scope>runtime</scope>
+        </dependency>
 
-			<dependency>
+        <dependency>
 			<groupId>com.code-disaster.steamworks4j</groupId>
 			<artifactId>steamworks4j</artifactId>
 			<version>${steamworks4j.version}</version>
