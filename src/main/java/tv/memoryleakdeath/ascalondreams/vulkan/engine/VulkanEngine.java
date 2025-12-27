@@ -1,20 +1,29 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine;
 
+import imgui.ImGui;
+import imgui.ImVec2;
+import imgui.flag.ImGuiCond;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.camera.Camera;
 import tv.memoryleakdeath.ascalondreams.camera.CameraInputCallback;
+import tv.memoryleakdeath.ascalondreams.gui.GuiInputCallback;
+import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.input.InputTimer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
 import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
+import tv.memoryleakdeath.ascalondreams.state.GameState;
+import tv.memoryleakdeath.ascalondreams.state.StateMachine;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
+
+import java.util.List;
 
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
@@ -38,12 +47,14 @@ public class VulkanEngine {
     private VulkanScene scene;
     private Entity cubeEntity;
     private Entity sponzaEntity;
+    private GuiTexture guiTexture;
 
     public void init() {
         window = new VulkanWindow(600, 600);
         this.scene = new VulkanScene(window);
+        this.guiTexture = new GuiTexture("textures/vulkan.png");
         renderer = new VulkanRenderer(window, scene);
-        renderer.initModels(loadModel(SPONZA_MODEL_FILE));
+        renderer.initModels(loadModel(SPONZA_MODEL_FILE), List.of(guiTexture));
         setCameraStartState();
     }
 
@@ -67,6 +78,7 @@ public class VulkanEngine {
         // rendering loop
        while (!window.shouldClose()) {
           window.pollEvents();
+          handleGui();
            if (shouldRunLogic()) {
               gameLogic();
            }
@@ -126,11 +138,31 @@ public class VulkanEngine {
        var mouseHandler = MouseCallbackHandler.getInstance(window.getHandle());
        var mouseEnteredHandler = mouseHandler.getEnteredHandler();
        var mouseButtonHandler = mouseHandler.getButtonHandler();
-       keyHandler.registerCallback(new CameraInputCallback(scene.getCamera()));
-       mouseHandler.registerCallback(new CameraInputCallback(scene.getCamera()));
+       var cameraInputCallback = new CameraInputCallback(scene.getCamera());
+       var guiInputCallback = new GuiInputCallback();
+       keyHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback);
+       mouseHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback);
        GLFW.glfwSetKeyCallback(window.getHandle(), keyHandler);
        GLFW.glfwSetCursorEnterCallback(window.getHandle(), mouseEnteredHandler);
        GLFW.glfwSetCursorPosCallback(window.getHandle(), mouseHandler);
        GLFW.glfwSetMouseButtonCallback(window.getHandle(), mouseButtonHandler);
+    }
+
+    private void handleGui() {
+       if(StateMachine.getInstance().getCurrentGameState() == GameState.GUI) {
+          ImGui.newFrame();
+          ImGui.showDemoWindow();
+          ImGui.endFrame();
+          ImGui.render();
+       } else {
+          ImGui.newFrame();
+          ImGui.setNextWindowPos(0, 0, ImGuiCond.Always);
+          ImGui.setNextWindowSize(200, 200);
+          ImGui.begin("Test Window");
+          ImGui.image(guiTexture.id(), new ImVec2(300, 300));
+          ImGui.end();
+          ImGui.endFrame();
+          ImGui.render();
+       }
     }
 }

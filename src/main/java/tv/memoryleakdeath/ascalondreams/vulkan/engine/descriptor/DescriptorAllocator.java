@@ -54,6 +54,7 @@ public class DescriptorAllocator {
          checkUnderMaxTotal(types, count);
          if(info.isAllAvailable(types, count)) {
             targetPool = info;
+            break;
          }
          poolPosition++;
       }

@@ -139,6 +139,14 @@ public final class StructureUtils {
    }
 
    public static void setupViewportAndScissor(MemoryStack stack, int width, int height, VkCommandBuffer cmd) {
+      setupViewport(stack, width, height, cmd);
+      var scissor = VkRect2D.calloc(1, stack)
+              .extent(ex -> ex.width(width).height(height))
+              .offset(off -> off.x(0).y(0));
+      VK13.vkCmdSetScissor(cmd, 0, scissor);
+   }
+
+   public static void setupViewport(MemoryStack stack, int width, int height, VkCommandBuffer cmd) {
       var viewport = VkViewport.calloc(1, stack)
               .x(0)
               .y(height)
@@ -147,10 +155,6 @@ public final class StructureUtils {
               .minDepth(0f)
               .maxDepth(1f);
       VK13.vkCmdSetViewport(cmd, 0, viewport);
-      var scissor = VkRect2D.calloc(1, stack)
-              .extent(ex -> ex.width(width).height(height))
-              .offset(off -> off.x(0).y(0));
-      VK13.vkCmdSetScissor(cmd, 0, scissor);
    }
 
    public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int colorFormat, VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo, long pipelineLayoutId, PipelineCache pipelineCache, int depthFormat, boolean useBlend) {
@@ -196,7 +200,6 @@ public final class StructureUtils {
       }
       var info = VkGraphicsPipelineCreateInfo.calloc(1, stack)
               .sType$Default()
-              .renderPass(VK13.VK_NULL_HANDLE)
               .pStages(stageInfo)
               .pVertexInputState(vertexInfo)
               .pInputAssemblyState(assemblyStateInfo)

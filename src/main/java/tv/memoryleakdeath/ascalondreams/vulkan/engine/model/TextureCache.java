@@ -69,6 +69,10 @@ public class TextureCache {
       return List.copyOf(textureMap.keySet()).indexOf(id);
    }
 
+   public VulkanTexture getTexture(String texturePath) {
+      return textureMap.get(texturePath.trim());
+   }
+
    public void recordTextureTransitions(LogicalDevice device, MemoryAllocationUtil allocationUtil, CommandPool cmd, BaseDeviceQueue queue) {
       logger.debug("Recording texture transitions...");
       int numTextures = textureMap.size();
