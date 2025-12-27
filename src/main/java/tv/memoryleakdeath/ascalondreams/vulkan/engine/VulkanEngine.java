@@ -5,6 +5,7 @@ import imgui.ImVec2;
 import imgui.flag.ImGuiCond;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.openal.AL11;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.camera.Camera;
@@ -15,6 +16,10 @@ import tv.memoryleakdeath.ascalondreams.input.InputTimer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
 import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
+import tv.memoryleakdeath.ascalondreams.sound.SoundBuffer;
+import tv.memoryleakdeath.ascalondreams.sound.SoundListener;
+import tv.memoryleakdeath.ascalondreams.sound.SoundManager;
+import tv.memoryleakdeath.ascalondreams.sound.SoundSource;
 import tv.memoryleakdeath.ascalondreams.state.GameState;
 import tv.memoryleakdeath.ascalondreams.state.StateMachine;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
@@ -39,6 +44,15 @@ public class VulkanEngine {
     private final Vector3f rotationAngle = new Vector3f(1,1,1);
     private float angle = 0;
 
+    private static final String SOUND_BUFFER_MUSIC = "music-sound-buffer";
+    private static final String SOUND_BUFFER_PLAYER = "player-sound-buffer";
+    private static final String SOUND_SOURCE_MUSIC = "music-sound-source";
+    private static final String SOUND_SOURCE_PLAYER = "player-sound-source";
+    private static final String SOUND_FILE1 = "sounds/creak1.ogg";
+    private static final String SOUND_FILE2 = "sounds/woo_scary.ogg";
+
+    private long soundTimer = 0;
+
     private VulkanWindow window;
     private VulkanRenderer renderer;
     private long lastLogicUpdateTimer;
@@ -48,6 +62,7 @@ public class VulkanEngine {
     private Entity cubeEntity;
     private Entity sponzaEntity;
     private GuiTexture guiTexture;
+    private SoundManager soundManager = SoundManager.getInstance();
 
     public void init() {
         window = new VulkanWindow(600, 600);
@@ -56,6 +71,27 @@ public class VulkanEngine {
         renderer = new VulkanRenderer(window, scene);
         renderer.initModels(loadModel(SPONZA_MODEL_FILE), List.of(guiTexture));
         setCameraStartState();
+        initSound();
+    }
+
+    private void initSound() {
+       Camera camera = scene.getCamera();
+       soundManager.setAttenuationModel(AL11.AL_EXPONENT_DISTANCE);
+       soundManager.setListener(new SoundListener(camera.getPosition()));
+
+       SoundBuffer buffer = new SoundBuffer(SOUND_FILE1);
+       soundManager.addSoundBuffer(SOUND_BUFFER_PLAYER, buffer);
+       SoundSource playerSoundSource = new SoundSource(false, false);
+       playerSoundSource.setPosition(new Vector3f(0f,0f,0f));
+       playerSoundSource.setBuffer(buffer.getId());
+       soundManager.addSoundSource(SOUND_SOURCE_PLAYER, playerSoundSource);
+
+       SoundBuffer musicBuffer = new SoundBuffer(SOUND_FILE2);
+       soundManager.addSoundBuffer(SOUND_BUFFER_MUSIC, musicBuffer);
+       SoundSource musicSource = new SoundSource(true, true);
+       musicSource.setBuffer(musicBuffer.getId());
+       soundManager.addSoundSource(SOUND_SOURCE_MUSIC, musicSource);
+       musicSource.play();
     }
 
     private ConvertedModel loadModel(String modelFile) {
@@ -76,6 +112,7 @@ public class VulkanEngine {
        registerInputCallbacks();
 
         // rendering loop
+       soundTimer = System.currentTimeMillis();
        while (!window.shouldClose()) {
           window.pollEvents();
           handleGui();
@@ -120,6 +157,11 @@ public class VulkanEngine {
     }
 
     private void gameLogic() {
+       long timerDiff = System.currentTimeMillis() - soundTimer;
+       if(timerDiff > 5000) {
+          soundManager.play(SOUND_SOURCE_PLAYER, SOUND_BUFFER_PLAYER);
+          soundTimer = System.currentTimeMillis();
+       }
 //       angle += 1.0f;
 //       if(angle >= 360) {
 //          angle = angle - 360;

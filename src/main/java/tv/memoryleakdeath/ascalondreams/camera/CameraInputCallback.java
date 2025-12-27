@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardInputCallback;
 import tv.memoryleakdeath.ascalondreams.input.MouseInputCallback;
+import tv.memoryleakdeath.ascalondreams.sound.SoundManager;
 import tv.memoryleakdeath.ascalondreams.state.GameState;
 import tv.memoryleakdeath.ascalondreams.state.StateMachine;
 
@@ -66,6 +67,7 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
          } else if(pressedKeys.contains(GLFW.GLFW_KEY_DOWN)) {
             camera.moveDown(move);
          }
+         SoundManager.getInstance().updateListenerPosition(camera);
       }
       if(mouseMoved && buttonsPressed[1]) {
          Vector2f delta = getDeltaCursorPosition();
