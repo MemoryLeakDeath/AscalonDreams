@@ -200,7 +200,6 @@ public final class StructureUtils {
       }
       var info = VkGraphicsPipelineCreateInfo.calloc(1, stack)
               .sType$Default()
-              .renderPass(VK13.VK_NULL_HANDLE)
               .pStages(stageInfo)
               .pVertexInputState(vertexInfo)
               .pInputAssemblyState(assemblyStateInfo)

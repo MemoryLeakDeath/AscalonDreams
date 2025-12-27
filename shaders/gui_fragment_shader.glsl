@@ -1,0 +1,12 @@
+#version 450
+
+layout (location = 0) in vec2 inTextureCoordinates;
+layout (location = 1) in vec4 inColor;
+
+layout (binding = 0) uniform sampler2D fontsSampler;
+
+layout (location = 0) out vec4 outFragmentColor;
+
+void main() {
+    outFragmentColor = inColor * texture(fontsSampler, inTextureCoordinates);
+}

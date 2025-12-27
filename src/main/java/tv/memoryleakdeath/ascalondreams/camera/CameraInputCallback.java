@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardInputCallback;
 import tv.memoryleakdeath.ascalondreams.input.MouseInputCallback;
 import tv.memoryleakdeath.ascalondreams.state.GameState;
+import tv.memoryleakdeath.ascalondreams.state.StateMachine;
 
 import java.util.Set;
 
@@ -21,12 +22,17 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
    private Vector2f deltaCursorPosition;
    private boolean[] buttonsPressed;
    private boolean mouseMoved = false;
+   private StateMachine stateMachine = StateMachine.getInstance();
 
    public CameraInputCallback(Camera camera) {
       this.camera = camera;
    }
    @Override
    public boolean handles(Set<Integer> pressedKeys, int pressedModifiers, GameState state) {
+      if(stateMachine.getCurrentGameState() == GameState.GUI) {
+         return false;
+      }
+
       // keyboard input handler
       boolean isHandled = KEYS.stream().anyMatch(pressedKeys::contains);
       if(isHandled) {
@@ -61,7 +67,7 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
             camera.moveDown(move);
          }
       }
-      if(mouseMoved) {
+      if(mouseMoved && buttonsPressed[1]) {
          Vector2f delta = getDeltaCursorPosition();
          logger.debug("Delta: {}", delta);
          camera.addRotation((float) Math.toRadians(-delta.y * MOUSE_SENSITIVITY),
@@ -71,6 +77,10 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
 
    @Override
    public boolean handles(Vector2f currentCursorPosition, Vector2f deltaCursorPosition, boolean[] buttonsPressed, int modifiersPressed) {
+      if(stateMachine.getCurrentGameState() == GameState.GUI) {
+         return false;
+      }
+
       // mouse input handler
       boolean isHandled = (deltaCursorPosition.x >= 0 || deltaCursorPosition.y >= 0);
       if(isHandled) {

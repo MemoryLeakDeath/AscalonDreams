@@ -20,7 +20,6 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.VulkanImageViewData;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImage;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanImageView;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 
 import java.nio.ByteBuffer;
 
@@ -106,15 +105,33 @@ public class VulkanTexture {
       VK13.vkCmdCopyBufferToImage(cmd.getCommandBuffer(), data.getBuffer(), image.getId(), VK13.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
    }
 
+   private void recordImageTransition(MemoryStack stack, CommandBuffer cmd) {
+      var imageBarrier = VkImageMemoryBarrier2.calloc(1, stack)
+              .sType$Default()
+              .oldLayout(VK13.VK_IMAGE_LAYOUT_UNDEFINED)
+              .newLayout(VK13.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+              .srcStageMask(VK13.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+              .dstStageMask(VK13.VK_PIPELINE_STAGE_TRANSFER_BIT)
+              .srcAccessMask(0)
+              .dstAccessMask(VK13.VK_ACCESS_TRANSFER_WRITE_BIT)
+              .subresourceRange(it -> it.aspectMask(VK13.VK_IMAGE_ASPECT_COLOR_BIT)
+                      .baseMipLevel(0)
+                      .levelCount(image.getMipLevels())
+                      .baseArrayLayer(0)
+                      .layerCount(1))
+              .image(image.getId());
+
+      var dependencyInfo = VkDependencyInfo.calloc(stack)
+              .sType$Default()
+              .pImageMemoryBarriers(imageBarrier);
+      VK13.vkCmdPipelineBarrier2(cmd.getCommandBuffer(), dependencyInfo);
+   }
+
    public void recordTextureTransition(CommandBuffer cmd) {
       if(stagingBuffer != null && !recordedTransition) {
          recordedTransition = true;
          try(var stack = MemoryStack.stackPush()) {
-            StructureUtils.imageBarrier(stack, cmd.getCommandBuffer(), image.getId(),
-                    VK13.VK_IMAGE_LAYOUT_UNDEFINED, VK13.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK13.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK13.VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK13.VK_ACCESS_2_NONE, VK13.VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK13.VK_IMAGE_ASPECT_COLOR_BIT);
+            recordImageTransition(stack, cmd);
             recordCopyBuffer(stack, cmd, stagingBuffer);
             recordGenerateMipMaps(stack, cmd);
          }

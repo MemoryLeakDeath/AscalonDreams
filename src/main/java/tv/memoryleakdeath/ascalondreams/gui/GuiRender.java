@@ -56,8 +56,8 @@ public class GuiRender {
    private static final String GUI_VERTEX_SHADER_FILE_GLSL = "shaders/gui_vertex_shader.glsl";
    private static final String GUI_VERTEX_SHADER_FILE_SPV = GUI_VERTEX_SHADER_FILE_GLSL + ".spv";
 
-   private final List<VulkanBuffer> indexBuffers = new ArrayList<>();
-   private final List<VulkanBuffer> vertexBuffers = new ArrayList<>();
+   private final List<VulkanBuffer> indexBuffers;
+   private final List<VulkanBuffer> vertexBuffers;
    private final VulkanTexture fontTexture;
    private final VulkanTextureSampler fontTextureSampler;
    private final Map<Long, Long> guiTextureMap = new HashMap<>();
@@ -67,6 +67,15 @@ public class GuiRender {
    private VkRenderingInfo renderingInfo;
 
    public GuiRender(LogicalDevice device, DescriptorAllocator allocator, PipelineCache pipelineCache, VulkanSwapChain swapChain, MemoryAllocationUtil allocationUtil, BaseDeviceQueue queue, Attachment destinationAttachment) {
+      this.indexBuffers = new ArrayList<>();
+      this.vertexBuffers = new ArrayList<>();
+
+      // adding dummy items to buffers to make logic easier later
+      for(int i = 0; i < VulkanConstants.MAX_IN_FLIGHT; i++) {
+         this.indexBuffers.add(null);
+         this.vertexBuffers.add(null);
+      }
+
       this.colorAttachmentInfo = initColorAttachmentInfo(destinationAttachment);
       this.renderingInfo = initRenderingInfo(destinationAttachment, colorAttachmentInfo);
 
@@ -84,7 +93,7 @@ public class GuiRender {
       DescriptorSet descriptorSet = allocator.addDescriptorSets(device, DESC_ID_TEXTURE, 1, textureDescriptorSetLayout).getFirst();
       descriptorSet.setImage(device, fontTexture.getImageView(), fontTextureSampler, textureDescriptorSetLayout.getLayoutInfo().binding());
 
-      // todo: keyboard input register (setCharCallback ?)
+      // todo: keyboard input register (Maybe don't need this?)
    }
 
    private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(Attachment destinationAttachment) {
@@ -98,7 +107,7 @@ public class GuiRender {
 
    private static Pipeline initPipeline(LogicalDevice device, PipelineCache cache, List<ShaderModule> shaderModules, List<DescriptorSetLayout> layouts) {
       var vertexBufferStructure = new GuiVertexBufferStructure();
-      var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVi(), PostProcessingRenderer.COLOR_FORMAT, 0,
+      var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(), PostProcessingRenderer.COLOR_FORMAT, 0,
               List.of(new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, VulkanConstants.VEC2_SIZE)), layouts, true);
       var pipeline = new Pipeline(device, cache, info);
       vertexBufferStructure.cleanup();
@@ -168,16 +177,16 @@ public class GuiRender {
          return;
       }
       for(GuiTexture texture : guiTextures) {
-         DescriptorSet set = allocator.addDescriptorSets(device, texture.getDescriptorId(), 1, textureDescriptorSetLayout).getFirst();
+         DescriptorSet set = allocator.addDescriptorSets(device, texture.texturePath(), 1, textureDescriptorSetLayout).getFirst();
          VulkanTexture cachedTexture = cache.getTexture(texture.texturePath());
          set.setImage(device, cachedTexture.getImageView(), fontTextureSampler, textureDescriptorSetLayout.getLayoutInfo().binding());
          guiTextureMap.put(texture.id(), set.getId());
       }
    }
 
-   public void render(LogicalDevice device, DescriptorAllocator allocator, CommandBuffer commandBuffer, int currentFrame, Attachment destinationAttachment) {
+   public void render(LogicalDevice device, DescriptorAllocator allocator, MemoryAllocationUtil allocationUtil, CommandBuffer commandBuffer, int currentFrame, Attachment destinationAttachment) {
       try(var stack = MemoryStack.stackPush()) {
-         updateBuffers(device);
+         updateBuffers(device, allocationUtil, currentFrame);
          if(vertexBuffers.get(currentFrame) == null) {
             return;
          }
