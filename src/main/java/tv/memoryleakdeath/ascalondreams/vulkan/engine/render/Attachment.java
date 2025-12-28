@@ -16,18 +16,20 @@ public class Attachment {
    private boolean depthAttachment = false;
 
    public Attachment(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int format, int usage) {
-      int imageUsage = (usage | VK13.VK_IMAGE_USAGE_SAMPLED_BIT);
-      this.image = new VulkanImage(device, allocationUtil, width, height, imageUsage, format, 1, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
-
+      int imageUsage = -1;
       int aspectMask = 0;
       if((usage & VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) > 0) {
          aspectMask = VK13.VK_IMAGE_ASPECT_COLOR_BIT;
+         imageUsage = (usage | VK13.VK_IMAGE_USAGE_SAMPLED_BIT | VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
          depthAttachment = false;
       }
       if((usage & VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) > 0) {
          aspectMask = VK13.VK_IMAGE_ASPECT_DEPTH_BIT;
+         imageUsage = (usage | VK13.VK_IMAGE_USAGE_SAMPLED_BIT);
          depthAttachment = true;
       }
+      this.image = new VulkanImage(device, allocationUtil, width, height, imageUsage, format, 1, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+
       var imageViewData = new VulkanImageViewData();
       imageViewData.setFormat(image.getFormat());
       imageViewData.setAspectMask(aspectMask);

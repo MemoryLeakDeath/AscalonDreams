@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.gui.GuiRender;
 import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
+import tv.memoryleakdeath.ascalondreams.lighting.LightingRenderer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
@@ -48,6 +49,7 @@ public class VulkanRenderer {
    private final List<Fence> fences = new ArrayList<>();
    private final VulkanGraphicsQueue graphicsQueue;
    private final List<Semaphore> presentationCompleteSemaphores = new ArrayList<>();
+   private final LightingRenderer lightingRenderer;
    private final ModelCache modelCache;
    private final PostProcessingRenderer postProcessingRenderer;
    private final MaterialCache materialCache;
@@ -93,7 +95,8 @@ public class VulkanRenderer {
       }
 
       this.sceneRenderer = new SceneRenderer(swapChain, pipelineCache, device, descriptorAllocator, scene, memoryAllocationUtil);
-      this.postProcessingRenderer = new PostProcessingRenderer(device, memoryAllocationUtil, descriptorAllocator, swapChain, pipelineCache, sceneRenderer.getAttachmentColor());
+      this.lightingRenderer = new LightingRenderer(device, descriptorAllocator, memoryAllocationUtil, swapChain, pipelineCache, sceneRenderer.getMaterialAttachments().getAllAttachments());
+      this.postProcessingRenderer = new PostProcessingRenderer(device, memoryAllocationUtil, descriptorAllocator, swapChain, pipelineCache, lightingRenderer.getAttachmentColor());
       this.guiRender = new GuiRender(device, descriptorAllocator, pipelineCache, swapChain, memoryAllocationUtil, graphicsQueue, postProcessingRenderer.getColorAttachment());
       this.swapChainRender = new SwapChainRender(device, descriptorAllocator, swapChain, surface, pipelineCache, postProcessingRenderer.getColorAttachment());
       this.modelCache = ModelCache.getInstance();
@@ -106,6 +109,7 @@ public class VulkanRenderer {
 
       sceneRenderer.cleanup(device, memoryAllocationUtil);
       postProcessingRenderer.cleanup(device, memoryAllocationUtil);
+      lightingRenderer.cleanup(device, memoryAllocationUtil);
       guiRender.cleanup(device, memoryAllocationUtil);
       swapChainRender.cleanup(device);
       modelCache.cleanup(device, memoryAllocationUtil);
@@ -172,7 +176,8 @@ public class VulkanRenderer {
       startRecording(commandPool, commandBuffer);
 
       sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil);
-      postProcessingRenderer.render(swapChain, descriptorAllocator, commandBuffer, sceneRenderer.getAttachmentColor());
+      lightingRenderer.render(descriptorAllocator, commandBuffer, sceneRenderer.getMaterialAttachments());
+      postProcessingRenderer.render(swapChain, descriptorAllocator, commandBuffer, lightingRenderer.getAttachmentColor());
       guiRender.render(device, descriptorAllocator, memoryAllocationUtil, commandBuffer, currentFrame, postProcessingRenderer.getColorAttachment());
 
       int imageIndex;
@@ -220,7 +225,8 @@ public class VulkanRenderer {
       VkExtent2D extent = swapChain.getSwapChainExtent();
       scene.getProjection().resize(extent.width(), extent.height());
       sceneRenderer.resize(device, memoryAllocationUtil, swapChain, scene);
-      postProcessingRenderer.resize(device, memoryAllocationUtil, swapChain, descriptorAllocator, sceneRenderer.getAttachmentColor());
+      lightingRenderer.resize(device, memoryAllocationUtil, swapChain, descriptorAllocator, sceneRenderer.getMaterialAttachments().getAllAttachments());
+      postProcessingRenderer.resize(device, memoryAllocationUtil, swapChain, descriptorAllocator, lightingRenderer.getAttachmentColor());
       guiRender.resize(device, swapChain, postProcessingRenderer.getColorAttachment());
       swapChainRender.resize(device, swapChain, descriptorAllocator, postProcessingRenderer.getColorAttachment());
    }

@@ -4,12 +4,12 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.shaderc.Shaderc;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkClearValue;
-import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.lighting.MaterialAttachments;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayoutInfo;
@@ -35,6 +35,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
 import java.nio.LongBuffer;
+import java.util.Arrays;
 import java.util.List;
 
 public class SceneRenderer {
@@ -42,10 +43,9 @@ public class SceneRenderer {
    private VkClearValue clearValueColor;
    private VkClearValue clearValueDepth;
    private final Pipeline pipeline;
-   private Attachment attachmentColor;
-   private Attachment attachmentDepth;
    private VkRenderingAttachmentInfo.Buffer attachmentInfoColor;
    private VkRenderingAttachmentInfo attachmentInfoDepth;
+   private MaterialAttachments materialAttachments;
    private VkRenderingInfo renderingInfo;
    private final VulkanBuffer projectionMatrixBuffer;
    private final List<VulkanBuffer> viewMatrixBuffers;
@@ -55,8 +55,6 @@ public class SceneRenderer {
    private final VulkanTextureSampler textureSampler;
 
 
-   private static final int COLOR_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
-   private static final int DEPTH_FORMAT = VK13.VK_FORMAT_D16_UNORM;
    private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/fragment_shader.glsl";
    private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
    private static final String VERTEX_SHADER_FILE_GLSL = "shaders/vertex_shader.glsl";
@@ -74,11 +72,10 @@ public class SceneRenderer {
                       .float32(2, 0.0f)
                       .float32(3, 1f));
       this.clearValueDepth = VkClearValue.calloc().color(c -> c.float32(0, 1f));
-      this.attachmentColor = initColorAttachment(device, allocationUtil, swapChain);
-      this.attachmentDepth = initDepthAttachment(swapChain, device, allocationUtil);
-      this.attachmentInfoColor = initColorAttachmentInfo(attachmentColor, clearValueColor);
-      this.attachmentInfoDepth = initDepthAttachmentInfo(attachmentDepth, clearValueDepth);
-      this.renderingInfo = initRenderInfo(attachmentColor, attachmentInfoColor, attachmentInfoDepth);
+      this.materialAttachments = new MaterialAttachments(device, allocationUtil, swapChain);
+      this.attachmentInfoColor = initColorAttachmentInfo(materialAttachments, clearValueColor);
+      this.attachmentInfoDepth = initDepthAttachmentInfo(materialAttachments, clearValueDepth);
+      this.renderingInfo = initRenderInfo(swapChain, attachmentInfoColor, attachmentInfoDepth);
 
       List<ShaderModule> shaderModules = createShaderModules(device);
       // push constants moved to PushConstantsHandler
@@ -104,55 +101,50 @@ public class SceneRenderer {
       shaderModules.forEach(s -> s.cleanup(device));
    }
 
-   private static Attachment initColorAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain) {
-      return new Attachment(device, allocationUtil, swapChain.getSwapChainExtent().width(),
-              swapChain.getSwapChainExtent().height(), COLOR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+   private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(MaterialAttachments attachment, VkClearValue clearValue) {
+      List<Attachment> colorAttachments = attachment.getColorAttachments();
+      int numAttachments = colorAttachments.size();
+      var result = VkRenderingAttachmentInfo.calloc(numAttachments);
+      for(int i = 0; i < numAttachments; i++) {
+         result.get(i)
+                 .sType$Default()
+                 .imageView(colorAttachments.get(i).getImageView().getImageViewId())
+                 .imageLayout(VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                 .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                 .storeOp(VK13.VK_ATTACHMENT_STORE_OP_STORE)
+                 .clearValue(clearValue);
+      }
+      return result;
    }
 
-   private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(Attachment attachment, VkClearValue clearValue) {
-      return VkRenderingAttachmentInfo.calloc(1)
-              .sType$Default()
-              .imageView(attachment.getImageView().getImageViewId())
-              .imageLayout(VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-              .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
-              .storeOp(VK13.VK_ATTACHMENT_STORE_OP_STORE)
-              .clearValue(clearValue);
-   }
-
-   private static Attachment initDepthAttachment(VulkanSwapChain swapChain, LogicalDevice device, MemoryAllocationUtil allocationUtil) {
-      VkExtent2D extent = swapChain.getSwapChainExtent();
-      return new Attachment(device, allocationUtil, extent.width(), extent.height(), DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-   }
-
-   private static VkRenderingAttachmentInfo initDepthAttachmentInfo(Attachment attachmentDepth, VkClearValue clearValue) {
+   private static VkRenderingAttachmentInfo initDepthAttachmentInfo(MaterialAttachments attachmentDepth, VkClearValue clearValue) {
       return VkRenderingAttachmentInfo.calloc()
               .sType$Default()
-              .imageView(attachmentDepth.getImageView().getImageViewId())
+              .imageView(attachmentDepth.getDepthAttachment().getImageView().getImageViewId())
               .imageLayout(VK13.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
               .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
               .storeOp(VK13.VK_ATTACHMENT_STORE_OP_DONT_CARE)
               .clearValue(clearValue);
    }
 
-   private static VkRenderingInfo initRenderInfo(Attachment colorAttachment, VkRenderingAttachmentInfo.Buffer colorInfo,
-                               VkRenderingAttachmentInfo depthInfo) {
+   private static VkRenderingInfo initRenderInfo(VulkanSwapChain swapChain, VkRenderingAttachmentInfo.Buffer colorAttachments,
+                               VkRenderingAttachmentInfo depthAttachments) {
       try(var stack = MemoryStack.stackPush()) {
-         var extent = VkExtent2D.calloc(stack).width(colorAttachment.getImage().getWidth())
-                 .height(colorAttachment.getImage().getHeight());
+         var extent = swapChain.getSwapChainExtent();
          var renderArea = VkRect2D.calloc(stack).extent(extent);
          return VkRenderingInfo.calloc()
                  .sType$Default()
                  .renderArea(renderArea)
                  .layerCount(1)
-                 .pColorAttachments(colorInfo)
-                 .pDepthAttachment(depthInfo);
+                 .pColorAttachments(colorAttachments)
+                 .pDepthAttachment(depthAttachments);
       }
    }
 
    private Pipeline createPipeline(LogicalDevice device, List<ShaderModule> shaderModules, PipelineCache cache) {
       var vertexBufferStructure = new VertexBufferStructure();
       var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(),
-              COLOR_FORMAT, DEPTH_FORMAT, List.of(
+              MaterialAttachments.ALBEDO_FORMAT, MaterialAttachments.DEPTH_FORMAT, List.of(
                       new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT,0, VulkanConstants.MAT4X4_SIZE),
                       new PushConstantRange(VK13.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanConstants.MAT4X4_SIZE, VulkanConstants.INT_SIZE)),
               List.of(vertexUniformLayout, vertexUniformLayout, fragmentStorageLayout, textureLayout), true);
@@ -171,16 +163,15 @@ public class SceneRenderer {
    public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       pipeline.cleanup(device);
       viewMatrixBuffers.forEach(b -> b.cleanup(device, allocationUtil));
-      projectionMatrixBuffer.cleanup(device, allocationUtil);
-      vertexUniformLayout.cleanup(device);
-      fragmentStorageLayout.cleanup(device);
       textureLayout.cleanup(device);
       textureSampler.cleanup(device);
+      fragmentStorageLayout.cleanup(device);
+      projectionMatrixBuffer.cleanup(device, allocationUtil);
+      vertexUniformLayout.cleanup(device);
       renderingInfo.free();
       attachmentInfoDepth.free();
+      materialAttachments.cleanup(device, allocationUtil);
       attachmentInfoColor.free();
-      attachmentColor.cleanup(device, allocationUtil);
-      attachmentDepth.cleanup(device, allocationUtil);
       VulkanPushConstantsHandler.free();
       clearValueDepth.free();
       clearValueColor.free();
@@ -190,22 +181,17 @@ public class SceneRenderer {
                       int currentFrame, LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       try(var stack = MemoryStack.stackPush()) {
          var commandHandle = commandBuffer.getCommandBuffer();
-         StructureUtils.imageBarrier(stack, commandHandle, attachmentColor.getImage().getId(),
-                 VK13.VK_IMAGE_LAYOUT_UNDEFINED, VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                 VK13.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK13.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                 VK13.VK_ACCESS_2_NONE, VK13.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                 VK13.VK_IMAGE_ASPECT_COLOR_BIT);
-         StructureUtils.imageBarrier(stack, commandHandle, attachmentDepth.getImage().getId(),
-                 VK13.VK_IMAGE_LAYOUT_UNDEFINED, VK13.VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-                 VK13.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK13.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                 VK13.VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK13.VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                 VK13.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK13.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK13.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                 VK13.VK_IMAGE_ASPECT_DEPTH_BIT);
+         for(Attachment attachment : materialAttachments.getColorAttachments()) {
+            StructureUtils.imageBarrier(stack, commandHandle, attachment.getImage().getId(),
+                    VK13.VK_IMAGE_LAYOUT_UNDEFINED, VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    VK13.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK13.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK13.VK_ACCESS_NONE, VK13.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                    VK13.VK_IMAGE_ASPECT_COLOR_BIT);
+         }
 
          VK13.vkCmdBeginRendering(commandHandle, renderingInfo);
          VK13.vkCmdBindPipeline(commandHandle, VK13.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getId());
-         VulkanImage colorImage = attachmentColor.getImage();
-         StructureUtils.setupViewportAndScissor(stack, colorImage.getWidth(), colorImage.getHeight(), commandHandle);
+         StructureUtils.setupViewportAndScissor(stack, materialAttachments.getWidth(), materialAttachments.getHeight(), commandHandle);
 
          VulkanUtils.copyMatrixToBuffer(device, allocationUtil, viewMatrixBuffers.get(currentFrame), scene.getCamera().getViewMatrix(), 0);
          LongBuffer descriptorSetsBuf = stack.mallocLong(4)
@@ -235,16 +221,14 @@ public class SceneRenderer {
 
    public void resize(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain, VulkanScene scene) {
       renderingInfo.free();
-      attachmentInfoColor.free();
       attachmentInfoDepth.free();
-      attachmentColor.cleanup(device, allocationUtil);
-      attachmentDepth.cleanup(device, allocationUtil);
+      materialAttachments.cleanup(device, allocationUtil);
+      Arrays.asList(attachmentInfoColor).forEach(VkRenderingAttachmentInfo.Buffer::free);
 
-      attachmentColor = initColorAttachment(device, allocationUtil, swapChain);
-      attachmentDepth = initDepthAttachment(swapChain, device, allocationUtil);
-      attachmentInfoColor = initColorAttachmentInfo(attachmentColor, clearValueColor);
-      attachmentInfoDepth = initDepthAttachmentInfo(attachmentDepth, clearValueDepth);
-      renderingInfo = initRenderInfo(attachmentColor, attachmentInfoColor, attachmentInfoDepth);
+      materialAttachments = new MaterialAttachments(device, allocationUtil, swapChain);
+      attachmentInfoColor = initColorAttachmentInfo(materialAttachments, clearValueColor);
+      attachmentInfoDepth = initDepthAttachmentInfo(materialAttachments, clearValueDepth);
+      renderingInfo = initRenderInfo(swapChain, attachmentInfoColor, attachmentInfoDepth);
 
       VulkanUtils.copyMatrixToBuffer(device, allocationUtil, projectionMatrixBuffer, scene.getProjection().getProjectionMatrix(), 0);
    }
@@ -260,7 +244,7 @@ public class SceneRenderer {
       descriptorSet.setImagesArray(device, imageViews, textureSampler, 0);
    }
 
-   public Attachment getAttachmentColor() {
-      return attachmentColor;
+   public MaterialAttachments getMaterialAttachments() {
+      return materialAttachments;
    }
 }
