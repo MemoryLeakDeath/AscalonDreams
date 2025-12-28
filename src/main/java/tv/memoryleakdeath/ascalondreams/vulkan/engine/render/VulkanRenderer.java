@@ -134,26 +134,31 @@ public class VulkanRenderer {
       instance.cleanup();
    }
 
-   public void initModels(ConvertedModel convertedModel, List<GuiTexture> guiTextures) {
-      logger.debug("Loading {} materials", convertedModel.getMaterials().size());
-      materialCache.loadMaterials(device, memoryAllocationUtil, convertedModel.getMaterials(), textureCache, commandPools.getFirst(), graphicsQueue);
-      logger.debug("Loaded materials.");
+   public void initModels(List<ConvertedModel> convertedModels, List<GuiTexture> guiTextures) {
+      List<VulkanModel> models = new ArrayList<>();
+      for(ConvertedModel convertedModel : convertedModels) {
+         logger.debug("Loading {} materials", convertedModel.getMaterials().size());
+         materialCache.loadMaterials(device, memoryAllocationUtil, convertedModel.getMaterials(), textureCache, commandPools.getFirst(), graphicsQueue);
+         logger.debug("Loaded materials.");
+
+
+         logger.debug("Transitioning textures....");
+         textureCache.recordTextureTransitions(device, memoryAllocationUtil, commandPools.getFirst(), graphicsQueue);
+         logger.debug("textures transitioned.");
+
+         logger.debug("Loading model: {}", convertedModel.getId());
+         VulkanModel model = new VulkanModel(convertedModel.getId());
+         model.addMeshes(device, memoryAllocationUtil, convertedModel.getMeshData());
+         models.add(model);
+      }
+
+      modelCache.loadModels(device, memoryAllocationUtil, models, commandPools.getFirst(), graphicsQueue);
+      logger.debug("Models loaded!");
 
       if(guiTextures != null) {
          guiTextures.forEach(t -> textureCache.addTexture(device, memoryAllocationUtil, t.texturePath(), t.texturePath(),
                  VK13.VK_FORMAT_R8G8B8A8_SRGB));
       }
-
-      logger.debug("Transitioning textures....");
-      textureCache.recordTextureTransitions(device, memoryAllocationUtil, commandPools.getFirst(), graphicsQueue);
-      logger.debug("textures transitioned.");
-
-      logger.debug("Loading model...");
-      VulkanModel model = new VulkanModel(convertedModel.getId());
-      model.addMeshes(device, memoryAllocationUtil, convertedModel.getMeshData());
-
-      modelCache.loadModels(device, memoryAllocationUtil, List.of(model), commandPools.getFirst(), graphicsQueue);
-      logger.debug("Models loaded!");
 
       sceneRenderer.loadMaterials(device, descriptorAllocator, materialCache, textureCache);
       guiRender.loadTextures(device, descriptorAllocator, guiTextures, textureCache);
@@ -176,7 +181,7 @@ public class VulkanRenderer {
       startRecording(commandPool, commandBuffer);
 
       sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil);
-      lightingRenderer.render(descriptorAllocator, commandBuffer, sceneRenderer.getMaterialAttachments());
+      lightingRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, sceneRenderer.getMaterialAttachments(), currentFrame);
       postProcessingRenderer.render(swapChain, descriptorAllocator, commandBuffer, lightingRenderer.getAttachmentColor());
       guiRender.render(device, descriptorAllocator, memoryAllocationUtil, commandBuffer, currentFrame, postProcessingRenderer.getColorAttachment());
 

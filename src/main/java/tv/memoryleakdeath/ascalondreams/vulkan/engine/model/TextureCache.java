@@ -29,8 +29,9 @@ public class TextureCache {
 
    public VulkanTexture addTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int format) {
       if(textureMap.size() > MAX_TEXTURES) {
-         logger.error("Max texture limit reached! Limit: {}", MAX_TEXTURES);
-         throw new RuntimeException("Texture cache is full");
+         var e = new RuntimeException("Texture cache is full!");
+         logger.error("Max texture limit reached! Limit: %d".formatted(MAX_TEXTURES), e);
+         throw e;
       }
       if(textureMap.containsKey(id)) {
          return textureMap.get(id);

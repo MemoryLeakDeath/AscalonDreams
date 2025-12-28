@@ -100,7 +100,8 @@ public class DescriptorSet {
             }
          }
 
-         var buf = VkWriteDescriptorSet.calloc(1, stack)
+         var buf = VkWriteDescriptorSet.calloc(1, stack);
+         buf.get(0)
                  .sType$Default()
                  .dstSet(id)
                  .dstBinding(binding)

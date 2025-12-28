@@ -176,7 +176,7 @@ public class VulkanTexture {
          VkOffset3D dstOffset1 = VkOffset3D.calloc(stack)
                  .x(mipWidth > 1 ? mipWidth / 2 : 1)
                  .y(mipHeight > 1 ? mipHeight / 2 : 1)
-                 .z(0);
+                 .z(1);
 
          VkImageBlit.Buffer blit = VkImageBlit.calloc(1, stack)
                  .srcOffsets(0, srcOffset0)

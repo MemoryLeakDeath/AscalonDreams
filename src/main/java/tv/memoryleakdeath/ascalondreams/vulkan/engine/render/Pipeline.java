@@ -53,7 +53,7 @@ public class Pipeline {
                  .pPushConstantRanges(pushConstantRangeBuf);
          VulkanUtils.failIfNeeded(VK13.vkCreatePipelineLayout(device.getDevice(), pipelineLayoutInfo, null, buf), "Failed to create pipeline layout");
          this.layoutId = buf.get(0);
-         this.id = StructureUtils.createGraphicsPipelineInfo(stack, device, info.colorFormat(), shaderStages, info.info(), layoutId, pipelineCache, info.depthFormat(), info.useBlend());
+         this.id = StructureUtils.createGraphicsPipelineInfo(stack, device, info.colorFormats(), shaderStages, info.info(), layoutId, pipelineCache, info.depthFormat(), info.useBlend());
       }
    }
 

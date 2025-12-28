@@ -8,6 +8,9 @@ public class VulkanMeshData {
    private int[] indicies;
    private String materialId;
    private String id;
+   private float[] normals;
+   private float[] tangents;
+   private float[] biTangents;
 
    public float[] getVerticies() {
       return verticies;
@@ -49,6 +52,30 @@ public class VulkanMeshData {
       this.id = id;
    }
 
+   public float[] getNormals() {
+      return normals;
+   }
+
+   public void setNormals(float[] normals) {
+      this.normals = normals;
+   }
+
+   public float[] getTangents() {
+      return tangents;
+   }
+
+   public void setTangents(float[] tangents) {
+      this.tangents = tangents;
+   }
+
+   public float[] getBiTangents() {
+      return biTangents;
+   }
+
+   public void setBiTangents(float[] biTangents) {
+      this.biTangents = biTangents;
+   }
+
    @Override
    public String toString() {
       return "VulkanMeshData{" +
@@ -57,6 +84,9 @@ public class VulkanMeshData {
               ", indicies=" + Arrays.toString(indicies) +
               ", materialId='" + materialId + '\'' +
               ", id='" + id + '\'' +
+              ", normals=" + Arrays.toString(normals) +
+              ", tangents=" + Arrays.toString(tangents) +
+              ", biTangents=" + Arrays.toString(biTangents) +
               '}';
    }
 }

@@ -16,6 +16,7 @@ import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryBarrier2;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures;
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures2;
+import org.lwjgl.vulkan.VkPhysicalDeviceVulkan12Features;
 import org.lwjgl.vulkan.VkPhysicalDeviceVulkan13Features;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
@@ -56,6 +57,10 @@ public final class StructureUtils {
                  .pQueuePriorities(priorities);
       }
 
+      var vulkan12Features = VkPhysicalDeviceVulkan12Features.calloc(stack)
+              .sType$Default()
+              .scalarBlockLayout(true);
+
       var vulkan13Features = VkPhysicalDeviceVulkan13Features.calloc(stack)
               .sType$Default()
               .dynamicRendering(true)
@@ -70,6 +75,7 @@ public final class StructureUtils {
       }
 
       vulkanFeatures2.pNext(vulkan13Features.address());
+      vulkan13Features.pNext(vulkan12Features.address());
 
       VkDeviceCreateInfo info = VkDeviceCreateInfo.calloc(stack)
               .sType$Default()
@@ -157,7 +163,7 @@ public final class StructureUtils {
       VK13.vkCmdSetViewport(cmd, 0, viewport);
    }
 
-   public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int colorFormat, VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo, long pipelineLayoutId, PipelineCache pipelineCache, int depthFormat, boolean useBlend) {
+   public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int[] colorFormats, VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo, long pipelineLayoutId, PipelineCache pipelineCache, int depthFormat, boolean useBlend) {
       var assemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
               .sType$Default()
               .topology(VK13.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -187,17 +193,19 @@ public final class StructureUtils {
       var dynamicStateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack)
               .sType$Default()
               .pDynamicStates(stack.ints(VK13.VK_DYNAMIC_STATE_VIEWPORT, VK13.VK_DYNAMIC_STATE_SCISSOR));
-      var colorBlendStateInfo = createColorBlendStateInfo(stack, useBlend);
 
-      IntBuffer colorFormats = stack.mallocInt(1);
-      colorFormats.put(0, colorFormat);
+      int numColorFormats = colorFormats.length;
+      IntBuffer colorFormatsBuf = stack.mallocInt(numColorFormats);
+      colorFormatsBuf.put(0, colorFormats);
       var renderingInfo = VkPipelineRenderingCreateInfo.calloc(stack)
               .sType$Default()
-              .colorAttachmentCount(1)
-              .pColorAttachmentFormats(colorFormats);
+              .colorAttachmentCount(numColorFormats)
+              .pColorAttachmentFormats(colorFormatsBuf);
       if(depthStencilStateInfo != null) {
          renderingInfo.depthAttachmentFormat(depthFormat);
       }
+      var colorBlendStateInfo = createColorBlendStateInfo(stack, useBlend, numColorFormats);
+
       var info = VkGraphicsPipelineCreateInfo.calloc(1, stack)
               .sType$Default()
               .pStages(stageInfo)
@@ -218,17 +226,20 @@ public final class StructureUtils {
       return buf.get(0);
    }
 
-   public static VkPipelineColorBlendStateCreateInfo createColorBlendStateInfo(MemoryStack stack, boolean useBlend) {
-      var blendAttachState = VkPipelineColorBlendAttachmentState.calloc(1, stack)
-              .colorWriteMask(VK13.VK_COLOR_COMPONENT_R_BIT | VK13.VK_COLOR_COMPONENT_G_BIT | VK13.VK_COLOR_COMPONENT_B_BIT | VK13.VK_COLOR_COMPONENT_A_BIT)
-              .blendEnable(useBlend);
-      if(useBlend) {
-         blendAttachState.get(0).colorBlendOp(VK13.VK_BLEND_OP_ADD)
-                 .alphaBlendOp(VK13.VK_BLEND_OP_ADD)
-                 .srcColorBlendFactor(VK13.VK_BLEND_FACTOR_SRC_ALPHA)
-                 .dstColorBlendFactor(VK13.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
-                 .srcAlphaBlendFactor(VK13.VK_BLEND_FACTOR_SRC_ALPHA)
-                 .dstAlphaBlendFactor(VK13.VK_BLEND_FACTOR_ZERO);
+   public static VkPipelineColorBlendStateCreateInfo createColorBlendStateInfo(MemoryStack stack, boolean useBlend, int numColorFormats) {
+      var blendAttachState = VkPipelineColorBlendAttachmentState.calloc(numColorFormats, stack);
+      for(int i = 0; i < numColorFormats; i++) {
+         blendAttachState.get(i)
+                 .colorWriteMask(VK13.VK_COLOR_COMPONENT_R_BIT | VK13.VK_COLOR_COMPONENT_G_BIT | VK13.VK_COLOR_COMPONENT_B_BIT | VK13.VK_COLOR_COMPONENT_A_BIT)
+                 .blendEnable(useBlend);
+         if(useBlend) {
+            blendAttachState.get(i).colorBlendOp(VK13.VK_BLEND_OP_ADD)
+                    .alphaBlendOp(VK13.VK_BLEND_OP_ADD)
+                    .srcColorBlendFactor(VK13.VK_BLEND_FACTOR_SRC_ALPHA)
+                    .dstColorBlendFactor(VK13.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+                    .srcAlphaBlendFactor(VK13.VK_BLEND_FACTOR_SRC_ALPHA)
+                    .dstAlphaBlendFactor(VK13.VK_BLEND_FACTOR_ZERO);
+         }
       }
       return VkPipelineColorBlendStateCreateInfo.calloc(stack)
               .sType$Default()

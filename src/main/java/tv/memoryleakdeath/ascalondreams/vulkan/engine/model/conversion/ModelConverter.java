@@ -93,7 +93,24 @@ public class ModelConverter {
          diffuseVec.set(color.r(), color.g(), color.b(), color.a());
       }
       String diffuseTexturePath = processTexture(scene, material, textureDir, Assimp.aiTextureType_DIFFUSE);
-      return new VulkanMaterial("%s-mat-%d".formatted(modelId, index), diffuseTexturePath, diffuseVec);
+      String normalTexturePath = processTexture(scene, material, textureDir, Assimp.aiTextureType_NORMALS);
+      String roughTexturePath = processTexture(scene, material, textureDir, Assimp.AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE);
+
+      float[] metallicArray = new float[]{0f};
+      int[] pMax = new int[]{1};
+      result = Assimp.aiGetMaterialFloatArray(material, Assimp.AI_MATKEY_METALLIC_FACTOR, Assimp.aiTextureType_NONE, 0, metallicArray, pMax);
+      if(result != Assimp.aiReturn_SUCCESS) {
+         metallicArray[0] = 0f;
+      }
+
+      float[] roughnessArray = new float[]{0f};
+      result = Assimp.aiGetMaterialFloatArray(material, Assimp.AI_MATKEY_ROUGHNESS_FACTOR, Assimp.aiTextureType_NONE, 0, roughnessArray, pMax);
+      if(result != Assimp.aiReturn_SUCCESS) {
+         roughnessArray[0] = 1.0f;
+      }
+
+      return new VulkanMaterial("%s-mat-%d".formatted(modelId, index), diffuseTexturePath, diffuseVec, normalTexturePath,
+              roughTexturePath, roughnessArray[0], metallicArray[0]);
    }
 
    private static String processTexture(AIScene scene, AIMaterial material, String textureDir, int textureType)
@@ -130,6 +147,10 @@ public class ModelConverter {
    private static VulkanMeshData processMesh(AIMesh mesh, List<VulkanMaterial> materialList, int position) {
       VulkanMeshData returnData = new VulkanMeshData();
       returnData.setVerticies(processVerticies(mesh));
+      float[] normals = processNormals(mesh);
+      returnData.setNormals(normals);
+      returnData.setTangents(processTangents(mesh, normals));
+      returnData.setBiTangents(processBitangents(mesh, normals));
       returnData.setTextureCoords(processTextureCoords(mesh));
       returnData.setIndicies(processIndices(mesh));
 
@@ -189,5 +210,51 @@ public class ModelConverter {
          }
       }
       return ArrayUtils.toPrimitive(indices.toArray(Integer[]::new));
+   }
+
+   private static float[] processBitangents(AIMesh aiMesh, float[] normals) {
+      List<Float> biTangents = new ArrayList<>();
+      var aiBitangents = aiMesh.mBitangents();
+      while(aiBitangents != null && aiBitangents.hasRemaining()) {
+         var aiBitangent = aiBitangents.get();
+         biTangents.add(aiBitangent.x());
+         biTangents.add(aiBitangent.y());
+         biTangents.add(aiBitangent.z());
+      }
+
+      // assimp may not calculate tangents with models that do not have texture coords.  Just create empty values
+      if(biTangents.isEmpty()) {
+         biTangents = new ArrayList<>(Collections.nCopies(normals.length, 0f));
+      }
+      return ArrayUtils.toPrimitive(biTangents.toArray(Float[]::new));
+   }
+
+   private static float[] processNormals(AIMesh aiMesh) {
+      List<Float> normals = new ArrayList<>();
+      var aiNormals = aiMesh.mNormals();
+      while(aiNormals != null && aiNormals.hasRemaining()) {
+         var aiNormal = aiNormals.get();
+         normals.add(aiNormal.x());
+         normals.add(aiNormal.y());
+         normals.add(aiNormal.z());
+      }
+      return ArrayUtils.toPrimitive(normals.toArray(Float[]::new));
+   }
+
+   private static float[] processTangents(AIMesh aiMesh, float[] normals) {
+      List<Float> tangents = new ArrayList<>();
+      var aiTangents = aiMesh.mTangents();
+      while(aiTangents != null && aiTangents.hasRemaining()) {
+         var aiTangent = aiTangents.get();
+         tangents.add(aiTangent.x());
+         tangents.add(aiTangent.y());
+         tangents.add(aiTangent.z());
+      }
+
+      // assimp may not calc tangents with models that do not have texture coords.  Just create empty values
+      if(tangents.isEmpty()) {
+         tangents = new ArrayList<>(Collections.nCopies(normals.length, 0f));
+      }
+      return ArrayUtils.toPrimitive(tangents.toArray(Float[]::new));
    }
 }

@@ -123,8 +123,8 @@ public class PostProcessingRenderer {
 
    private static Pipeline initPipeline(LogicalDevice device, PipelineCache cache, List<ShaderModule> modules, List<DescriptorSetLayout> layouts) {
       var vertexBufferStructure = new EmptyVertexBufferStructure();
-      var info = new PipelineBuildInfo(modules, vertexBufferStructure.getVertexInputStateCreateInfo(), COLOR_FORMAT,
-              VK13.VK_FORMAT_UNDEFINED, null, layouts, false);
+      var info = new PipelineBuildInfo(modules, vertexBufferStructure.getVertexInputStateCreateInfo(),
+              new int[] {COLOR_FORMAT}, VK13.VK_FORMAT_UNDEFINED, null, layouts, false);
       var pipeline = new Pipeline(device, cache, info);
       vertexBufferStructure.cleanup();
       return pipeline;
