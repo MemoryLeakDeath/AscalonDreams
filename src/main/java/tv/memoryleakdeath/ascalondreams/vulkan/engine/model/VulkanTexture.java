@@ -40,7 +40,7 @@ public class VulkanTexture {
       this.height = source.height();
 
       calculateTransparency(source.data());
-      logger.debug("Texture id: {} - transparent: {}", id, transparent);
+      logger.trace("Texture id: {} - transparent: {}", id, transparent);
       createStagingBuffer(device, allocationUtil, source.data());
       int mipLevels = MathUtils.calculateMipLevels(width, height);
       this.image = new VulkanImage(device, allocationUtil, width, height,

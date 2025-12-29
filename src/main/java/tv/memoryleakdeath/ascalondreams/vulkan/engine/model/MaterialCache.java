@@ -76,6 +76,7 @@ public class MaterialCache {
       for(VulkanMaterial material : materials) {
          materialMap.put(material.getId(), material);
          offset = material.load(device, allocationUtil, materialDataBuffer, offset, textureCache);
+         logger.trace("Loading material: {} - Material data buffer position: {} - offset: {}", material.getId(), materialDataBuffer.position(), offset);
       }
       sourceBuffer.unMap(device, allocationUtil);
 
