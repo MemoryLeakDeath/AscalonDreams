@@ -144,7 +144,8 @@ public class SceneRenderer {
    private Pipeline createPipeline(LogicalDevice device, List<ShaderModule> shaderModules, PipelineCache cache) {
       var vertexBufferStructure = new VertexBufferStructure();
       var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(),
-              MaterialAttachments.ALBEDO_FORMAT, MaterialAttachments.DEPTH_FORMAT, List.of(
+              new int[] { MaterialAttachments.POSITION_FORMAT, MaterialAttachments.ALBEDO_FORMAT, MaterialAttachments.NORMAL_FORMAT, MaterialAttachments.PBR_FORMAT},
+              MaterialAttachments.DEPTH_FORMAT, List.of(
                       new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT,0, VulkanConstants.MAT4X4_SIZE),
                       new PushConstantRange(VK13.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanConstants.MAT4X4_SIZE, VulkanConstants.INT_SIZE)),
               List.of(vertexUniformLayout, vertexUniformLayout, fragmentStorageLayout, textureLayout), true);

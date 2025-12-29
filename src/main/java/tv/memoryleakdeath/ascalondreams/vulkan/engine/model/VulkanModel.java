@@ -20,6 +20,7 @@ import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class VulkanModel {
    private static final Logger logger = LoggerFactory.getLogger(VulkanModel.class);
@@ -67,18 +68,32 @@ public class VulkanModel {
    }
 
    public void addMesh(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, VulkanMeshData meshData) {
-      TransferBuffer vertexBuffers = createVertexBuffers(device, allocationUtil, meshData.getVerticies(), meshData.getTextureCoords());
+      TransferBuffer vertexBuffers = createVertexBuffers(device, allocationUtil, meshData.getVerticies(),
+              meshData.getNormals(), meshData.getTangents(), meshData.getBiTangents(), meshData.getTextureCoords());
       TransferBuffer indexBuffers = createIndexBuffers(device, allocationUtil, meshData.getIndicies());
+      logger.trace("Vertex buffers size: {} - Index buffers size: {}",vertexBuffers.sourceBuffer().getRequestedSize(),
+              indexBuffers.sourceBuffer().getRequestedSize());
       transferBuffers.add(vertexBuffers);
       transferBuffers.add(indexBuffers);
       meshList.add(new VulkanMesh(id, vertexBuffers.destinationBuffer(), indexBuffers.destinationBuffer(), meshData.getIndicies().length, meshData.getMaterialId()));
    }
 
-   private TransferBuffer createVertexBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil, float[] verticies, float[] textureCoords) {
+   private TransferBuffer createVertexBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil,
+                                              float[] verticies, float[] normals, float[] tangents,
+                                              float[] bitangents, float[] textureCoords) {
       if(textureCoords == null || textureCoords.length == 0) {
          textureCoords = new float[(verticies.length / 3) * 2];
       }
-      int numElements = verticies.length + textureCoords.length;
+      if(normals == null || normals.length == 0) {
+         normals = new float[verticies.length];
+      }
+      if(tangents == null || tangents.length == 0) {
+         tangents = new float[verticies.length];
+      }
+      if(bitangents == null || bitangents.length == 0) {
+         bitangents = new float[verticies.length];
+      }
+      int numElements = verticies.length + normals.length + tangents.length + bitangents.length + textureCoords.length;
       int bufferSize = numElements * VulkanConstants.FLOAT_SIZE;
 
       var sourceBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
@@ -92,8 +107,14 @@ public class VulkanModel {
       int rows = verticies.length / 3;
       for(int row = 0; row < rows; row++) {
          int vertexIndex = row * 3;
+         int normalsIndex = row * 3;
+         int tangentIndex = row * 3;
+         int bitangetIndex = row * 3;
          int textureIndex = row * 2;
          data.put(ArrayUtils.subarray(verticies, vertexIndex, vertexIndex + 3));  // end index is exclusive thus + 3 instead of + 2
+         data.put(ArrayUtils.subarray(normals, normalsIndex, normalsIndex + 3));  // end index is exclusive thus + 3 instead of + 2
+         data.put(ArrayUtils.subarray(tangents, tangentIndex, tangentIndex + 3));  // end index is exclusive thus + 3 instead of + 2
+         data.put(ArrayUtils.subarray(bitangents, bitangetIndex, bitangetIndex + 3));  // end index is exclusive thus + 3 instead of + 2
          data.put(ArrayUtils.subarray(textureCoords, textureIndex, textureIndex + 2)); // ditto (+2 instead of +1)
       }
       sourceBuffer.unMap(device, allocationUtil);
@@ -121,6 +142,7 @@ public class VulkanModel {
       LongBuffer offsets = stack.mallocLong(1).put(0, 0L);
       LongBuffer vertexBuffer = stack.mallocLong(1);
       MaterialCache materialCache = MaterialCache.getInstance();
+      AtomicInteger numRendered = new AtomicInteger(0);
       meshList.forEach(mesh -> {
          String materialId = mesh.materialId();
          int materialIndex = materialCache.getPosition(materialId);
@@ -130,6 +152,7 @@ public class VulkanModel {
          } else {
             if(material.isTransparent() == doTransparent) {
                logger.trace("Rendering material: {}", materialId);
+               numRendered.incrementAndGet();
                setPushConstants(cmd, modelMatrix, piplineLayoutId, materialIndex);
                vertexBuffer.put(0, mesh.vertexBuffer().getBuffer());
                VK13.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
@@ -138,6 +161,7 @@ public class VulkanModel {
             }
          }
       });
+      logger.trace("Render pass, transparency: {} rendered {} materials", doTransparent, numRendered.get());
    }
 
    private void setPushConstants(VkCommandBuffer cmd, Matrix4f modelMatrix, long pipelineLayoutId, int materialIndex) {

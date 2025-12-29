@@ -1,8 +1,10 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.scene;
 
+import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.camera.Camera;
+import tv.memoryleakdeath.ascalondreams.lighting.Light;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
 
 import java.util.ArrayList;
@@ -11,9 +13,14 @@ import java.util.List;
 public class VulkanScene {
    private static final Logger logger = LoggerFactory.getLogger(VulkanScene.class);
 
+   public static final int MAX_LIGHTS = 10;
+
    private final List<Entity> entities = new ArrayList<>();
    private final Projection projection;
    private final Camera camera;
+   private final Vector3f ambientLightColor = new Vector3f();
+   private float ambientLightIntensity = 0.0f;
+   private List<Light> lights;
 
    public VulkanScene(VulkanWindow window) {
       this.projection = new Projection(window.getFov(), window.getZNear(), window.getZFar(), window.getWidth(), window.getHeight());
@@ -42,5 +49,28 @@ public class VulkanScene {
 
    public Camera getCamera() {
       return camera;
+   }
+
+   public Vector3f getAmbientLightColor() {
+      return ambientLightColor;
+   }
+
+   public float getAmbientLightIntensity() {
+      return ambientLightIntensity;
+   }
+
+   public void setAmbientLightIntensity(float ambientLightIntensity) {
+      this.ambientLightIntensity = ambientLightIntensity;
+   }
+
+   public List<Light> getLights() {
+      return lights;
+   }
+
+   public void setLights(List<Light> lights) {
+      if(lights != null && lights.size() > MAX_LIGHTS) {
+         throw new RuntimeException("Maximum number of scene lights exceeded! Max: %d Requested: %d".formatted(MAX_LIGHTS, lights.size()));
+      }
+      this.lights = lights;
    }
 }

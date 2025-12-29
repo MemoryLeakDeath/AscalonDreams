@@ -11,7 +11,10 @@ import java.util.List;
 
 public class MaterialAttachments {
    public static final int ALBEDO_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
-   public static final int DEPTH_FORMAT = VK13.VK_FORMAT_D16_UNORM;
+   public static final int DEPTH_FORMAT = VK13.VK_FORMAT_D32_SFLOAT;
+   public static final int NORMAL_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
+   public static final int PBR_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
+   public static final int POSITION_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
    private final List<Attachment> colorAttachments = new ArrayList<>();
    private final Attachment depthAttachment;
    private final int width;
@@ -21,8 +24,17 @@ public class MaterialAttachments {
       this.width = swapChain.getSwapChainExtent().width();
       this.height = swapChain.getSwapChainExtent().height();
 
+      // position attachment
+      colorAttachments.add(new Attachment(device, allocationUtil, width, height, POSITION_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+
       // albedo attachment
       colorAttachments.add(new Attachment(device, allocationUtil, width, height, ALBEDO_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+
+      // normals attachment
+      colorAttachments.add(new Attachment(device, allocationUtil, width, height, NORMAL_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+
+      // pbr attachment
+      colorAttachments.add(new Attachment(device, allocationUtil, width, height, PBR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
 
       // depth attachment
       depthAttachment = new Attachment(device, allocationUtil, width, height, DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);

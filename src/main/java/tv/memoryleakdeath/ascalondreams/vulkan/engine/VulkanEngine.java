@@ -1,8 +1,6 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine;
 
 import imgui.ImGui;
-import imgui.ImVec2;
-import imgui.flag.ImGuiCond;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.openal.AL11;
@@ -16,6 +14,8 @@ import tv.memoryleakdeath.ascalondreams.input.InputTimer;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
 import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
+import tv.memoryleakdeath.ascalondreams.lighting.Light;
+import tv.memoryleakdeath.ascalondreams.lighting.LightingInputCallback;
 import tv.memoryleakdeath.ascalondreams.sound.SoundBuffer;
 import tv.memoryleakdeath.ascalondreams.sound.SoundListener;
 import tv.memoryleakdeath.ascalondreams.sound.SoundManager;
@@ -28,6 +28,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class VulkanEngine {
@@ -52,6 +53,7 @@ public class VulkanEngine {
     private static final String SOUND_FILE2 = "sounds/woo_scary.ogg";
 
     private long soundTimer = 0;
+    private long lightTimer = 0;
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
@@ -63,15 +65,38 @@ public class VulkanEngine {
     private Entity sponzaEntity;
     private GuiTexture guiTexture;
     private SoundManager soundManager = SoundManager.getInstance();
+    private Vector3f lastDirectionalLightPosition = new Vector3f();
 
     public void init() {
         window = new VulkanWindow(600, 600);
         this.scene = new VulkanScene(window);
         this.guiTexture = new GuiTexture("textures/vulkan.png");
         renderer = new VulkanRenderer(window, scene);
-        renderer.initModels(loadModel(SPONZA_MODEL_FILE), List.of(guiTexture));
+        renderer.initModels(
+                List.of(loadModel(SPONZA_MODEL_FILE, "SponzaEntity", new Vector3f(0f, 0f, 0f)),
+                        loadModel(CUBE_MODEL_FILE, "LightEntity", new Vector3f(0f, 0f, 0f))),
+                List.of(guiTexture));
+        initSceneLighting();
         setCameraStartState();
         initSound();
+    }
+
+    private void initSceneLighting() {
+       Entity lightEntity = scene.getEntities().get(1);
+       lightEntity.setScale(0.1f);
+       scene.getAmbientLightColor().set(1f, 1f, 1f);
+       scene.setAmbientLightIntensity(0.2f);
+
+       List<Light> lights = new ArrayList<>();
+       // directional light
+       lights.add(new Light(new Vector3f(0f, -1f, 0f), true, 1.0f, new Vector3f(1f, 1f, 1f)));
+       // point light
+       lights.add(new Light(new Vector3f(5f, 3.4f, 1.2f), false, 1.0f, new Vector3f(0f, 1f, 0f)));
+       Vector3f pointPosition = lights.get(1).position();
+       lightEntity.setPosition(pointPosition.x, pointPosition.y, pointPosition.z);
+       lightEntity.updateModelMatrix();
+
+       scene.setLights(lights);
     }
 
     private void initSound() {
@@ -94,10 +119,9 @@ public class VulkanEngine {
        musicSource.play();
     }
 
-    private ConvertedModel loadModel(String modelFile) {
+    private ConvertedModel loadModel(String modelFile, String entityId, Vector3f entityStartingPosition) {
        ConvertedModel convertedModel = ModelLoader.loadModel(modelFile);
-       sponzaEntity = new Entity("SponzaEntity", convertedModel.getId(), new Vector3f(0.0f, 0.0f, 0.0f));
-       scene.addEntity(sponzaEntity);
+       scene.addEntity(new Entity(entityId, convertedModel.getId(), entityStartingPosition));
        return convertedModel;
     }
 
@@ -111,13 +135,16 @@ public class VulkanEngine {
        InputTimer.getInstance().tick();
        registerInputCallbacks();
 
+       float angle = 270f;
+       Light directionalLight = scene.getLights().get(0);
+       lightTimer = System.currentTimeMillis();
         // rendering loop
        soundTimer = System.currentTimeMillis();
        while (!window.shouldClose()) {
           window.pollEvents();
           handleGui();
            if (shouldRunLogic()) {
-              gameLogic();
+              angle = gameLogic(angle, directionalLight);
            }
            if (shouldRender()) {
               render();
@@ -156,18 +183,30 @@ public class VulkanEngine {
         renderer.render(scene);
     }
 
-    private void gameLogic() {
+    private float gameLogic(float angle, Light directionalLight) {
        long timerDiff = System.currentTimeMillis() - soundTimer;
        if(timerDiff > 5000) {
           soundManager.play(SOUND_SOURCE_PLAYER, SOUND_BUFFER_PLAYER);
           soundTimer = System.currentTimeMillis();
        }
-//       angle += 1.0f;
-//       if(angle >= 360) {
-//          angle = angle - 360;
-//       }
-//       cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(angle), rotationAngle);
-//       cubeEntity.updateModelMatrix();
+
+       Vector3f pointLightPosition = scene.getLights().get(1).position();
+       Entity pointLightEntity = scene.getEntities().get(1);
+       pointLightEntity.setPosition(pointLightPosition.x, pointLightPosition.y, pointLightPosition.z);
+       pointLightEntity.updateModelMatrix();
+
+       long lightTimerDiff = System.currentTimeMillis() - lightTimer;
+       if(lightTimerDiff > 500) {
+          angle += 2.5f;
+          if(angle < 180) {
+             angle = 180;
+          } else if(angle > 360) {
+             angle = 0;
+          }
+          updateDirectionalLight(angle, directionalLight);
+          lightTimer = System.currentTimeMillis();
+       }
+       return angle;
     }
 
     private void cleanup() {
@@ -182,7 +221,8 @@ public class VulkanEngine {
        var mouseButtonHandler = mouseHandler.getButtonHandler();
        var cameraInputCallback = new CameraInputCallback(scene.getCamera());
        var guiInputCallback = new GuiInputCallback();
-       keyHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback);
+       var lightingInputCallback = new LightingInputCallback(scene.getLights().get(0), scene.getLights().get(1));
+       keyHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback).registerCallback(lightingInputCallback);
        mouseHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback);
        GLFW.glfwSetKeyCallback(window.getHandle(), keyHandler);
        GLFW.glfwSetCursorEnterCallback(window.getHandle(), mouseEnteredHandler);
@@ -196,15 +236,16 @@ public class VulkanEngine {
           ImGui.showDemoWindow();
           ImGui.endFrame();
           ImGui.render();
-       } else {
-          ImGui.newFrame();
-          ImGui.setNextWindowPos(0, 0, ImGuiCond.Always);
-          ImGui.setNextWindowSize(200, 200);
-          ImGui.begin("Test Window");
-          ImGui.image(guiTexture.id(), new ImVec2(300, 300));
-          ImGui.end();
-          ImGui.endFrame();
-          ImGui.render();
        }
     }
+
+   private void updateDirectionalLight(float directionalLightAngle, Light directionalLight) {
+      float zValue = (float) Math.cos(Math.toRadians(directionalLightAngle));
+      float yValue = (float) Math.sin(Math.toRadians(directionalLightAngle));
+      Vector3f lightDirection = directionalLight.position();
+      lightDirection.x = 0;
+      lightDirection.y = yValue;
+      lightDirection.z = zValue;
+      lightDirection.normalize();
+   }
 }

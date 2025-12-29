@@ -92,8 +92,6 @@ public class GuiRender {
 
       DescriptorSet descriptorSet = allocator.addDescriptorSets(device, DESC_ID_TEXTURE, 1, textureDescriptorSetLayout).getFirst();
       descriptorSet.setImage(device, fontTexture.getImageView(), fontTextureSampler, textureDescriptorSetLayout.getLayoutInfo().binding());
-
-      // todo: keyboard input register (Maybe don't need this?)
    }
 
    private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(Attachment destinationAttachment) {
@@ -107,7 +105,8 @@ public class GuiRender {
 
    private static Pipeline initPipeline(LogicalDevice device, PipelineCache cache, List<ShaderModule> shaderModules, List<DescriptorSetLayout> layouts) {
       var vertexBufferStructure = new GuiVertexBufferStructure();
-      var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(), PostProcessingRenderer.COLOR_FORMAT, 0,
+      var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(),
+              new int[] {PostProcessingRenderer.COLOR_FORMAT}, 0,
               List.of(new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, VulkanConstants.VEC2_SIZE)), layouts, true);
       var pipeline = new Pipeline(device, cache, info);
       vertexBufferStructure.cleanup();
