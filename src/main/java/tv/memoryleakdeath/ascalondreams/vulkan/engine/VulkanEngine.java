@@ -53,6 +53,7 @@ public class VulkanEngine {
     private static final String SOUND_FILE2 = "sounds/woo_scary.ogg";
 
     private long soundTimer = 0;
+    private long lightTimer = 0;
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
@@ -64,6 +65,7 @@ public class VulkanEngine {
     private Entity sponzaEntity;
     private GuiTexture guiTexture;
     private SoundManager soundManager = SoundManager.getInstance();
+    private Vector3f lastDirectionalLightPosition = new Vector3f();
 
     public void init() {
         window = new VulkanWindow(600, 600);
@@ -73,7 +75,7 @@ public class VulkanEngine {
         renderer.initModels(
                 List.of(loadModel(SPONZA_MODEL_FILE, "SponzaEntity", new Vector3f(0f, 0f, 0f)),
                         loadModel(CUBE_MODEL_FILE, "LightEntity", new Vector3f(0f, 0f, 0f))),
-                null);
+                List.of(guiTexture));
         initSceneLighting();
         setCameraStartState();
         initSound();
@@ -133,13 +135,16 @@ public class VulkanEngine {
        InputTimer.getInstance().tick();
        registerInputCallbacks();
 
+       float angle = 270f;
+       Light directionalLight = scene.getLights().get(0);
+       lightTimer = System.currentTimeMillis();
         // rendering loop
        soundTimer = System.currentTimeMillis();
        while (!window.shouldClose()) {
           window.pollEvents();
           handleGui();
            if (shouldRunLogic()) {
-              gameLogic();
+              angle = gameLogic(angle, directionalLight);
            }
            if (shouldRender()) {
               render();
@@ -178,7 +183,7 @@ public class VulkanEngine {
         renderer.render(scene);
     }
 
-    private void gameLogic() {
+    private float gameLogic(float angle, Light directionalLight) {
        long timerDiff = System.currentTimeMillis() - soundTimer;
        if(timerDiff > 5000) {
           soundManager.play(SOUND_SOURCE_PLAYER, SOUND_BUFFER_PLAYER);
@@ -186,16 +191,22 @@ public class VulkanEngine {
        }
 
        Vector3f pointLightPosition = scene.getLights().get(1).position();
-       Entity lightEntity = scene.getEntities().get(1);
-       lightEntity.setPosition(pointLightPosition.x, pointLightPosition.y, pointLightPosition.z);
-       lightEntity.updateModelMatrix();
+       Entity pointLightEntity = scene.getEntities().get(1);
+       pointLightEntity.setPosition(pointLightPosition.x, pointLightPosition.y, pointLightPosition.z);
+       pointLightEntity.updateModelMatrix();
 
-//       angle += 1.0f;
-//       if(angle >= 360) {
-//          angle = angle - 360;
-//       }
-//       cubeEntity.getRotation().identity().rotateAxis((float) Math.toRadians(angle), rotationAngle);
-//       cubeEntity.updateModelMatrix();
+       long lightTimerDiff = System.currentTimeMillis() - lightTimer;
+       if(lightTimerDiff > 500) {
+          angle += 2.5f;
+          if(angle < 180) {
+             angle = 180;
+          } else if(angle > 360) {
+             angle = 0;
+          }
+          updateDirectionalLight(angle, directionalLight);
+          lightTimer = System.currentTimeMillis();
+       }
+       return angle;
     }
 
     private void cleanup() {
@@ -227,4 +238,14 @@ public class VulkanEngine {
           ImGui.render();
        }
     }
+
+   private void updateDirectionalLight(float directionalLightAngle, Light directionalLight) {
+      float zValue = (float) Math.cos(Math.toRadians(directionalLightAngle));
+      float yValue = (float) Math.sin(Math.toRadians(directionalLightAngle));
+      Vector3f lightDirection = directionalLight.position();
+      lightDirection.x = 0;
+      lightDirection.y = yValue;
+      lightDirection.z = zValue;
+      lightDirection.normalize();
+   }
 }

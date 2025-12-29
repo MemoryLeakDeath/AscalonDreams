@@ -136,8 +136,6 @@ public class VulkanRenderer {
    }
 
    public void initModels(List<ConvertedModel> convertedModels, List<GuiTexture> guiTextures) {
-      List<VulkanModel> models = new ArrayList<>();
-
       if(guiTextures != null) {
          guiTextures.forEach(t -> textureCache.addTexture(device, memoryAllocationUtil, t.texturePath(), t.texturePath(),
                  VK13.VK_FORMAT_R8G8B8A8_SRGB));
@@ -150,6 +148,7 @@ public class VulkanRenderer {
       textureCache.recordTextureTransitions(device, memoryAllocationUtil, commandPools.getFirst(), graphicsQueue);
       logger.debug("textures transitioned.");
 
+      List<VulkanModel> models = new ArrayList<>();
       for(ConvertedModel convertedModel : convertedModels) {
          logger.debug("Loading model: {}", convertedModel.getId());
          VulkanModel model = new VulkanModel(convertedModel.getId());
