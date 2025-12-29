@@ -20,6 +20,7 @@ import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class VulkanModel {
    private static final Logger logger = LoggerFactory.getLogger(VulkanModel.class);
@@ -121,6 +122,7 @@ public class VulkanModel {
       LongBuffer offsets = stack.mallocLong(1).put(0, 0L);
       LongBuffer vertexBuffer = stack.mallocLong(1);
       MaterialCache materialCache = MaterialCache.getInstance();
+      AtomicInteger numRendered = new AtomicInteger(0);
       meshList.forEach(mesh -> {
          String materialId = mesh.materialId();
          int materialIndex = materialCache.getPosition(materialId);
@@ -130,6 +132,7 @@ public class VulkanModel {
          } else {
             if(material.isTransparent() == doTransparent) {
                logger.trace("Rendering material: {}", materialId);
+               numRendered.incrementAndGet();
                setPushConstants(cmd, modelMatrix, piplineLayoutId, materialIndex);
                vertexBuffer.put(0, mesh.vertexBuffer().getBuffer());
                VK13.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
@@ -138,6 +141,7 @@ public class VulkanModel {
             }
          }
       });
+      logger.debug("Render pass, transparency: {} rendered {} materials", doTransparent, numRendered.get());
    }
 
    private void setPushConstants(VkCommandBuffer cmd, Matrix4f modelMatrix, long pipelineLayoutId, int materialIndex) {

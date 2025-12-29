@@ -11,7 +11,7 @@ import java.util.List;
 
 public class MaterialAttachments {
    public static final int ALBEDO_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
-   public static final int DEPTH_FORMAT = VK13.VK_FORMAT_D16_UNORM;
+   public static final int DEPTH_FORMAT = VK13.VK_FORMAT_D32_SFLOAT;
    public static final int NORMAL_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
    public static final int PBR_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;
    public static final int POSITION_FORMAT = VK13.VK_FORMAT_R16G16B16A16_SFLOAT;

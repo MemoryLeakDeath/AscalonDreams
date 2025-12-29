@@ -37,7 +37,6 @@ public class ModelConverter {
    private static final int FLAGS = Assimp.aiProcess_GenSmoothNormals | Assimp.aiProcess_JoinIdenticalVertices |
            Assimp.aiProcess_Triangulate | Assimp.aiProcess_FixInfacingNormals | Assimp.aiProcess_CalcTangentSpace |
            Assimp.aiProcess_PreTransformVertices;
-   private static final String DEFAULT_TEXTURE = "models/cube/cube.png";  // todo: get rid of this
 
    private ModelConverter() {
    }
@@ -136,9 +135,6 @@ public class ModelConverter {
             } else {
                texturePath = "%s/%s".formatted(textureDir, FilenameUtils.getName(texturePath));
             }
-         } else {
-            // todo: remove this condition
-            texturePath = DEFAULT_TEXTURE;
          }
       }
       return texturePath;
