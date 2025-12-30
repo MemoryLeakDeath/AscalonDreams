@@ -94,7 +94,7 @@ public class PostProcessingRenderer {
 
    private static Attachment initColorAttachment(LogicalDevice device, VulkanSwapChain swapChain, MemoryAllocationUtil allocationUtil) {
       VkExtent2D extent = swapChain.getSwapChainExtent();
-      return new Attachment(device, allocationUtil, extent.width(), extent.height(), COLOR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+      return new Attachment(device, allocationUtil, extent.width(), extent.height(), COLOR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1);
    }
 
    private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(Attachment attachment, VkClearValue clear) {
@@ -124,7 +124,7 @@ public class PostProcessingRenderer {
    private static Pipeline initPipeline(LogicalDevice device, PipelineCache cache, List<ShaderModule> modules, List<DescriptorSetLayout> layouts) {
       var vertexBufferStructure = new EmptyVertexBufferStructure();
       var info = new PipelineBuildInfo(modules, vertexBufferStructure.getVertexInputStateCreateInfo(),
-              new int[] {COLOR_FORMAT}, VK13.VK_FORMAT_UNDEFINED, null, layouts, false);
+              new int[] {COLOR_FORMAT}, VK13.VK_FORMAT_UNDEFINED, null, layouts, false, false);
       var pipeline = new Pipeline(device, cache, info);
       vertexBufferStructure.cleanup();
       return pipeline;

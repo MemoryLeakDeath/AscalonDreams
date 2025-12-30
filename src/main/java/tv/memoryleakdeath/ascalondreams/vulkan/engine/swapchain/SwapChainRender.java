@@ -95,7 +95,7 @@ public class SwapChainRender {
    private static Pipeline initPipeline(LogicalDevice device, VulkanSurface surface, PipelineCache cache, List<ShaderModule> modules, List<DescriptorSetLayout> layouts) {
       var vertexBufferStructure = new EmptyVertexBufferStructure();
       var buildInfo = new PipelineBuildInfo(modules, vertexBufferStructure.getVertexInputStateCreateInfo(),
-              new int[]{surface.getSurfaceFormat().imageFormat()}, VK13.VK_FORMAT_UNDEFINED, null, layouts, false);
+              new int[]{surface.getSurfaceFormat().imageFormat()}, VK13.VK_FORMAT_UNDEFINED, null, layouts, false, false);
       var pipeline = new Pipeline(device, cache, buildInfo);
       vertexBufferStructure.cleanup();
       return pipeline;

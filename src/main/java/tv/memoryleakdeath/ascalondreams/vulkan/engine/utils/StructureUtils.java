@@ -74,15 +74,19 @@ public final class StructureUtils {
          features.samplerAnisotropy(true);
       }
 
-      vulkanFeatures2.pNext(vulkan13Features.address());
-      vulkan13Features.pNext(vulkan12Features.address());
+      features.geometryShader(true);
+      boolean depthClamp = supportedFeatures.depthClamp();
+      features.depthClamp(depthClamp);
+
+      vulkanFeatures2.pNext(vulkan12Features.address());
+      vulkan12Features.pNext(vulkan13Features.address());
 
       VkDeviceCreateInfo info = VkDeviceCreateInfo.calloc(stack)
               .sType$Default()
               .pNext(vulkanFeatures2.address())
               .ppEnabledExtensionNames(requiredExtensions)
               .pQueueCreateInfos(queueCreationInfoBuf);
-      return new Object[] {info, samplerAnisotrophy};
+      return new Object[] {info, samplerAnisotrophy, depthClamp};
    }
 
    public static long createCommandBufferAllocateInfo(MemoryStack stack, VkDevice logicalDevice, long commandPoolId, boolean primary) {
@@ -163,7 +167,10 @@ public final class StructureUtils {
       VK13.vkCmdSetViewport(cmd, 0, viewport);
    }
 
-   public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int[] colorFormats, VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo, long pipelineLayoutId, PipelineCache pipelineCache, int depthFormat, boolean useBlend) {
+   public static long createGraphicsPipelineInfo(MemoryStack stack, LogicalDevice device, int[] colorFormats,
+                                                 VkPipelineShaderStageCreateInfo.Buffer stageInfo, VkPipelineVertexInputStateCreateInfo vertexInfo,
+                                                 long pipelineLayoutId, PipelineCache pipelineCache, int depthFormat,
+                                                 boolean useBlend, boolean depthClamp) {
       var assemblyStateInfo = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
               .sType$Default()
               .topology(VK13.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -176,6 +183,7 @@ public final class StructureUtils {
               .polygonMode(VK13.VK_POLYGON_MODE_FILL)
               .cullMode(VK13.VK_CULL_MODE_NONE)
               .frontFace(VK13.VK_FRONT_FACE_CLOCKWISE)
+              .depthClampEnable(depthClamp)
               .lineWidth(1f);
       var mutisampleStateInfo = VkPipelineMultisampleStateCreateInfo.calloc(stack)
               .sType$Default()

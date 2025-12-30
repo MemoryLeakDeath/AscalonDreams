@@ -3,7 +3,9 @@
 
 // CREDITS: Most of the functions here have been obtained from this link: https://github.com/SaschaWillems/Vulkan
 // developed by Sascha Willems, https://twitter.com/JoeyDeVriez, and licensed under the terms of the MIT License (MIT)
-const int MAX_LIGHTS = 10;
+
+layout(constant_id = 0) const int SHADOW_MAP_CASCADE_COUNT = 3;
+layout(constant_id = 1) const int DEBUG_SHADOWS = 0;
 const float PI = 3.14159265359;
 
 struct Light {
@@ -11,6 +13,11 @@ struct Light {
     uint directional;
     float intensity;
     vec3 color;
+};
+
+struct CascadeShadow {
+    mat4 projectionViewMatrix;
+    vec4 splitDistance;
 };
 
 layout(location = 0) in vec2 inTextureCoordinates;
@@ -21,17 +28,51 @@ layout(set = 0, binding = 0) uniform sampler2D positionSampler;
 layout(set = 0, binding = 1) uniform sampler2D albedoSampler;
 layout(set = 0, binding = 2) uniform sampler2D normalsSampler;
 layout(set = 0, binding = 3) uniform sampler2D pbrSampler;
+layout(set = 0, binding = 4) uniform sampler2DArray shadowSampler;
 
 layout(scalar, set = 1, binding = 0) readonly buffer Lights {
     Light lights[];
 } lights;
-
-layout(scalar, set = 2, binding = 0) uniform SceneInfo {
+layout(set = 2, binding = 0) readonly buffer Shadows {
+    CascadeShadow cascadeShadows[];
+} shadows;
+layout(scalar, set = 3, binding = 0) uniform SceneInfo {
     vec3 camPos;
     float ambientLightIntensity;
     vec3 ambientLightColor;
     uint numLights;
+    mat4 viewMatrix;
 } sceneInfo;
+
+float chebyshevUpperBound(vec2 moments, float t) {
+    // surface is fully lit if the current fragment is before the light occluder
+    if(t <= moments.x) {
+        return 1.0;
+    }
+
+    // compute variance
+    float variance = moments.y - (moments.x * moments.x);
+    variance = max(variance, 0.00002); // small epislon to avoid divide by zero
+
+    // compute probabilistic upper bound
+    float d = t - moments.x;
+    float p_max = variance / (variance + d * d);
+
+    // reduce light bleeding
+    p_max = smoothstep(0.2, 1.0, p_max);
+    return p_max;
+}
+
+float calcVisibility(vec4 worldPosition, uint cascadeIndex) {
+    vec4 shadowMapPosition = shadows.cascadeShadows[cascadeIndex].projectionViewMatrix * worldPosition;
+
+    vec2 uv = vec2(shadowMapPosition.x * 0.5 + 0.5, (-shadowMapPosition.y) * 0.5 + 0.5);
+    float depth = shadowMapPosition.z;
+    vec2 moments = texture(shadowSampler, vec3(uv, cascadeIndex)).rg;
+
+    float visibility = chebyshevUpperBound(moments, depth);
+    return visibility;
+}
 
 float distributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness * roughness;
@@ -123,7 +164,8 @@ vec3 calculateDirectionalLight(Light light, vec3 V, vec3 N, vec3 F0, vec3 albedo
 void main() {
     vec3 albedo = texture(albedoSampler, inTextureCoordinates).rgb;
     vec3 normal = texture(normalsSampler, inTextureCoordinates).rgb;
-    vec3 worldPos = texture(positionSampler, inTextureCoordinates).rgb;
+    vec4 worldPosW = texture(positionSampler, inTextureCoordinates);
+    vec3 worldPos = worldPosW.xyz;
     vec3 pbr = texture(pbrSampler, inTextureCoordinates).rgb;
 
     float roughness = pbr.g;
@@ -135,6 +177,15 @@ void main() {
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, metallic);
 
+    uint cascadeIndex = 0;
+    vec4 viewPosition = sceneInfo.viewMatrix * worldPosW;
+    for(uint i = 0; i < SHADOW_MAP_CASCADE_COUNT - 1; ++i) {
+        if(viewPosition.z < shadows.cascadeShadows[i].splitDistance.x) {
+            cascadeIndex = i + 1;
+        }
+    }
+    float shadow = calcVisibility(vec4(worldPos, 1), cascadeIndex);
+
     vec3 Lo = vec3(0.0);
     for(uint i = 0; i < sceneInfo.numLights; i++) {
         Light light = lights.lights[i];
@@ -145,7 +196,22 @@ void main() {
         }
     }
     vec3 ambient = sceneInfo.ambientLightColor * albedo * sceneInfo.ambientLightIntensity;
-    vec3 color = ambient + Lo;
+    outFragmentColor = vec4(Lo * shadow + ambient, 1.0f);
 
-    outFragmentColor = vec4(color, 1.0);
+    if(DEBUG_SHADOWS == 1) {
+        switch(cascadeIndex) {
+                case 0:
+                    outFragmentColor.rgb *= vec3(1.0f, 0.25f, 0.25f);
+                    break;
+                case 1:
+                    outFragmentColor.rgb *= vec3(0.25f, 1.0f, 0.25f);
+                    break;
+                case 2:
+                    outFragmentColor.rgb *= vec3(0.25f, 0.25f, 1.0f);
+                    break;
+                default:
+                    outFragmentColor.rgb *= vec3(1.0f, 1.0f, 0.25f);
+                    break;
+        }
+    }
 }

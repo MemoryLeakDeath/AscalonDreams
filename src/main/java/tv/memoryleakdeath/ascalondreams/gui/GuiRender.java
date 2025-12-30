@@ -107,7 +107,7 @@ public class GuiRender {
       var vertexBufferStructure = new GuiVertexBufferStructure();
       var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(),
               new int[] {PostProcessingRenderer.COLOR_FORMAT}, 0,
-              List.of(new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, VulkanConstants.VEC2_SIZE)), layouts, true);
+              List.of(new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, VulkanConstants.VEC2_SIZE)), layouts, true, false);
       var pipeline = new Pipeline(device, cache, info);
       vertexBufferStructure.cleanup();
       return pipeline;

@@ -15,7 +15,7 @@ public class Attachment {
    private final VulkanImageView imageView;
    private boolean depthAttachment = false;
 
-   public Attachment(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int format, int usage) {
+   public Attachment(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int format, int usage, int layers) {
       int imageUsage = -1;
       int aspectMask = 0;
       if((usage & VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) > 0) {
@@ -28,11 +28,16 @@ public class Attachment {
          imageUsage = (usage | VK13.VK_IMAGE_USAGE_SAMPLED_BIT);
          depthAttachment = true;
       }
-      this.image = new VulkanImage(device, allocationUtil, width, height, imageUsage, format, 1, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+      this.image = new VulkanImage(device, allocationUtil, width, height, imageUsage, format, 1,
+              Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, layers);
 
       var imageViewData = new VulkanImageViewData();
       imageViewData.setFormat(image.getFormat());
       imageViewData.setAspectMask(aspectMask);
+      if(layers > 1) {
+         imageViewData.setViewType(VK13.VK_IMAGE_VIEW_TYPE_2D_ARRAY);
+         imageViewData.setLayerCount(layers);
+      }
       this.imageView = new VulkanImageView(device, image.getId(), imageViewData, depthAttachment);
    }
 

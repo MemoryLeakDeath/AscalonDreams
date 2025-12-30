@@ -12,6 +12,7 @@ public class ModelLoaderTest {
       try {
          ModelConverter.processFile("models/sponza/Sponza.gltf");
          ModelConverter.processFile("models/cube/cube.obj");
+         ModelConverter.processFile("models/tree/tree.obj");
       } catch (Exception e) {
          Assertions.fail("Failed with Exception!", e);
       }
@@ -21,7 +22,9 @@ public class ModelLoaderTest {
    public void testLoadModel() {
       ConvertedModel model = ModelLoader.loadModel("models/sponza/Sponza.json");
       ConvertedModel model2 = ModelLoader.loadModel("models/cube/cube.json");
+      ConvertedModel model3 = ModelLoader.loadModel("models/tree/tree.json");
       System.out.println(model);
       System.out.println(model2);
+      System.out.println(model3);
    }
 }

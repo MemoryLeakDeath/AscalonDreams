@@ -45,7 +45,7 @@ public class VulkanTexture {
       int mipLevels = MathUtils.calculateMipLevels(width, height);
       this.image = new VulkanImage(device, allocationUtil, width, height,
               VK13.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK13.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK13.VK_IMAGE_USAGE_SAMPLED_BIT,
-              imageFormat, mipLevels, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+              imageFormat, mipLevels, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, 1);
       var imageData = new VulkanImageViewData();
       imageData.setAspectMask(VK13.VK_IMAGE_ASPECT_COLOR_BIT);
       imageData.setFormat(image.getFormat());

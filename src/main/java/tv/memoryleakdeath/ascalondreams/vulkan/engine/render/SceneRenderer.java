@@ -148,7 +148,7 @@ public class SceneRenderer {
               MaterialAttachments.DEPTH_FORMAT, List.of(
                       new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT,0, VulkanConstants.MAT4X4_SIZE),
                       new PushConstantRange(VK13.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanConstants.MAT4X4_SIZE, VulkanConstants.INT_SIZE)),
-              List.of(vertexUniformLayout, vertexUniformLayout, fragmentStorageLayout, textureLayout), true);
+              List.of(vertexUniformLayout, vertexUniformLayout, fragmentStorageLayout, textureLayout), true, false);
       var pipeline = new Pipeline(device, cache, info);
       vertexBufferStructure.cleanup();
       return pipeline;
@@ -164,9 +164,9 @@ public class SceneRenderer {
    public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       pipeline.cleanup(device);
       viewMatrixBuffers.forEach(b -> b.cleanup(device, allocationUtil));
+      fragmentStorageLayout.cleanup(device);
       textureLayout.cleanup(device);
       textureSampler.cleanup(device);
-      fragmentStorageLayout.cleanup(device);
       projectionMatrixBuffer.cleanup(device, allocationUtil);
       vertexUniformLayout.cleanup(device);
       renderingInfo.free();

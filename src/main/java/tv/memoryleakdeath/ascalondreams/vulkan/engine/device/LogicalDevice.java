@@ -20,6 +20,7 @@ public class LogicalDevice {
    private VkDevice device;
    private PhysicalDevice physicalDevice;
    private boolean samplerAnisotropy;
+   private final boolean depthClamp;
 
    public LogicalDevice(PhysicalDevice physicalDevice) {
       this.physicalDevice = physicalDevice;
@@ -29,6 +30,7 @@ public class LogicalDevice {
          PointerBuffer requiredExtensions = createRequiredDeviceExtensions(stack);
          Object[] deviceCreateInfo = StructureUtils.createDeviceInfo(stack, requiredExtensions, physicalDevice);
          this.samplerAnisotropy = (boolean) deviceCreateInfo[1];
+         this.depthClamp = (boolean) deviceCreateInfo[2];
 
          PointerBuffer logicalDevicePointer = stack.mallocPointer(1);
          VulkanUtils.failIfNeeded(VK13.vkCreateDevice(physicalDevice.getPhysicalDevice(), (VkDeviceCreateInfo) deviceCreateInfo[0], null, logicalDevicePointer), "Failed to create logical device!");
@@ -77,5 +79,9 @@ public class LogicalDevice {
 
    public boolean isSamplerAnisotropy() {
       return samplerAnisotropy;
+   }
+
+   public boolean isDepthClamp() {
+      return depthClamp;
    }
 }

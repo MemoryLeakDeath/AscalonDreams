@@ -3,6 +3,7 @@ package tv.memoryleakdeath.ascalondreams.lighting;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
+import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkCommandBuffer;
@@ -12,6 +13,8 @@ import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.shadow.CascadeData;
+import tv.memoryleakdeath.ascalondreams.shadow.CascadeShadows;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
@@ -39,6 +42,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class LightingRenderer {
@@ -47,6 +51,7 @@ public class LightingRenderer {
    private static final String DESC_ID_ATT = "LIGHT_DESC_ID_ATT";
    private static final String DESC_ID_LIGHTS = "LIGHT_DESC_ID_LIGHTS";
    private static final String DESC_ID_SCENE = "LIGHT_DESC_ID_SCENE";
+   private static final String DESC_ID_SHADOW_MATRICES = "LIGHT_DESC_ID_SHADOW_MATRICES";
    private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/lighting_fragment_shader.glsl";
    private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
    private static final String VERTEX_SHADER_FILE_GLSL = "shaders/lighting_vertex_shader.glsl";
@@ -54,10 +59,12 @@ public class LightingRenderer {
 
    private final DescriptorSetLayout attachmentLayout;
    private final VkClearValue clearColor;
+   private final LightSpecializationConstants lightSpecializationConstants = new LightSpecializationConstants();
    private final List<VulkanBuffer> lightingBuffers;
    private final Pipeline pipeline;
    private final List<VulkanBuffer> sceneBuffers;
    private final DescriptorSetLayout sceneLayout;
+   private final List<VulkanBuffer> shadowMatrices;
    private final DescriptorSetLayout storageLayout;
    private final VulkanTextureSampler textureSampler;
    private Attachment attachmentColor;
@@ -72,11 +79,11 @@ public class LightingRenderer {
       this.attachmentColorInfo = initColorAttachmentInfo(attachmentColor, clearColor);
       this.renderingInfo = initRenderingInfo(attachmentColor, attachmentColorInfo);
 
-      List<ShaderModule> shaderModules = initShaderModules(device);
+      List<ShaderModule> shaderModules = initShaderModules(device, lightSpecializationConstants);
       this.textureSampler = new VulkanTextureSampler(device, VK13.VK_SAMPLER_ADDRESS_MODE_REPEAT,
               VK13.VK_BORDER_COLOR_INT_OPAQUE_BLACK, 1, true);
       List<DescriptorSetLayoutInfo> descriptorSetLayoutInfos = new ArrayList<>();
-      for(int i = 0; i < attachments.size(); i++) {
+      for(int i = 0; i < attachments.size() + 1; i++) {
          descriptorSetLayoutInfos.add(new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                  i, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT));
       }
@@ -91,11 +98,13 @@ public class LightingRenderer {
       this.sceneLayout = new DescriptorSetLayout(device,
               new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, 1,
                       VK13.VK_SHADER_STAGE_FRAGMENT_BIT));
-      bufferSize = VulkanConstants.VEC3_SIZE * 2 + VulkanConstants.FLOAT_SIZE + VulkanConstants.INT_SIZE;
+      bufferSize = VulkanConstants.VEC3_SIZE * 2 + VulkanConstants.FLOAT_SIZE + VulkanConstants.INT_SIZE + VulkanConstants.MAT4X4_SIZE;
       this.sceneBuffers = VulkanUtils.createHostVisibleBuffers(device, allocationUtil, allocator, bufferSize,
               VulkanConstants.MAX_IN_FLIGHT, VK13.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, DESC_ID_SCENE, sceneLayout);
 
-      this.pipeline = initPipeline(device, pipelineCache, shaderModules, List.of(attachmentLayout, storageLayout, sceneLayout));
+      this.shadowMatrices = initShadowMatrixBuffers(device, allocationUtil, allocator, storageLayout);
+
+      this.pipeline = initPipeline(device, pipelineCache, shaderModules, List.of(attachmentLayout, storageLayout, storageLayout, sceneLayout));
       shaderModules.forEach(s -> s.cleanup(device));
    }
 
@@ -108,7 +117,7 @@ public class LightingRenderer {
 
    private static Attachment initColorAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain) {
       return new Attachment(device, allocationUtil, swapChain.getSwapChainExtent().width(), swapChain.getSwapChainExtent().height(),
-              COLOR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+              COLOR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1);
    }
 
    private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(Attachment attachment, VkClearValue clearColor) {
@@ -124,7 +133,7 @@ public class LightingRenderer {
    private static Pipeline initPipeline(LogicalDevice device, PipelineCache cache, List<ShaderModule> modules, List<DescriptorSetLayout> layouts) {
       var vertexBuff = new EmptyVertexBufferStructure();
       var info = new PipelineBuildInfo(modules, vertexBuff.getVertexInputStateCreateInfo(), new int[]{COLOR_FORMAT},
-              VK13.VK_FORMAT_UNDEFINED, null, layouts, true);
+              VK13.VK_FORMAT_UNDEFINED, null, layouts, true, false);
       var pipeline = new Pipeline(device, cache, info);
       vertexBuff.cleanup();
       return pipeline;
@@ -145,11 +154,26 @@ public class LightingRenderer {
       }
    }
 
-   private static List<ShaderModule> initShaderModules(LogicalDevice device) {
+   private static List<ShaderModule> initShaderModules(LogicalDevice device, LightSpecializationConstants lightConsts) {
       ShaderCompiler.compileShaderIfChanged(VERTEX_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_vertex_shader, true);
       ShaderCompiler.compileShaderIfChanged(FRAGMENT_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_fragment_shader, true);
       return List.of(new ShaderModule(device, VK13.VK_SHADER_STAGE_VERTEX_BIT, VERTEX_SHADER_FILE_SPV, null),
-              new ShaderModule(device, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV, null));
+              new ShaderModule(device, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV, lightConsts.getSpecializationInfo()));
+   }
+
+   private static List<VulkanBuffer> initShadowMatrixBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator, DescriptorSetLayout layout) {
+      int numBuffers = VulkanConstants.MAX_IN_FLIGHT;
+      VulkanBuffer[] buffers = new VulkanBuffer[numBuffers];
+      List<DescriptorSet> descriptorSets = allocator.addDescriptorSets(device, DESC_ID_SHADOW_MATRICES, numBuffers, layout);
+      for(int i = 0; i < numBuffers; i++) {
+         long bufferSize = (long) (VulkanConstants.MAT4X4_SIZE + VulkanConstants.VEC4_SIZE) * VulkanScene.SHADOW_MAP_CASCADE_COUNT;
+         buffers[i] = new VulkanBuffer(device, allocationUtil, bufferSize, VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                 Vma.VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                 VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+         descriptorSets.get(i).setBuffer(device, buffers[i], buffers[i].getRequestedSize(), layout.getLayoutInfo().binding(),
+                 layout.getLayoutInfo().descriptorType());
+      }
+      return Arrays.stream(buffers).toList();
    }
 
    public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
@@ -157,16 +181,20 @@ public class LightingRenderer {
       lightingBuffers.forEach(b -> b.cleanup(device, allocationUtil));
       sceneLayout.cleanup(device);
       sceneBuffers.forEach(b -> b.cleanup(device, allocationUtil));
+      shadowMatrices.forEach(b -> b.cleanup(device, allocationUtil));
       pipeline.cleanup(device);
       attachmentLayout.cleanup(device);
       textureSampler.cleanup(device);
+      lightSpecializationConstants.cleanup();
       renderingInfo.free();
       attachmentColor.cleanup(device, allocationUtil);
       attachmentColorInfo.free();
       clearColor.free();
    }
 
-   public void render(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator, VulkanScene scene, CommandBuffer commandBuffer, MaterialAttachments materialAttachments, int currentFrame) {
+   public void render(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator,
+                      VulkanScene scene, CommandBuffer commandBuffer, MaterialAttachments materialAttachments,
+                      Attachment shadowAttachment, CascadeShadows cascadeShadows, int currentFrame) {
       try (var stack = MemoryStack.stackPush()) {
          VkCommandBuffer commandHandle = commandBuffer.getCommandBuffer();
          StructureUtils.imageBarrier(stack, commandHandle, attachmentColor.getImage().getId(),
@@ -182,6 +210,13 @@ public class LightingRenderer {
                     VK13.VK_IMAGE_ASPECT_COLOR_BIT);
          }
 
+         StructureUtils.imageBarrier(stack, commandHandle, shadowAttachment.getImage().getId(),
+                 VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK13.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                 VK13.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK13.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                 VK13.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK13.VK_ACCESS_2_SHADER_READ_BIT,
+                 VK13.VK_IMAGE_ASPECT_COLOR_BIT);
+         updateCascadeShadowMatrices(device, allocationUtil, cascadeShadows, currentFrame);
+
          VK13.vkCmdBeginRendering(commandHandle, renderingInfo);
          VK13.vkCmdBindPipeline(commandHandle, VK13.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getId());
 
@@ -190,10 +225,11 @@ public class LightingRenderer {
          int height = colorImage.getHeight();
          StructureUtils.setupViewportAndScissor(stack, width, height, commandHandle);
 
-         LongBuffer descriptorSets = stack.mallocLong(3)
+         LongBuffer descriptorSets = stack.mallocLong(4)
                  .put(0, allocator.getDescriptorSet(DESC_ID_ATT).getId())
                  .put(1, allocator.getDescriptorSet(DESC_ID_LIGHTS, currentFrame).getId())
-                 .put(2, allocator.getDescriptorSet(DESC_ID_SCENE, currentFrame).getId());
+                 .put(2, allocator.getDescriptorSet(DESC_ID_SHADOW_MATRICES, currentFrame).getId())
+                 .put(3, allocator.getDescriptorSet(DESC_ID_SCENE, currentFrame).getId());
 
          updateSceneInfo(device, allocationUtil, scene, currentFrame);
          updateLights(device, allocationUtil, scene, currentFrame);
@@ -219,6 +255,19 @@ public class LightingRenderer {
       DescriptorSet set = allocator.getDescriptorSet(DESC_ID_ATT);
       var imageViews = attachments.stream().map(Attachment::getImageView).toList();
       set.setImages(device, imageViews, textureSampler, 0);
+   }
+
+   private void updateCascadeShadowMatrices(LogicalDevice device, MemoryAllocationUtil allocationUtil, CascadeShadows cascadeShadows, int currentFrame) {
+      VulkanBuffer buffer = shadowMatrices.get(currentFrame);
+      long mappedMemory = buffer.map(device, allocationUtil);
+      ByteBuffer dataBuf = MemoryUtil.memByteBuffer(mappedMemory, (int) buffer.getRequestedSize());
+      int offset = 0;
+      for(CascadeData data : cascadeShadows.getCascadeData()) {
+         data.getProjectionViewMatrix().get(offset, dataBuf);
+         dataBuf.putFloat(offset + VulkanConstants.MAT4X4_SIZE, data.getSplitDistance());
+         offset += VulkanConstants.MAT4X4_SIZE + VulkanConstants.VEC4_SIZE;
+      }
+      buffer.unMap(device, allocationUtil);
    }
 
    private void updateLights(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanScene scene, int currentFrame) {
@@ -255,6 +304,8 @@ public class LightingRenderer {
       offset += VulkanConstants.VEC3_SIZE;
       int numLights = (scene.getLights() != null) ? scene.getLights().size() : 0;
       dataBuf.putInt(offset, numLights);
+      offset += VulkanConstants.INT_SIZE;
+      scene.getCamera().getViewMatrix().get(offset, dataBuf);
       sceneBuf.unMap(device, allocationUtil);
    }
 

@@ -14,6 +14,7 @@ public class VulkanScene {
    private static final Logger logger = LoggerFactory.getLogger(VulkanScene.class);
 
    public static final int MAX_LIGHTS = 10;
+   public static final int SHADOW_MAP_CASCADE_COUNT = 3;
 
    private final List<Entity> entities = new ArrayList<>();
    private final Projection projection;

@@ -15,12 +15,15 @@ public class VulkanImageView {
    private final long imageId;
    private final long imageViewId;
    private final boolean depthImage;
+   private final int layerCount;
 
    public VulkanImageView(LogicalDevice device, long imagePointer, VulkanImageViewData imageData, boolean depthImage) {
       this.device = device;
       this.data = imageData;
       this.imageId = imagePointer;
       this.depthImage = depthImage;
+      this.layerCount = imageData.getLayerCount();
+
       try (MemoryStack stack = MemoryStack.stackPush()) {
          LongBuffer imageViewPointer = stack.mallocLong(1);
          VkImageViewCreateInfo createInfo = VkImageViewCreateInfo.calloc(stack)
@@ -53,5 +56,9 @@ public class VulkanImageView {
 
    public boolean isDepthImage() {
       return depthImage;
+   }
+
+   public int getLayerCount() {
+      return layerCount;
    }
 }

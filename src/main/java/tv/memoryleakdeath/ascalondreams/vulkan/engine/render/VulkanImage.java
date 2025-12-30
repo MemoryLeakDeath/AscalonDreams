@@ -24,14 +24,17 @@ public class VulkanImage {
    private final long vmaAllocator;
    private final int width;
    private final int height;
+   private final int layerCount;
 
-   public VulkanImage(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int usage, int imageFormat, int mipLevels, int memoryUsage) {
+   public VulkanImage(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int usage,
+                      int imageFormat, int mipLevels, int memoryUsage, int layerCount) {
       try(var stack = MemoryStack.stackPush()) {
          this.format = imageFormat;
          this.mipLevels = mipLevels;
          this.memoryUsage = memoryUsage;
          this.width = width;
          this.height = height;
+         this.layerCount = layerCount;
          var info = VkImageCreateInfo.calloc(stack)
                  .sType$Default()
                  .imageType(VK13.VK_IMAGE_TYPE_2D)
@@ -79,5 +82,9 @@ public class VulkanImage {
 
    public int getHeight() {
       return height;
+   }
+
+   public int getLayerCount() {
+      return layerCount;
    }
 }

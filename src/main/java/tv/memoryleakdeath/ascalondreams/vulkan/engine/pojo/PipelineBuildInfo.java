@@ -10,7 +10,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public record PipelineBuildInfo(List<ShaderModule> shaderModules, VkPipelineVertexInputStateCreateInfo info, int[] colorFormats,
-                                int depthFormat, List<PushConstantRange> pushConstantRanges, List<DescriptorSetLayout> descriptorSetLayouts, boolean useBlend) {
+                                int depthFormat, List<PushConstantRange> pushConstantRanges, List<DescriptorSetLayout> descriptorSetLayouts,
+                                boolean useBlend, boolean depthClamp) {
    public VkPipelineShaderStageCreateInfo.Buffer createShaderStages(MemoryStack stack) {
       int numModules = shaderModules.size();
       ByteBuffer main = stack.UTF8("main");

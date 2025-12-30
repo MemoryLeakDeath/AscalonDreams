@@ -25,19 +25,19 @@ public class MaterialAttachments {
       this.height = swapChain.getSwapChainExtent().height();
 
       // position attachment
-      colorAttachments.add(new Attachment(device, allocationUtil, width, height, POSITION_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+      colorAttachments.add(new Attachment(device, allocationUtil, width, height, POSITION_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1));
 
       // albedo attachment
-      colorAttachments.add(new Attachment(device, allocationUtil, width, height, ALBEDO_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+      colorAttachments.add(new Attachment(device, allocationUtil, width, height, ALBEDO_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1));
 
       // normals attachment
-      colorAttachments.add(new Attachment(device, allocationUtil, width, height, NORMAL_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+      colorAttachments.add(new Attachment(device, allocationUtil, width, height, NORMAL_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1));
 
       // pbr attachment
-      colorAttachments.add(new Attachment(device, allocationUtil, width, height, PBR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+      colorAttachments.add(new Attachment(device, allocationUtil, width, height, PBR_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1));
 
       // depth attachment
-      depthAttachment = new Attachment(device, allocationUtil, width, height, DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+      depthAttachment = new Attachment(device, allocationUtil, width, height, DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 1);
    }
 
    public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
