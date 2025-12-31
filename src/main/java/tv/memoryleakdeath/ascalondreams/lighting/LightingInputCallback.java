@@ -2,6 +2,8 @@ package tv.memoryleakdeath.ascalondreams.lighting;
 
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardInputCallback;
 import tv.memoryleakdeath.ascalondreams.state.GameState;
 import tv.memoryleakdeath.ascalondreams.state.StateMachine;
@@ -9,16 +11,15 @@ import tv.memoryleakdeath.ascalondreams.state.StateMachine;
 import java.util.Set;
 
 public class LightingInputCallback implements KeyboardInputCallback {
-   private static final Set<Integer> KEYS = Set.of(GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_KP_8, GLFW.GLFW_KEY_KP_4, GLFW.GLFW_KEY_KP_6, GLFW.GLFW_KEY_KP_2);
+   private static final Logger logger = LoggerFactory.getLogger(LightingInputCallback.class);
+   private static final Set<Integer> KEYS = Set.of(GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_RIGHT);
    private Light directionalLight;
-   private Light pointLight;
    private float directionalLightAngle = 270f;
    private Set<Integer> pressedKeys;
    private StateMachine stateMachine = StateMachine.getInstance();
 
-   public LightingInputCallback(Light directionalLight, Light pointLight) {
+   public LightingInputCallback(Light directionalLight) {
       this.directionalLight = directionalLight;
-      this.pointLight = pointLight;
    }
 
    @Override
@@ -36,10 +37,10 @@ public class LightingInputCallback implements KeyboardInputCallback {
    }
 
    @Override
-   public void performAction(long deltaTimeMillis) {
+   public void performAction(long deltaTimeNano) {
       float angleIncrement = 0f;
-      float move = 0.1f;
-      if(pressedKeys != null) {
+      boolean doIncrement = (deltaTimeNano > 2500);
+      if(pressedKeys != null && doIncrement) {
          if(pressedKeys.contains(GLFW.GLFW_KEY_LEFT)) {
             angleIncrement -= 0.05f;
          } else if(pressedKeys.contains(GLFW.GLFW_KEY_RIGHT)) {
@@ -49,26 +50,13 @@ public class LightingInputCallback implements KeyboardInputCallback {
          }
          if(angleIncrement != 0) {
             directionalLightAngle += angleIncrement;
-            if(directionalLightAngle < 180) {
-               directionalLightAngle = 180;
-            } else if(directionalLightAngle > 360) {
-               directionalLightAngle = 360;
+            if(directionalLightAngle < 240) {
+               directionalLightAngle = 240;
+            } else if(directionalLightAngle > 300) {
+               directionalLightAngle = 300;
             }
             updateDirectionalLight();
          }
-
-         if(pressedKeys.contains(GLFW.GLFW_KEY_KP_8)) {
-            pointLight.position().y += move;
-         } else if(pressedKeys.contains(GLFW.GLFW_KEY_KP_2)) {
-            pointLight.position().y -= move;
-         }
-
-         if(pressedKeys.contains(GLFW.GLFW_KEY_KP_4)) {
-            pointLight.position().z -= move;
-         } else if(pressedKeys.contains(GLFW.GLFW_KEY_KP_6)) {
-            pointLight.position().z += move;
-         }
-
       }
    }
 

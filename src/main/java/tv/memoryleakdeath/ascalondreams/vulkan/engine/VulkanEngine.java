@@ -15,6 +15,7 @@ import tv.memoryleakdeath.ascalondreams.input.KeyboardCallback;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardCallbackHandler;
 import tv.memoryleakdeath.ascalondreams.input.MouseCallbackHandler;
 import tv.memoryleakdeath.ascalondreams.lighting.Light;
+import tv.memoryleakdeath.ascalondreams.lighting.LightingInputCallback;
 import tv.memoryleakdeath.ascalondreams.sound.SoundBuffer;
 import tv.memoryleakdeath.ascalondreams.sound.SoundListener;
 import tv.memoryleakdeath.ascalondreams.sound.SoundManager;
@@ -137,26 +138,17 @@ public class VulkanEngine {
        InputTimer.getInstance().tick();
        registerInputCallbacks();
 
-       float angle = 270f;
-       Light directionalLight = scene.getLights().get(0);
-       lightTimer = System.currentTimeMillis();
         // rendering loop
        soundTimer = System.currentTimeMillis();
        while (!window.shouldClose()) {
           window.pollEvents();
           handleGui();
            if (shouldRunLogic()) {
-              angle = gameLogic(angle, directionalLight);
+              gameLogic();
            }
            if (shouldRender()) {
               render();
               window.update();
-           } else {
-              try {
-                 Thread.sleep(1);
-              } catch (InterruptedException e) {
-                 Thread.currentThread().interrupt();
-              }
            }
            InputTimer.getInstance().tick();
        }
@@ -185,30 +177,12 @@ public class VulkanEngine {
         renderer.render(scene);
     }
 
-    private float gameLogic(float angle, Light directionalLight) {
+    private void gameLogic() {
        long timerDiff = System.currentTimeMillis() - soundTimer;
        if(timerDiff > 5000) {
           soundManager.play(SOUND_SOURCE_PLAYER, SOUND_BUFFER_PLAYER);
           soundTimer = System.currentTimeMillis();
        }
-
-//       Vector3f pointLightPosition = scene.getLights().get(1).position();
-//       Entity pointLightEntity = scene.getEntities().get(1);
-//       pointLightEntity.setPosition(pointLightPosition.x, pointLightPosition.y, pointLightPosition.z);
-//       pointLightEntity.updateModelMatrix();
-
-       long lightTimerDiff = System.currentTimeMillis() - lightTimer;
-       if(lightTimerDiff > 500) {
-          angle += 2.5f;
-          if(angle < 180) {
-             angle = 180;
-          } else if(angle > 360) {
-             angle = 0;
-          }
-//          updateDirectionalLight(angle, directionalLight);
-          lightTimer = System.currentTimeMillis();
-       }
-       return angle;
     }
 
     private void cleanup() {
@@ -223,8 +197,8 @@ public class VulkanEngine {
        var mouseButtonHandler = mouseHandler.getButtonHandler();
        var cameraInputCallback = new CameraInputCallback(scene.getCamera());
        var guiInputCallback = new GuiInputCallback();
-       //var lightingInputCallback = new LightingInputCallback(scene.getLights().get(0), scene.getLights().get(1));
-       keyHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback);
+       var lightingInputCallback = new LightingInputCallback(scene.getLights().getFirst());
+       keyHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback).registerCallback(lightingInputCallback);
        mouseHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback);
        GLFW.glfwSetKeyCallback(window.getHandle(), keyHandler);
        GLFW.glfwSetCursorEnterCallback(window.getHandle(), mouseEnteredHandler);
@@ -240,14 +214,4 @@ public class VulkanEngine {
           ImGui.render();
        }
     }
-
-   private void updateDirectionalLight(float directionalLightAngle, Light directionalLight) {
-      float zValue = (float) Math.cos(Math.toRadians(directionalLightAngle));
-      float yValue = (float) Math.sin(Math.toRadians(directionalLightAngle));
-      Vector3f lightDirection = directionalLight.position();
-      lightDirection.x = 0;
-      lightDirection.y = yValue;
-      lightDirection.z = zValue;
-      lightDirection.normalize();
-   }
 }

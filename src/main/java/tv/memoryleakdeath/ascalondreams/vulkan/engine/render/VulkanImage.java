@@ -41,7 +41,7 @@ public class VulkanImage {
                  .format(format)
                  .extent(ex -> ex.width(width).height(height).depth(1))
                  .mipLevels(mipLevels)
-                 .arrayLayers(1)
+                 .arrayLayers(layerCount)
                  .samples(1)
                  .initialLayout(VK13.VK_IMAGE_LAYOUT_UNDEFINED)
                  .sharingMode(VK13.VK_SHARING_MODE_EXCLUSIVE)
