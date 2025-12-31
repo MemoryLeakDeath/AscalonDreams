@@ -10,9 +10,9 @@ public class ModelLoaderTest {
    @BeforeAll
    public static void testProcessFile() {
       try {
-         ModelConverter.processFile("models/sponza/Sponza.gltf");
-         ModelConverter.processFile("models/cube/cube.obj");
-         ModelConverter.processFile("models/tree/tree.obj");
+         ModelConverter.processFile("models/sponza/Sponza.gltf", false);
+         ModelConverter.processFile("models/cube/cube.obj", false);
+         ModelConverter.processFile("models/tree/tree.obj", false);
       } catch (Exception e) {
          Assertions.fail("Failed with Exception!", e);
       }
