@@ -15,7 +15,7 @@ public class ShadowUtils {
    private static final float LAMBDA = 0.95f;
    private static final Vector3f UP = new Vector3f(0f, 1f, 0f);
    private static final Vector3f UP_ALT = new Vector3f(0f, 0f, 1f);
-   public static final int SHADOW_MAP_SIZE = 2048;
+   public static final int SHADOW_MAP_SIZE = 4096;
 
    private ShadowUtils() {
    }
