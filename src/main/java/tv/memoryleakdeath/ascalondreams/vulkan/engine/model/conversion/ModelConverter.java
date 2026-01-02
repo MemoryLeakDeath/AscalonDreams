@@ -28,6 +28,7 @@ import org.lwjgl.system.MemoryStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
+import tv.memoryleakdeath.ascalondreams.util.ObjectMapperInstance;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.AnimatedFrame;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.Animation;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.Bone;
@@ -62,22 +63,36 @@ public class ModelConverter {
    private ModelConverter() {
    }
 
-   public static void processFile(String modelFile, boolean animated) throws IOException {
-      logger.debug("Loading model file: {}", modelFile);
+   public static void convertModelFiles(String modelFile, String animationFile) throws IOException {
+      logger.debug("Checking model file: {}", modelFile);
       File file = new File(modelFile);
-      if(!file.exists()) {
+      if (!file.exists()) {
          throw new RuntimeException("Model file: %s does not exist!".formatted(modelFile));
       }
+      if(StringUtils.isNotBlank(animationFile) && !new File(animationFile).exists()) {
+         throw new RuntimeException("Animation file: %s does not exist!".formatted(animationFile));
+      }
+
       int loadFlags = FLAGS;
-      if(animated) {
+      if (StringUtils.isNotBlank(animationFile)) {
          loadFlags |= ANIMATED_FLAGS;
       } else {
          loadFlags |= NON_ANIMATED_FLAGS;
       }
+      File parentDirectory = file.getParentFile();
+      convertModelFile(modelFile, loadFlags, parentDirectory.getPath(), animationFile);
+   }
 
+   public static void convertModelFile(String modelFile, int loadFlags, String parentDirPath, String animationFile) throws IOException {
+      logger.debug("Processing convertedModel file: {}", modelFile);
       AIScene scene = Assimp.aiImportFile(modelFile, loadFlags);
       if(scene == null) {
-         throw new RuntimeException("Error loading model: %s".formatted(modelFile));
+         throw new RuntimeException("Error loading convertedModel: %s".formatted(modelFile));
+      }
+
+      AIScene animatedScene = null;
+      if(StringUtils.isNotBlank(animationFile)) {
+         animatedScene = Assimp.aiImportFile(animationFile, loadFlags);
       }
 
       String modelId = FilenameUtils.getBaseName(modelFile);
@@ -87,45 +102,47 @@ public class ModelConverter {
       int numMaterials = scene.mNumMaterials();
       logger.debug("Number of materials: {}", numMaterials);
       List<VulkanMaterial> parsedMaterials = new ArrayList<>();
-      File parentDirectory = file.getParentFile();
-      for(int i = 0; i < numMaterials; i++) {
+      for (int i = 0; i < numMaterials; i++) {
          var aiMaterial = AIMaterial.create(scene.mMaterials().get(i));
-         parsedMaterials.add(processMaterial(scene, aiMaterial, modelId, parentDirectory.getPath(), i));
+         parsedMaterials.add(processMaterial(scene, aiMaterial, modelId, parentDirPath, i));
       }
 
       int numMeshes = scene.mNumMeshes();
       logger.debug("Number of meshes: {}", numMeshes);
       PointerBuffer aiMeshes = scene.mMeshes();
       List<VulkanMeshData> meshDataList = new ArrayList<>();
-      for(int i = 0; i < numMeshes; i++) {
+      for (int i = 0; i < numMeshes; i++) {
          AIMesh aiMesh = AIMesh.create(aiMeshes.get(i));
          meshDataList.add(processMesh(aiMesh, parsedMaterials, i));
       }
 
-      int numAnimations = scene.mNumAnimations();
       List<AnimationMeshData> animationMeshData = null;
       List<Animation> animations = null;
-      if(numAnimations > 0) {
-         logger.debug("Processing animations....");
-         List<Bone> bones = new ArrayList<>();
-         animationMeshData = new ArrayList<>();
-         for(int i = 0; i < numMeshes; i++) {
-            AIMesh aiMesh = AIMesh.create(aiMeshes.get(i));
-            animationMeshData.add(processBones(aiMesh, bones));
-         }
+      if(animatedScene != null) {
+         int numAnimations = animatedScene.mNumAnimations();
+         if (numAnimations > 0) {
+            logger.debug("Processing animations....");
+            List<Bone> bones = new ArrayList<>();
+            animationMeshData = new ArrayList<>();
+            for (int i = 0; i < numMeshes; i++) {
+               AIMesh aiMesh = AIMesh.create(aiMeshes.get(i));
+               animationMeshData.add(processBones(aiMesh, bones));
+            }
 
-         Node rootNode = buildNodesTree(scene.mRootNode(), null);
-         Matrix4f globalInverseTransform = toMatrix(scene.mRootNode().mTransformation()).invert();
-         animations = processAnimations(scene, bones, rootNode, globalInverseTransform);
+            Node rootNode = buildNodesTree(animatedScene.mRootNode(), null);
+            Matrix4f globalInverseTransform = toMatrix(animatedScene.mRootNode().mTransformation()).invert();
+            animations = processAnimations(animatedScene, bones, rootNode, globalInverseTransform);
+         }
       }
 
       convertedModel.setMaterials(parsedMaterials);
       convertedModel.setMeshData(meshDataList);
-      convertedModel.setTexturePath(parentDirectory.getPath());
+      convertedModel.setTexturePath(parentDirPath);
       convertedModel.setAnimationMeshData(animationMeshData);
       convertedModel.setAnimations(animations);
+
       File outputFile = new File("%s/%s.json".formatted(convertedModel.getTexturePath(), modelId));
-      ObjectMapper mapper = new ObjectMapper();
+      ObjectMapper mapper = ObjectMapperInstance.getInstance();
       mapper.writeValue(outputFile, convertedModel);
    }
 

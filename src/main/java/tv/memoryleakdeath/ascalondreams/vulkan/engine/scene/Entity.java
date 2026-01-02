@@ -16,6 +16,7 @@ public class Entity {
    private final Quaternionf rotation = new Quaternionf();
    private float scale = 1f;
    private EntityAnimation entityAnimation;
+   private int maxAnimationFrames = 0;
 
    public Entity(String id, String modelId, Vector3f position) {
       this.id = id;
@@ -77,5 +78,13 @@ public class Entity {
 
    public void setEntityAnimation(EntityAnimation entityAnimation) {
       this.entityAnimation = entityAnimation;
+   }
+
+   public int getMaxAnimationFrames() {
+      return maxAnimationFrames;
+   }
+
+   public void setMaxAnimationFrames(int maxAnimationFrames) {
+      this.maxAnimationFrames = maxAnimationFrames;
    }
 }
