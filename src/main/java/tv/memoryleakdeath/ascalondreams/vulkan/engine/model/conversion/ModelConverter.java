@@ -414,8 +414,8 @@ public class ModelConverter {
          for(int j = 0; j < maxFrames; j++) {
             List<Matrix4f> jointMatrices = new ArrayList<>();
             AnimatedFrame animatedFrame = new AnimatedFrame(jointMatrices);
-            buildFrameMatrices(aiAnimation, bones, animatedFrame, j, rootNode, rootNode.getNodeTransform(), globalInverseTransform);
             padJointList(jointMatrices, MAX_JOINTS_MATRICES_LIST);
+            buildFrameMatrices(aiAnimation, bones, animatedFrame, j, rootNode, rootNode.getNodeTransform(), globalInverseTransform);
             frames.add(animatedFrame);
          }
       }

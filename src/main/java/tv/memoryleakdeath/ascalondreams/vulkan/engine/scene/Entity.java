@@ -15,6 +15,7 @@ public class Entity {
    private final Vector3f position;
    private final Quaternionf rotation = new Quaternionf();
    private float scale = 1f;
+   private EntityAnimation entityAnimation;
 
    public Entity(String id, String modelId, Vector3f position) {
       this.id = id;
@@ -68,5 +69,13 @@ public class Entity {
 
    public float getScale() {
       return scale;
+   }
+
+   public EntityAnimation getEntityAnimation() {
+      return entityAnimation;
+   }
+
+   public void setEntityAnimation(EntityAnimation entityAnimation) {
+      this.entityAnimation = entityAnimation;
    }
 }

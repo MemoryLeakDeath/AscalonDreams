@@ -13,6 +13,7 @@ import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
@@ -219,6 +220,7 @@ public class ShadowRenderer {
    public void render(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator,
                       VulkanScene scene, CommandBuffer cmdBuffer,
                       ModelCache modelCache, MaterialCache materialCache, int currentFrame) {
+      AnimationCache animationCache = AnimationCache.getInstance();
       try(var stack = MemoryStack.stackPush()) {
          ShadowUtils.updateCascadeShadows(cascadeShadows.get(currentFrame), scene);
          VkCommandBuffer cmdHandle = cmdBuffer.getCommandBuffer();
@@ -252,7 +254,9 @@ public class ShadowRenderer {
                   logger.warn("Mesh {} in model {} does not have a material!", mesh, model.getId());
                } else {
                   setPushConstants(cmdHandle, e.getModelMatrix(), materialIndex);
-                  vertexBuffer.put(0, mesh.vertexBuffer().getBuffer());
+
+                  var animationAndVertexBuffer = model.hasAnimations() ? animationCache.getBuffer(e.getId(), mesh.id()) : mesh.vertexBuffer();
+                  vertexBuffer.put(0, animationAndVertexBuffer.getBuffer());
 
                   VK13.vkCmdBindVertexBuffers(cmdHandle, 0, vertexBuffer, offsets);
                   VK13.vkCmdBindIndexBuffer(cmdHandle, mesh.indexBuffer().getBuffer(), 0, VK13.VK_INDEX_TYPE_UINT32);

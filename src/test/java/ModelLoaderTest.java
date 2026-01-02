@@ -13,6 +13,7 @@ public class ModelLoaderTest {
          ModelConverter.processFile("models/sponza/Sponza.gltf", false);
          ModelConverter.processFile("models/cube/cube.obj", false);
          ModelConverter.processFile("models/tree/tree.obj", false);
+         ModelConverter.processFile("models/bob/boblamp.md5mesh", true);
       } catch (Exception e) {
          Assertions.fail("Failed with Exception!", e);
       }
@@ -23,6 +24,7 @@ public class ModelLoaderTest {
       ConvertedModel model = ModelLoader.loadModel("models/sponza/Sponza.json");
       ConvertedModel model2 = ModelLoader.loadModel("models/cube/cube.json");
       ConvertedModel model3 = ModelLoader.loadModel("models/tree/tree.json");
+      ConvertedModel model4 = ModelLoader.loadModel("models/bob/bob.json");
       System.out.println(model);
       System.out.println(model2);
       System.out.println(model3);

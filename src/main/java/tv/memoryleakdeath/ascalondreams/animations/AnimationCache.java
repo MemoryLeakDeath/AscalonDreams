@@ -18,6 +18,17 @@ import java.util.Map;
 public class AnimationCache {
    private static final Logger logger = LoggerFactory.getLogger(AnimationCache.class);
    private final Map<String, Map<String, VulkanBuffer>> entityAnimationBuffers = new HashMap<>();
+   private static AnimationCache animationCache;
+
+   private AnimationCache() {
+   }
+
+   public static AnimationCache getInstance() {
+      if(animationCache == null) {
+         animationCache = new AnimationCache();
+      }
+      return animationCache;
+   }
 
    public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       entityAnimationBuffers.values().forEach(m -> m.values().forEach(b -> b.cleanup(device, allocationUtil)));

@@ -7,6 +7,8 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkSemaphoreSubmitInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
+import tv.memoryleakdeath.ascalondreams.animations.AnimationRenderer;
 import tv.memoryleakdeath.ascalondreams.gui.GuiRender;
 import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.lighting.LightingRenderer;
@@ -46,6 +48,8 @@ public class VulkanRenderer {
    private VulkanSurface surface;
    private VulkanSwapChain swapChain;
 
+   private final AnimationRenderer animationRenderer;
+   private final AnimationCache animationCache = AnimationCache.getInstance();
    private final List<CommandBuffer> commandBuffers = new ArrayList<>();
    private final List<CommandPool> commandPools = new ArrayList<>();
    private final List<Fence> fences = new ArrayList<>();
@@ -105,6 +109,7 @@ public class VulkanRenderer {
       this.postProcessingRenderer = new PostProcessingRenderer(device, memoryAllocationUtil, descriptorAllocator, swapChain, pipelineCache, lightingRenderer.getAttachmentColor());
       this.guiRender = new GuiRender(device, descriptorAllocator, pipelineCache, swapChain, memoryAllocationUtil, graphicsQueue, postProcessingRenderer.getColorAttachment());
       this.swapChainRender = new SwapChainRender(device, descriptorAllocator, swapChain, surface, pipelineCache, postProcessingRenderer.getColorAttachment());
+      this.animationRenderer = new AnimationRenderer(device, pipelineCache);
       this.modelCache = ModelCache.getInstance();
       this.textureCache = new TextureCache();
       this.materialCache = MaterialCache.getInstance();
@@ -158,7 +163,8 @@ public class VulkanRenderer {
       for(ConvertedModel convertedModel : convertedModels) {
          logger.debug("Loading model: {}", convertedModel.getId());
          VulkanModel model = new VulkanModel(convertedModel.getId());
-         model.addMeshes(device, memoryAllocationUtil, convertedModel.getMeshData());
+         model.addAnimations(device, memoryAllocationUtil, convertedModel.getAnimations());
+         model.addMeshes(device, memoryAllocationUtil, convertedModel.getMeshData(), convertedModel.getAnimationMeshData());
          models.add(model);
       }
       modelCache.loadModels(device, memoryAllocationUtil, models, commandPools.getFirst(), graphicsQueue);
