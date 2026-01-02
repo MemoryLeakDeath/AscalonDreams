@@ -71,7 +71,7 @@ public class CameraInputCallback implements KeyboardInputCallback, MouseInputCal
       }
       if(mouseMoved && buttonsPressed[1]) {
          Vector2f delta = getDeltaCursorPosition();
-         logger.debug("Delta: {}", delta);
+         logger.trace("Delta: {}", delta);
          camera.addRotation((float) Math.toRadians(-delta.y * MOUSE_SENSITIVITY),
                  (float) Math.toRadians(-delta.x * MOUSE_SENSITIVITY));
       }

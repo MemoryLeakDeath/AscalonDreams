@@ -216,7 +216,7 @@ public class SceneRenderer {
       logger.trace("rendering entities - doTransparency: {}", doTransparency);
       scene.getEntities().forEach(e -> {
          VulkanModel model = modelCache.getModel(e.getModelId());
-         model.bindMeshes(stack, commandHandle, pipeline.getLayoutId(), e.getModelMatrix(), doTransparency);
+         model.bindMeshes(stack, commandHandle, pipeline.getLayoutId(), e.getModelMatrix(), e.getId(), doTransparency);
       });
    }
 

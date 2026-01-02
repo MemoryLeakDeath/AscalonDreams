@@ -1,6 +1,5 @@
 package tv.memoryleakdeath.ascalondreams;
 
-import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
@@ -8,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.opengl.engine.OpenGLEngine;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanEngine;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ModelConverter;
 
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
@@ -29,30 +27,30 @@ public class Main {
         logger.info("Exiting program....");
     }
 
-    private boolean convertModelFile(String filename) {
-       logger.info("Converting model file: {}", filename);
-       try {
-          ModelConverter.processFile(filename);
-       } catch (Exception e) {
-          logger.error("Unable to process model file: %s".formatted(filename), e);
-          return false;
-       }
-       return true;
-    }
+//    private boolean convertModelFile(String filename) {
+//       logger.info("Converting model file: {}", filename);
+//       try {
+//          ModelConverter.processFile(filename);
+//       } catch (Exception e) {
+//          logger.error("Unable to process model file: %s".formatted(filename), e);
+//          return false;
+//       }
+//       return true;
+//    }
 
     public static void main(String[] args) {
         CommandArgs cmdArgs = parseCommandLine(args);
         Main main = new Main();
         boolean modelConversionError = false;
-        if(StringUtils.isNotBlank(cmdArgs.getConvertModelFile())) {
-           if(!main.convertModelFile(cmdArgs.getConvertModelFile())) {
-              modelConversionError = true;
-           }
-        }
-        if(modelConversionError) {
-           System.out.println("Error converting model!  Exiting.");
-           return;
-        }
+//        if(StringUtils.isNotBlank(cmdArgs.getConvertModelFile())) {
+//           if(!main.convertModelFile(cmdArgs.getConvertModelFile())) {
+//              modelConversionError = true;
+//           }
+//        }
+//        if(modelConversionError) {
+//           System.out.println("Error converting model!  Exiting.");
+//           return;
+//        }
         if (CommandArgs.USE_VULKAN.equalsIgnoreCase(cmdArgs.getUseEngine())) {
             main.runVulkan();
         } else {

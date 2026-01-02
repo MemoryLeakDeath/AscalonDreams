@@ -165,4 +165,20 @@ public final class PhysicalDevice {
       }
       return foundIndex;
    }
+
+   public int getComputeQueueFamilyIndex() {
+      int index = -1;
+      int numQueueFamilies = getQueueFamilyProperties().capacity();
+      for(int i = 0; i < numQueueFamilies; i++) {
+         var props = queueFamilyProperties.get(i);
+         if((props.queueFlags() & VK13.VK_QUEUE_COMPUTE_BIT) != 0) {
+            index = i;
+            break;
+         }
+      }
+      if(index < 0) {
+         throw new RuntimeException("Failed to get compute queue family index");
+      }
+      return index;
+   }
 }

@@ -1,5 +1,6 @@
 package tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion;
 
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.Animation;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMaterial;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMeshData;
 
@@ -10,6 +11,8 @@ public class ConvertedModel {
    private List<VulkanMeshData> meshData;
    private String texturePath;
    private String id;
+   private List<AnimationMeshData> animationMeshData;
+   private List<Animation> animations;
 
    public List<VulkanMaterial> getMaterials() {
       return materials;
@@ -43,6 +46,22 @@ public class ConvertedModel {
       this.id = id;
    }
 
+   public List<AnimationMeshData> getAnimationMeshData() {
+      return animationMeshData;
+   }
+
+   public void setAnimationMeshData(List<AnimationMeshData> animationMeshData) {
+      this.animationMeshData = animationMeshData;
+   }
+
+   public List<Animation> getAnimations() {
+      return animations;
+   }
+
+   public void setAnimations(List<Animation> animations) {
+      this.animations = animations;
+   }
+
    @Override
    public String toString() {
       return "ConvertedModel{" +
@@ -50,6 +69,8 @@ public class ConvertedModel {
               ", meshData=" + meshData +
               ", texturePath='" + texturePath + '\'' +
               ", id='" + id + '\'' +
+              ", animationMeshData=" + animationMeshData +
+              ", animations=" + animations +
               '}';
    }
 }

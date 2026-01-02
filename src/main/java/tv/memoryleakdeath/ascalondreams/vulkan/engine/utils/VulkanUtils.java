@@ -6,7 +6,9 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
+import org.lwjgl.vulkan.VkDependencyInfo;
 import org.lwjgl.vulkan.VkInstance;
+import org.lwjgl.vulkan.VkMemoryBarrier2;
 import org.lwjgl.vulkan.VkMemoryType;
 import org.lwjgl.vulkan.VkPhysicalDevice;
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties;
@@ -15,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
@@ -106,6 +109,24 @@ public final class VulkanUtils {
          throw new RuntimeException("Memory type not found!");
       }
       return result;
+   }
+
+   public static void memoryBarrier(CommandBuffer commandBuffer, int sourceStageMask, int destinationStageMask,
+                                    int sourceAccessMask, int destinationAccessMask, int dependencyFlags) {
+      try(var stack = MemoryStack.stackPush()) {
+         VkMemoryBarrier2.Buffer buffer = VkMemoryBarrier2.calloc(1, stack)
+                 .sType$Default()
+                 .srcStageMask(sourceStageMask)
+                 .dstStageMask(destinationStageMask)
+                 .srcAccessMask(sourceAccessMask)
+                 .dstAccessMask(destinationAccessMask);
+         var info = VkDependencyInfo.calloc(stack)
+                 .sType$Default()
+                 .pMemoryBarriers(buffer)
+                 .dependencyFlags(dependencyFlags);
+
+         VK13.vkCmdPipelineBarrier2(commandBuffer.getCommandBuffer(), info);
+      }
    }
 }
 

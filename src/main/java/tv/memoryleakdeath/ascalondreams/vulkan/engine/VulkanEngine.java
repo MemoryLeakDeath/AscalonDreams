@@ -6,6 +6,7 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.openal.AL11;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.animations.AnimationInputCallback;
 import tv.memoryleakdeath.ascalondreams.camera.Camera;
 import tv.memoryleakdeath.ascalondreams.camera.CameraInputCallback;
 import tv.memoryleakdeath.ascalondreams.gui.GuiInputCallback;
@@ -26,6 +27,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.Converted
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ModelLoader;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.EntityAnimation;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
 import java.util.ArrayList;
@@ -37,13 +39,11 @@ public class VulkanEngine {
     private static final String CUBE_MODEL_FILE = "models/cube/cube.json";
     private static final String SPONZA_MODEL_FILE = "models/sponza/Sponza.json";
     private static final String TREE_MODEL_FILE = "models/tree/tree.json";
+    private static final String BOB_MODEL_FILE = "models/bob/boblamp.json";
     private static final int LOGIC_UPDATES_PER_SECOND = 30;
     private static final int DEFAULT_FRAMES_PER_SECOND = 60;
     private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;
     private static final long FPS_FRAME_TIME = 1_000_000_000L / DEFAULT_FRAMES_PER_SECOND;
-    private static final float MOUSE_SENSITIVITY = 0.1f;
-    private static final float MOVEMENT_SPEED = 0.01f;
-    private final Vector3f rotationAngle = new Vector3f(1,1,1);
     private float angle = 0;
 
     private static final String SOUND_BUFFER_MUSIC = "music-sound-buffer";
@@ -54,7 +54,6 @@ public class VulkanEngine {
     private static final String SOUND_FILE2 = "sounds/woo_scary.ogg";
 
     private long soundTimer = 0;
-    private long lightTimer = 0;
 
     private VulkanWindow window;
     private VulkanRenderer renderer;
@@ -62,11 +61,8 @@ public class VulkanEngine {
     private long lastFrameUpdateTimer;
     private KeyboardCallback kb;
     private VulkanScene scene;
-    private Entity cubeEntity;
-    private Entity sponzaEntity;
     private GuiTexture guiTexture;
     private SoundManager soundManager = SoundManager.getInstance();
-    private Vector3f lastDirectionalLightPosition = new Vector3f();
 
     public void init() {
         window = new VulkanWindow(600, 600);
@@ -75,11 +71,19 @@ public class VulkanEngine {
         renderer = new VulkanRenderer(window, scene);
         renderer.initModels(
                 List.of(loadModel(SPONZA_MODEL_FILE, "SponzaEntity", new Vector3f(0f, 0f, 0f)),
-                        loadModel(TREE_MODEL_FILE, "TreeEntity", new Vector3f(0f, 0f, 0f), 0.005f)),
+                        loadModel(BOB_MODEL_FILE, "BobEntity", new Vector3f(0f, 0f, 0f), 0.04f)),
                 List.of(guiTexture));
+        initBobEntity();
         initSceneLighting();
         setCameraStartState();
         initSound();
+    }
+
+    private void initBobEntity() {
+       Entity bob = scene.getEntities().get(1);
+       bob.getRotation().rotateY((float) Math.toRadians(-90f));
+       bob.updateModelMatrix();
+       bob.setEntityAnimation(new EntityAnimation(true, 0, 0));
     }
 
     private void initSceneLighting() {
@@ -123,6 +127,9 @@ public class VulkanEngine {
     private ConvertedModel loadModel(String modelFile, String entityId, Vector3f entityStartingPosition, float scale) {
       ConvertedModel convertedModel = ModelLoader.loadModel(modelFile);
       Entity entity = new Entity(entityId, convertedModel.getId(), entityStartingPosition);
+      if(convertedModel.getAnimations() != null && !convertedModel.getAnimations().isEmpty()) {
+         entity.setMaxAnimationFrames(convertedModel.getAnimations().getFirst().frames().size());
+      }
       entity.setScale(scale);
       scene.addEntity(entity);
       return convertedModel;
@@ -130,7 +137,7 @@ public class VulkanEngine {
 
     private void setCameraStartState() {
        Camera camera = scene.getCamera();
-       camera.setPosition(-5f, 5f, 0f);
+       camera.setPosition(-5f, 3f, 0f);
        camera.setRotation((float) Math.toRadians(20f), (float) Math.toRadians(90f));
     }
 
@@ -183,6 +190,13 @@ public class VulkanEngine {
           soundManager.play(SOUND_SOURCE_PLAYER, SOUND_BUFFER_PLAYER);
           soundTimer = System.currentTimeMillis();
        }
+
+       var entityAnimation = scene.getEntities().get(1).getEntityAnimation();
+       var maxFrames = scene.getEntities().get(1).getMaxAnimationFrames();
+       if(entityAnimation.isStarted()) {
+          int currentFrame = Math.floorMod(entityAnimation.getCurrentFrame() + 1, maxFrames);
+          entityAnimation.setCurrentFrame(currentFrame);
+       }
     }
 
     private void cleanup() {
@@ -198,8 +212,13 @@ public class VulkanEngine {
        var cameraInputCallback = new CameraInputCallback(scene.getCamera());
        var guiInputCallback = new GuiInputCallback();
        var lightingInputCallback = new LightingInputCallback(scene.getLights().getFirst());
-       keyHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback).registerCallback(lightingInputCallback);
-       mouseHandler.registerCallback(cameraInputCallback).registerCallback(guiInputCallback);
+       var animationInputCallback = new AnimationInputCallback(scene);
+       keyHandler.registerCallback(cameraInputCallback)
+               .registerCallback(guiInputCallback)
+               .registerCallback(lightingInputCallback)
+               .registerCallback(animationInputCallback);
+       mouseHandler.registerCallback(cameraInputCallback)
+               .registerCallback(guiInputCallback);
        GLFW.glfwSetKeyCallback(window.getHandle(), keyHandler);
        GLFW.glfwSetCursorEnterCallback(window.getHandle(), mouseEnteredHandler);
        GLFW.glfwSetCursorPosCallback(window.getHandle(), mouseHandler);

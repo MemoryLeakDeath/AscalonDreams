@@ -7,6 +7,8 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkSemaphoreSubmitInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
+import tv.memoryleakdeath.ascalondreams.animations.AnimationRenderer;
 import tv.memoryleakdeath.ascalondreams.gui.GuiRender;
 import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.lighting.LightingRenderer;
@@ -46,6 +48,8 @@ public class VulkanRenderer {
    private VulkanSurface surface;
    private VulkanSwapChain swapChain;
 
+   private final AnimationRenderer animationRenderer;
+   private final AnimationCache animationCache = AnimationCache.getInstance();
    private final List<CommandBuffer> commandBuffers = new ArrayList<>();
    private final List<CommandPool> commandPools = new ArrayList<>();
    private final List<Fence> fences = new ArrayList<>();
@@ -105,6 +109,7 @@ public class VulkanRenderer {
       this.postProcessingRenderer = new PostProcessingRenderer(device, memoryAllocationUtil, descriptorAllocator, swapChain, pipelineCache, lightingRenderer.getAttachmentColor());
       this.guiRender = new GuiRender(device, descriptorAllocator, pipelineCache, swapChain, memoryAllocationUtil, graphicsQueue, postProcessingRenderer.getColorAttachment());
       this.swapChainRender = new SwapChainRender(device, descriptorAllocator, swapChain, surface, pipelineCache, postProcessingRenderer.getColorAttachment());
+      this.animationRenderer = new AnimationRenderer(device, pipelineCache);
       this.modelCache = ModelCache.getInstance();
       this.textureCache = new TextureCache();
       this.materialCache = MaterialCache.getInstance();
@@ -113,6 +118,7 @@ public class VulkanRenderer {
    public void cleanup() {
       device.waitIdle();
 
+      animationRenderer.cleanup(device, memoryAllocationUtil);
       sceneRenderer.cleanup(device, memoryAllocationUtil);
       postProcessingRenderer.cleanup(device, memoryAllocationUtil);
       lightingRenderer.cleanup(device, memoryAllocationUtil);
@@ -122,6 +128,7 @@ public class VulkanRenderer {
       modelCache.cleanup(device, memoryAllocationUtil);
       textureCache.cleanup(device, memoryAllocationUtil);
       materialCache.cleanup(device, memoryAllocationUtil);
+      animationCache.cleanup(device, memoryAllocationUtil);
 
       renderingCompleteSemaphores.forEach(s -> s.cleanup(device));
       presentationCompleteSemaphores.forEach(s -> s.cleanup(device));
@@ -158,7 +165,10 @@ public class VulkanRenderer {
       for(ConvertedModel convertedModel : convertedModels) {
          logger.debug("Loading model: {}", convertedModel.getId());
          VulkanModel model = new VulkanModel(convertedModel.getId());
-         model.addMeshes(device, memoryAllocationUtil, convertedModel.getMeshData());
+         if(convertedModel.getAnimations() != null) {
+            model.addAnimations(device, memoryAllocationUtil, convertedModel.getAnimations());
+         }
+         model.addMeshes(device, memoryAllocationUtil, convertedModel.getMeshData(), convertedModel.getAnimationMeshData());
          models.add(model);
       }
       modelCache.loadModels(device, memoryAllocationUtil, models, commandPools.getFirst(), graphicsQueue);
@@ -167,6 +177,8 @@ public class VulkanRenderer {
       sceneRenderer.loadMaterials(device, descriptorAllocator, materialCache, textureCache);
       shadowRenderer.loadMaterials(device, descriptorAllocator, materialCache, textureCache);
       guiRender.loadTextures(device, descriptorAllocator, guiTextures, textureCache);
+      animationCache.loadAnimations(device, memoryAllocationUtil, currentScene.getEntities(), modelCache);
+      animationRenderer.loadModels(device, descriptorAllocator, modelCache, currentScene.getEntities(), animationCache);
    }
 
    private void startRecording(CommandPool pool, CommandBuffer buf) {
@@ -182,6 +194,8 @@ public class VulkanRenderer {
       waitForFence();
       var commandPool = commandPools.get(currentFrame);
       var commandBuffer = commandBuffers.get(currentFrame);
+
+      animationRenderer.render(device, descriptorAllocator, currentScene, modelCache);
 
       startRecording(commandPool, commandBuffer);
 
