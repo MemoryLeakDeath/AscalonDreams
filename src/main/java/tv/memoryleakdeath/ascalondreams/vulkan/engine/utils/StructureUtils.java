@@ -78,7 +78,9 @@ public final class StructureUtils {
       features.geometryShader(true);
       boolean depthClamp = supportedFeatures.depthClamp();
       features.depthClamp(depthClamp);
+      features.multiDrawIndirect(true);
       features.shaderInt64(true);
+      features.drawIndirectFirstInstance(true);
 
       vulkanFeatures2.pNext(vulkan12Features.address());
       vulkan12Features.pNext(vulkan13Features.address());

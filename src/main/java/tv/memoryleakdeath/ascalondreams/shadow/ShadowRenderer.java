@@ -1,6 +1,5 @@
 package tv.memoryleakdeath.ascalondreams.shadow;
 
-import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
@@ -14,6 +13,7 @@ import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
+import tv.memoryleakdeath.ascalondreams.buffers.GlobalBuffers;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
@@ -24,8 +24,6 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMaterial;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PipelineBuildInfo;
@@ -57,7 +55,7 @@ public class ShadowRenderer {
    private static final String DESC_ID_TEXT = "SHADOW_SCN_DESC_ID_TEXT";
    private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/shadow_fragment_shader.glsl";
    private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
-   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2 + VulkanConstants.INT_SIZE;
+   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.PTR_SIZE * 2;
    private static final String SHADOW_GEOMETRY_SHADER_FILE_GLSL = "shaders/shadow_geometry_shader.glsl";
    private static final String SHADOW_GEOMETRY_SHADER_FILE_SPV = SHADOW_GEOMETRY_SHADER_FILE_GLSL + ".spv";
    private static final String VERTEX_SHADER_FILE_GLSL = "shaders/shadow_vertex_shader.glsl";
@@ -219,7 +217,7 @@ public class ShadowRenderer {
 
    public void render(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator,
                       VulkanScene scene, CommandBuffer cmdBuffer,
-                      ModelCache modelCache, MaterialCache materialCache, int currentFrame) {
+                      ModelCache modelCache, MaterialCache materialCache, int currentFrame, GlobalBuffers globalBuffers) {
       AnimationCache animationCache = AnimationCache.getInstance();
       try(var stack = MemoryStack.stackPush()) {
          ShadowUtils.updateCascadeShadows(cascadeShadows.get(currentFrame), scene);
@@ -241,33 +239,18 @@ public class ShadowRenderer {
          VK13.vkCmdBindDescriptorSets(cmdHandle, VK13.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getLayoutId(),
                  0, descriptorSets, null);
 
-         scene.getEntities().forEach(e -> {
-            VulkanModel model = modelCache.getModel(e.getModelId());
-            model.getMeshList().forEach(mesh -> {
-               String materialId = mesh.materialId();
-               int materialIndex = materialCache.getPosition(materialId);
-               VulkanMaterial material = materialCache.getMaterial(materialId);
-               if(material == null) {
-                  logger.warn("Mesh {} in model {} does not have a material!", mesh, model.getId());
-               } else {
-                  var animationAndVertexBufferAddress = model.hasAnimations() ? animationCache.getBuffer(e.getId(), mesh.id()).getAddress() :
-                          mesh.vertexBuffer().getAddress();
-                  setPushConstants(cmdHandle, e.getModelMatrix(), animationAndVertexBufferAddress, mesh.indexBuffer().getAddress(), materialIndex);
-                  VK13.vkCmdDraw(cmdHandle, mesh.numIndicies(), 1, 0, 0);
-               }
-            });
-         });
+         setPushConstants(cmdHandle, globalBuffers, currentFrame);
+         VK13.vkCmdDrawIndirect(cmdHandle, globalBuffers.getIndirectBuffer(currentFrame).getBuffer(), 0,
+                 globalBuffers.getDrawCount(currentFrame), GlobalBuffers.IND_COMMAND_STRIDE);
          VK13.vkCmdEndRendering(cmdHandle);
       }
    }
 
-   private void setPushConstants(VkCommandBuffer cmdHandle, Matrix4f modelMatrix, long vertexBufferAddress,
-                                 long indexBufferAddress, int materialIndex) {
-      int vertexPcSize = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2;
-      modelMatrix.get(0, pushConstantBuffer);
-      pushConstantBuffer.putLong(VulkanConstants.MAT4X4_SIZE, vertexBufferAddress);
-      pushConstantBuffer.putLong(VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE, indexBufferAddress);
-      pushConstantBuffer.putInt(vertexPcSize, materialIndex);
+   private void setPushConstants(VkCommandBuffer cmdHandle, GlobalBuffers globalBuffers, int currentFrame) {
+      int offset = 0;
+      pushConstantBuffer.putLong(offset, globalBuffers.getInstanceDataAddress(currentFrame));
+      offset += VulkanConstants.PTR_SIZE;
+      pushConstantBuffer.putLong(offset, globalBuffers.getModelMatricesAddress(currentFrame));
       VK13.vkCmdPushConstants(cmdHandle, pipeline.getLayoutId(), VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, pushConstantBuffer);
    }
 

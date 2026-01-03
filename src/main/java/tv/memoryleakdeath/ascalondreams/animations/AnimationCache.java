@@ -38,20 +38,25 @@ public class AnimationCache {
       return entityAnimationBuffers.get(entityId).get(meshId);
    }
 
-   public void loadAnimations(LogicalDevice device, MemoryAllocationUtil allocationUtil, List<Entity> entities, ModelCache modelCache) {
-      entities.forEach(e -> {
-         VulkanModel model = modelCache.getModel(e.getModelId());
-         if(model.hasAnimations()) {
-            Map<String, VulkanBuffer> bufferMap = new HashMap<>();
-            entityAnimationBuffers.put(e.getId(), bufferMap);
+   public void loadAnimations(LogicalDevice device, MemoryAllocationUtil allocationUtil, Map<String, List<Entity>> entities, ModelCache modelCache) {
+      entities.forEach((k,v) -> {
+         v.forEach(e -> {
+            VulkanModel model = modelCache.getModel(e.getModelId());
+            if(model == null) {
+               throw new RuntimeException("Model for entity id: %s not found".formatted(e.getModelId()));
+            }
+            if(model.hasAnimations()) {
+               Map<String, VulkanBuffer> bufferMap = new HashMap<>();
+               entityAnimationBuffers.put(e.getId(), bufferMap);
 
-            model.getMeshList().forEach(mesh -> {
-               VulkanBuffer animationBuffer = new VulkanBuffer(device, allocationUtil, mesh.vertexBuffer().getRequestedSize(),
-                       VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                       Vma.VMA_MEMORY_USAGE_AUTO, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, 0);
-               bufferMap.put(mesh.id(), animationBuffer);
-            });
-         }
+               model.getMeshList().forEach(mesh -> {
+                  VulkanBuffer animationBuffer = new VulkanBuffer(device, allocationUtil, mesh.vertexBuffer().getRequestedSize(),
+                          VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                          Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
+                  bufferMap.put(mesh.id(), animationBuffer);
+               });
+            }
+         });
       });
    }
 }

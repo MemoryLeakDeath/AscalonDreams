@@ -7,6 +7,7 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec3 inTangent;
 layout(location = 3) in vec3 inBitangent;
 layout(location = 4) in vec2 inTextureCoords;
+layout(location = 5) flat in uint inMaterialIndex;
 
 layout(location = 0) out vec4 outPos;
 layout(location = 1) out vec4 outAlbedo;
@@ -41,14 +42,10 @@ vec3 calcNormal(Material material, vec3 normal, vec2 textCoords, mat3 TBN) {
     return newNormal;
 }
 
-layout(push_constant) uniform pc {
-    layout(offset = 80) uint materialIndex;
-} push_constants;
-
 void main() {
     outPos = inPos;
 
-    Material material = materialUniform.materials[push_constants.materialIndex];
+    Material material = materialUniform.materials[inMaterialIndex];
     if(material.hasTexture == 1) {
         outAlbedo = texture(textSampler[material.textureIndex], inTextureCoords);
     } else {

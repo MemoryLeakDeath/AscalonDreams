@@ -109,26 +109,27 @@ public class AnimationRenderer {
          VkCommandBuffer cmdHandle = cmdBuffer.getCommandBuffer();
          VK13.vkCmdBindPipeline(cmdHandle, VK13.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.getId());
 
-         var animatedEntities = scene.getEntities().stream().filter(e -> {
-            VulkanModel model = modelCache.getModel(e.getModelId());
-            return (e.getEntityAnimation() != null && model.hasAnimations());
-         }).toList();
+         for(var entityList : scene.getEntities().values()) {
+            for(var entity : entityList) {
+               VulkanModel model = modelCache.getModel(entity.getModelId());
+               if(entity.getEntityAnimation() == null || !model.hasAnimations()) {
+                  continue;
+               }
+               VulkanAnimation animation = model.getAnimationList().get(entity.getEntityAnimation().getAnimationIndex());
+               long jointsBufferAddress = animation.frameBuffers().get(entity.getEntityAnimation().getCurrentFrame()).getAddress();
+               model.getMeshList().forEach(mesh -> {
+                  setPushConstants(cmdHandle,
+                          mesh.vertexBuffer().getAddress(),
+                          mesh.weightsBuffer().getAddress(),
+                          jointsBufferAddress,
+                          animationCache.getBuffer(entity.getId(), mesh.id()).getAddress(),
+                          mesh.vertexBuffer().getRequestedSize() / VulkanConstants.FLOAT_SIZE);
 
-         animatedEntities.forEach(e -> {
-            VulkanModel model = modelCache.getModel(e.getModelId());
-            VulkanAnimation animation = model.getAnimationList().get(e.getEntityAnimation().getAnimationIndex());
-            long jointsBufferAddress = animation.frameBuffers().get(e.getEntityAnimation().getCurrentFrame()).getAddress();
-            model.getMeshList().forEach(mesh -> {
-               setPushConstants(cmdHandle,
-                       mesh.vertexBuffer().getAddress(),
-                       mesh.weightsBuffer().getAddress(),
-                       jointsBufferAddress,
-                       animationCache.getBuffer(e.getId(), mesh.id()).getAddress(),
-                       mesh.vertexBuffer().getRequestedSize() / VulkanConstants.FLOAT_SIZE);
+                  VK13.vkCmdDispatch(cmdHandle, groupSizeMap.get(mesh.id()), 1, 1);
+               });
+            }
+         }
 
-               VK13.vkCmdDispatch(cmdHandle, groupSizeMap.get(mesh.id()), 1, 1);
-            });
-         });
          recordingStop();
 
          var commands = VkCommandBufferSubmitInfo.calloc(1, stack)

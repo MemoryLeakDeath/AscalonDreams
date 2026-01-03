@@ -87,10 +87,6 @@ public class VulkanWindow {
        MouseCallbackHandler.getInstance(handle).input();
     }
 
-    public void update() {
-        // GLFW.glfwSwapBuffers(handle);
-    }
-
     public boolean shouldClose() {
         return GLFW.glfwWindowShouldClose(handle);
     }

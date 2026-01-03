@@ -10,6 +10,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.EntityAnimation;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -22,8 +23,11 @@ public class AnimationInputCallback implements KeyboardInputCallback {
    private List<EntityAnimation> entityAnimationList;
 
    public AnimationInputCallback(VulkanScene scene) {
-      this.entityAnimationList = scene.getEntities().stream().map(Entity::getEntityAnimation)
-              .filter(Objects::nonNull).toList();
+      this.entityAnimationList = scene.getEntities().values().stream()
+              .flatMap(Collection::stream)
+              .map(Entity::getEntityAnimation)
+              .filter(Objects::nonNull)
+              .toList();
    }
 
    @Override

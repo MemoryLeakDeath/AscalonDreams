@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
 import tv.memoryleakdeath.ascalondreams.animations.AnimationRenderer;
+import tv.memoryleakdeath.ascalondreams.buffers.GlobalBuffers;
 import tv.memoryleakdeath.ascalondreams.gui.GuiRender;
 import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.lighting.LightingRenderer;
@@ -53,6 +54,7 @@ public class VulkanRenderer {
    private final List<CommandBuffer> commandBuffers = new ArrayList<>();
    private final List<CommandPool> commandPools = new ArrayList<>();
    private final List<Fence> fences = new ArrayList<>();
+   private final GlobalBuffers globalBuffers = new GlobalBuffers();
    private final VulkanGraphicsQueue graphicsQueue;
    private final List<Semaphore> presentationCompleteSemaphores = new ArrayList<>();
    private final LightingRenderer lightingRenderer;
@@ -67,7 +69,6 @@ public class VulkanRenderer {
    private final ShadowRenderer shadowRenderer;
    private final SwapChainRender swapChainRender;
    private final PipelineCache pipelineCache;
-   private int currentFrame = 0;
    private boolean resize = false;
    private VulkanScene currentScene;
    private final DescriptorAllocator descriptorAllocator;
@@ -118,6 +119,7 @@ public class VulkanRenderer {
    public void cleanup() {
       device.waitIdle();
 
+      globalBuffers.cleanup(device, memoryAllocationUtil);
       animationRenderer.cleanup(device);
       sceneRenderer.cleanup(device, memoryAllocationUtil);
       postProcessingRenderer.cleanup(device, memoryAllocationUtil);
@@ -190,8 +192,8 @@ public class VulkanRenderer {
       buf.endRecording();
    }
 
-   public void render(VulkanScene scene) {
-      waitForFence();
+   public void render(VulkanScene scene, int currentFrame) {
+      waitForFence(currentFrame);
       var commandPool = commandPools.get(currentFrame);
       var commandBuffer = commandBuffers.get(currentFrame);
 
@@ -199,8 +201,8 @@ public class VulkanRenderer {
 
       startRecording(commandPool, commandBuffer);
 
-      sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil);
-      shadowRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, modelCache, materialCache, currentFrame);
+      sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil, globalBuffers);
+      shadowRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, modelCache, materialCache, currentFrame, globalBuffers);
       lightingRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, sceneRenderer.getMaterialAttachments(),
               shadowRenderer.getColorAttachment(), shadowRenderer.getCascadeShadows(currentFrame), currentFrame);
       postProcessingRenderer.render(swapChain, descriptorAllocator, commandBuffer, lightingRenderer.getAttachmentColor());
@@ -215,10 +217,8 @@ public class VulkanRenderer {
       swapChainRender.render(swapChain, descriptorAllocator, commandBuffer, postProcessingRenderer.getColorAttachment(), imageIndex);
 
       stopRecording(commandBuffer);
-      submit(commandBuffer, imageIndex);
+      submit(commandBuffer, imageIndex, currentFrame);
       resize = swapChain.presentImage(presentationQueue, renderingCompleteSemaphores.get(imageIndex), imageIndex);
-
-      currentFrame = (currentFrame + 1) % VulkanConstants.MAX_IN_FLIGHT;
    }
 
    private void resize(int width, int height, VulkanScene scene) {
@@ -259,7 +259,7 @@ public class VulkanRenderer {
       swapChainRender.resize(device, swapChain, descriptorAllocator, postProcessingRenderer.getColorAttachment());
    }
 
-   private void submit(CommandBuffer buf, int imageIndex) {
+   private void submit(CommandBuffer buf, int imageIndex, int currentFrame) {
       try(var stack = MemoryStack.stackPush()) {
          var fence = fences.get(currentFrame);
          fence.reset(device);
@@ -278,9 +278,13 @@ public class VulkanRenderer {
       }
    }
 
-   private void waitForFence() {
+   private void waitForFence(int currentFrame) {
       var fence = fences.get(currentFrame);
       fence.fenceWait(device);
+   }
+
+   public void updateGlobalBuffers(VulkanScene scene, int currentFrame) {
+      globalBuffers.update(device, memoryAllocationUtil, scene, currentFrame);
    }
 
    public LogicalDevice getDevice() {
