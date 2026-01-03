@@ -69,7 +69,6 @@ public class VulkanRenderer {
    private final ShadowRenderer shadowRenderer;
    private final SwapChainRender swapChainRender;
    private final PipelineCache pipelineCache;
-   private int currentFrame = 0;
    private boolean resize = false;
    private VulkanScene currentScene;
    private final DescriptorAllocator descriptorAllocator;
@@ -193,16 +192,14 @@ public class VulkanRenderer {
       buf.endRecording();
    }
 
-   public void render(VulkanScene scene) {
-      waitForFence();
+   public void render(VulkanScene scene, int currentFrame) {
+      waitForFence(currentFrame);
       var commandPool = commandPools.get(currentFrame);
       var commandBuffer = commandBuffers.get(currentFrame);
 
       animationRenderer.render(device, currentScene, modelCache);
 
       startRecording(commandPool, commandBuffer);
-
-      globalBuffers.update(device, memoryAllocationUtil, scene, currentFrame);
 
       sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil, globalBuffers);
       shadowRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, modelCache, materialCache, currentFrame, globalBuffers);
@@ -220,10 +217,8 @@ public class VulkanRenderer {
       swapChainRender.render(swapChain, descriptorAllocator, commandBuffer, postProcessingRenderer.getColorAttachment(), imageIndex);
 
       stopRecording(commandBuffer);
-      submit(commandBuffer, imageIndex);
+      submit(commandBuffer, imageIndex, currentFrame);
       resize = swapChain.presentImage(presentationQueue, renderingCompleteSemaphores.get(imageIndex), imageIndex);
-
-      currentFrame = (currentFrame + 1) % VulkanConstants.MAX_IN_FLIGHT;
    }
 
    private void resize(int width, int height, VulkanScene scene) {
@@ -264,7 +259,7 @@ public class VulkanRenderer {
       swapChainRender.resize(device, swapChain, descriptorAllocator, postProcessingRenderer.getColorAttachment());
    }
 
-   private void submit(CommandBuffer buf, int imageIndex) {
+   private void submit(CommandBuffer buf, int imageIndex, int currentFrame) {
       try(var stack = MemoryStack.stackPush()) {
          var fence = fences.get(currentFrame);
          fence.reset(device);
@@ -283,9 +278,13 @@ public class VulkanRenderer {
       }
    }
 
-   private void waitForFence() {
+   private void waitForFence(int currentFrame) {
       var fence = fences.get(currentFrame);
       fence.fenceWait(device);
+   }
+
+   public void updateGlobalBuffers(VulkanScene scene, int currentFrame) {
+      globalBuffers.update(device, memoryAllocationUtil, scene, currentFrame);
    }
 
    public LogicalDevice getDevice() {

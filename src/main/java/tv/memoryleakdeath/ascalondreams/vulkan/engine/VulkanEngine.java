@@ -29,9 +29,15 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanRenderer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.EntityAnimation;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class VulkanEngine {
     private static final Logger logger = LoggerFactory.getLogger(VulkanEngine.class);
@@ -44,7 +50,7 @@ public class VulkanEngine {
     private static final int DEFAULT_FRAMES_PER_SECOND = 60;
     private static final long LOGIC_FRAME_TIME = 1_000_000_000L / LOGIC_UPDATES_PER_SECOND;
     private static final long FPS_FRAME_TIME = 1_000_000_000L / DEFAULT_FRAMES_PER_SECOND;
-    private float angle = 0;
+    private static final int EXECUTOR_THREADS = 1;
 
     private static final String SOUND_BUFFER_MUSIC = "music-sound-buffer";
     private static final String SOUND_BUFFER_PLAYER = "player-sound-buffer";
@@ -63,6 +69,10 @@ public class VulkanEngine {
     private VulkanScene scene;
     private GuiTexture guiTexture;
     private SoundManager soundManager = SoundManager.getInstance();
+    private final ExecutorService executor = Executors.newFixedThreadPool(EXECUTOR_THREADS);
+    private Callable<Void> renderTask;
+    private int currentRenderFrame;
+    private int currentUpdateFrame;
 
     public void init() {
         window = new VulkanWindow(600, 600);
@@ -77,6 +87,17 @@ public class VulkanEngine {
         initSceneLighting();
         setCameraStartState();
         initSound();
+
+        renderTask = () -> {
+           renderer.render(scene, currentRenderFrame);
+           return null;
+        };
+        currentUpdateFrame = 1;
+        currentRenderFrame = 0;
+
+        for(int i = 0; i < VulkanConstants.MAX_IN_FLIGHT; i++) {
+           renderer.updateGlobalBuffers(scene, i);
+        }
     }
 
     private void initBobEntity() {
@@ -154,8 +175,11 @@ public class VulkanEngine {
               gameLogic();
            }
            if (shouldRender()) {
-              render();
-              window.update();
+              var future = executor.submit(renderTask);
+              renderer.updateGlobalBuffers(scene, currentUpdateFrame);
+              waitTasks(future);
+              currentUpdateFrame = (currentUpdateFrame + 1) % VulkanConstants.MAX_IN_FLIGHT;
+              currentRenderFrame = (currentRenderFrame + 1) % VulkanConstants.MAX_IN_FLIGHT;
            }
            InputTimer.getInstance().tick();
        }
@@ -180,10 +204,6 @@ public class VulkanEngine {
         return false;
     }
 
-    private void render() {
-        renderer.render(scene);
-    }
-
     private void gameLogic() {
        long timerDiff = System.currentTimeMillis() - soundTimer;
        if(timerDiff > 5000) {
@@ -200,6 +220,12 @@ public class VulkanEngine {
     }
 
     private void cleanup() {
+       try {
+          executor.shutdownNow();
+          executor.awaitTermination(60, TimeUnit.SECONDS);
+       } catch (InterruptedException e) {
+          logger.error("Executor interrupted", e);
+       }
        renderer.cleanup();
        window.cleanup();
     }
@@ -235,6 +261,14 @@ public class VulkanEngine {
           ImGui.newFrame();
           ImGui.endFrame();
           ImGui.render();
+       }
+    }
+
+    private void waitTasks(Future<Void> future) {
+       try {
+          future.get();
+       } catch (Exception e) {
+          throw new RuntimeException(e);
        }
     }
 }
