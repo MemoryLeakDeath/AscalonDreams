@@ -23,7 +23,6 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanMaterial;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
@@ -31,6 +30,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PushConstantRange;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.postprocess.EmptyVertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.Attachment;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.Pipeline;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.PipelineCache;
@@ -57,7 +57,7 @@ public class ShadowRenderer {
    private static final String DESC_ID_TEXT = "SHADOW_SCN_DESC_ID_TEXT";
    private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/shadow_fragment_shader.glsl";
    private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
-   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.MAT4X4_SIZE + VulkanConstants.INT_SIZE;
+   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2 + VulkanConstants.INT_SIZE;
    private static final String SHADOW_GEOMETRY_SHADER_FILE_GLSL = "shaders/shadow_geometry_shader.glsl";
    private static final String SHADOW_GEOMETRY_SHADER_FILE_SPV = SHADOW_GEOMETRY_SHADER_FILE_GLSL + ".spv";
    private static final String VERTEX_SHADER_FILE_GLSL = "shaders/shadow_vertex_shader.glsl";
@@ -145,7 +145,7 @@ public class ShadowRenderer {
    }
 
    private static Pipeline initPipeline(LogicalDevice device, PipelineCache cache, List<ShaderModule> shaderModules, List<DescriptorSetLayout> layouts) {
-      var vertexBuffer = new VertexBufferStructure();
+      var vertexBuffer = new EmptyVertexBufferStructure();
       var info = new PipelineBuildInfo(shaderModules, vertexBuffer.getVertexInputStateCreateInfo(),
               new int[] {ATTACHMENT_FORMAT}, DEPTH_FORMAT,
               List.of(new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, PUSH_CONSTANTS_SIZE)),
@@ -241,9 +241,6 @@ public class ShadowRenderer {
          VK13.vkCmdBindDescriptorSets(cmdHandle, VK13.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getLayoutId(),
                  0, descriptorSets, null);
 
-         LongBuffer vertexBuffer = stack.mallocLong(1);
-         LongBuffer offsets = stack.mallocLong(1).put(0, 0L);
-
          scene.getEntities().forEach(e -> {
             VulkanModel model = modelCache.getModel(e.getModelId());
             model.getMeshList().forEach(mesh -> {
@@ -253,14 +250,10 @@ public class ShadowRenderer {
                if(material == null) {
                   logger.warn("Mesh {} in model {} does not have a material!", mesh, model.getId());
                } else {
-                  setPushConstants(cmdHandle, e.getModelMatrix(), materialIndex);
-
-                  var animationAndVertexBuffer = model.hasAnimations() ? animationCache.getBuffer(e.getId(), mesh.id()) : mesh.vertexBuffer();
-                  vertexBuffer.put(0, animationAndVertexBuffer.getBuffer());
-
-                  VK13.vkCmdBindVertexBuffers(cmdHandle, 0, vertexBuffer, offsets);
-                  VK13.vkCmdBindIndexBuffer(cmdHandle, mesh.indexBuffer().getBuffer(), 0, VK13.VK_INDEX_TYPE_UINT32);
-                  VK13.vkCmdDrawIndexed(cmdHandle, mesh.numIndicies(), 1, 0, 0, 0);
+                  var animationAndVertexBufferAddress = model.hasAnimations() ? animationCache.getBuffer(e.getId(), mesh.id()).getAddress() :
+                          mesh.vertexBuffer().getAddress();
+                  setPushConstants(cmdHandle, e.getModelMatrix(), animationAndVertexBufferAddress, mesh.indexBuffer().getAddress(), materialIndex);
+                  VK13.vkCmdDraw(cmdHandle, mesh.numIndicies(), 1, 0, 0);
                }
             });
          });
@@ -268,9 +261,13 @@ public class ShadowRenderer {
       }
    }
 
-   private void setPushConstants(VkCommandBuffer cmdHandle, Matrix4f modelMatrix, int materialIndex) {
+   private void setPushConstants(VkCommandBuffer cmdHandle, Matrix4f modelMatrix, long vertexBufferAddress,
+                                 long indexBufferAddress, int materialIndex) {
+      int vertexPcSize = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2;
       modelMatrix.get(0, pushConstantBuffer);
-      pushConstantBuffer.putInt(VulkanConstants.MAT4X4_SIZE, materialIndex);
+      pushConstantBuffer.putLong(VulkanConstants.MAT4X4_SIZE, vertexBufferAddress);
+      pushConstantBuffer.putLong(VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE, indexBufferAddress);
+      pushConstantBuffer.putInt(vertexPcSize, materialIndex);
       VK13.vkCmdPushConstants(cmdHandle, pipeline.getLayoutId(), VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, pushConstantBuffer);
    }
 

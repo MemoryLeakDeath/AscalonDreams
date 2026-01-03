@@ -19,7 +19,6 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -143,8 +142,8 @@ public class VulkanModel {
               VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Vma.VMA_MEMORY_USAGE_AUTO,
               Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
       var destinationBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
-              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-              Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
+              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+              | VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
       long mappedMemory = sourceBuffer.map(device, allocationUtil);
       FloatBuffer data = MemoryUtil.memFloatBuffer(mappedMemory, (int)sourceBuffer.getRequestedSize());
       int rows = verticies.length / 3;
@@ -172,8 +171,8 @@ public class VulkanModel {
               VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Vma.VMA_MEMORY_USAGE_AUTO,
               Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
       var destinationBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
-              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-              Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
+              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+              Vma.VMA_MEMORY_USAGE_AUTO, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, 0);
       long mappedMemory = sourceBuffer.map(device, allocationUtil);
       IntBuffer data = MemoryUtil.memIntBuffer(mappedMemory, (int)sourceBuffer.getRequestedSize());
       data.put(indicies);
@@ -183,8 +182,6 @@ public class VulkanModel {
 
    public void bindMeshes(MemoryStack stack, VkCommandBuffer cmd, long piplineLayoutId, Matrix4f modelMatrix,
                           String entityId, boolean doTransparent) {
-      LongBuffer offsets = stack.mallocLong(1).put(0, 0L);
-      LongBuffer vertexBuffer = stack.mallocLong(1);
       MaterialCache materialCache = MaterialCache.getInstance();
       AnimationCache animationCache = AnimationCache.getInstance();
       AtomicInteger numRendered = new AtomicInteger(0);
@@ -198,28 +195,28 @@ public class VulkanModel {
             if(material.isTransparent() == doTransparent) {
                logger.trace("Rendering material: {}", materialId);
                numRendered.incrementAndGet();
-               setPushConstants(cmd, modelMatrix, piplineLayoutId, materialIndex);
-
-               var animationAndVertexBuffer = hasAnimations() ? animationCache.getBuffer(entityId, mesh.id()) : mesh.vertexBuffer();
-               vertexBuffer.put(0, animationAndVertexBuffer.getBuffer());
-
-               VK13.vkCmdBindVertexBuffers(cmd, 0, vertexBuffer, offsets);
-               VK13.vkCmdBindIndexBuffer(cmd, mesh.indexBuffer().getBuffer(), 0, VK13.VK_INDEX_TYPE_UINT32);
-               VK13.vkCmdDrawIndexed(cmd, mesh.numIndicies(), 1, 0, 0, 0);
+               var animationAndVertexBufferAddress = hasAnimations() ? animationCache.getBuffer(entityId, mesh.id()).getAddress() :
+                       mesh.vertexBuffer().getAddress();
+               setPushConstants(cmd, modelMatrix, animationAndVertexBufferAddress, mesh.indexBuffer().getAddress(), materialIndex, piplineLayoutId);
+               VK13.vkCmdDraw(cmd, mesh.numIndicies(), 1, 0, 0);
             }
          }
       });
       logger.trace("Render pass, transparency: {} rendered {} materials", doTransparent, numRendered.get());
    }
 
-   private void setPushConstants(VkCommandBuffer cmd, Matrix4f modelMatrix, long pipelineLayoutId, int materialIndex) {
+   private void setPushConstants(VkCommandBuffer cmd, Matrix4f modelMatrix, long vertexBufferAddress,
+                                 long indexBufferAddress, int materialIndex, long pipelineLayoutId) {
+      int vertexPcSize = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2;
       ByteBuffer pushConstantsBuffer = VulkanPushConstantsHandler.getInstance();
       modelMatrix.get(0, pushConstantsBuffer);
-      pushConstantsBuffer.putInt(VulkanConstants.MAT4X4_SIZE, materialIndex);
+      pushConstantsBuffer.putLong(VulkanConstants.MAT4X4_SIZE, vertexBufferAddress);
+      pushConstantsBuffer.putLong(VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE, indexBufferAddress);
+      pushConstantsBuffer.putInt(vertexPcSize, materialIndex);
       VK13.vkCmdPushConstants(cmd, pipelineLayoutId, VK13.VK_SHADER_STAGE_VERTEX_BIT, 0,
-              pushConstantsBuffer.slice(0, VulkanConstants.MAT4X4_SIZE));
-      VK13.vkCmdPushConstants(cmd, pipelineLayoutId, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanConstants.MAT4X4_SIZE,
-              pushConstantsBuffer.slice(VulkanConstants.MAT4X4_SIZE, VulkanConstants.INT_SIZE));
+              pushConstantsBuffer.slice(0, vertexPcSize));
+      VK13.vkCmdPushConstants(cmd, pipelineLayoutId, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, vertexPcSize,
+              pushConstantsBuffer.slice(vertexPcSize, VulkanConstants.INT_SIZE));
    }
 
    private static TransferBuffer createJointMatricesBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil, AnimatedFrame frame) {
@@ -231,7 +228,7 @@ public class VulkanModel {
               Vma.VMA_MEMORY_USAGE_AUTO, Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
               VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
       var destinationBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
-              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
               Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
       long mappedMemory = sourceBuffer.map(device, allocationUtil);
       ByteBuffer matrixBuffer = MemoryUtil.memByteBuffer(mappedMemory, (int) sourceBuffer.getRequestedSize());
@@ -252,8 +249,8 @@ public class VulkanModel {
               Vma.VMA_MEMORY_USAGE_AUTO, Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
               VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
       var destinationBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
-              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-              Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
+              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+              | VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
       long mappedMemory = sourceBuffer.map(device, allocationUtil);
       FloatBuffer data = MemoryUtil.memFloatBuffer(mappedMemory, (int) sourceBuffer.getRequestedSize());
 

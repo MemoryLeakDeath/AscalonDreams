@@ -47,7 +47,7 @@ public class AnimationCache {
 
             model.getMeshList().forEach(mesh -> {
                VulkanBuffer animationBuffer = new VulkanBuffer(device, allocationUtil, mesh.vertexBuffer().getRequestedSize(),
-                       VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                       VK13.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                        Vma.VMA_MEMORY_USAGE_AUTO, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, 0);
                bufferMap.put(mesh.id(), animationBuffer);
             });

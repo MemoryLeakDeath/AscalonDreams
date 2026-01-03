@@ -42,7 +42,7 @@ vec3 calcNormal(Material material, vec3 normal, vec2 textCoords, mat3 TBN) {
 }
 
 layout(push_constant) uniform pc {
-    layout(offset = 64) uint materialIndex;
+    layout(offset = 80) uint materialIndex;
 } push_constants;
 
 void main() {

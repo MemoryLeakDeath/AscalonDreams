@@ -1,10 +1,7 @@
 #version 450
-
-layout(location = 0) in vec3 inPos;
-layout(location = 1) in vec3 inNormal;
-layout(location = 2) in vec3 inTangent;
-layout(location = 3) in vec3 inBitangent;
-layout(location = 4) in vec2 inTextureCoords;
+#extension GL_EXT_buffer_reference: require
+#extension GL_EXT_buffer_reference2: enable
+#extension GL_EXT_scalar_block_layout: require
 
 layout(location = 0) out vec4 outPos;
 layout(location = 1) out vec3 outNormal;
@@ -19,17 +16,41 @@ layout(set = 1, binding = 0) uniform ViewUniform {
     mat4 matrix;
 } viewUniform;
 
+struct Vertex {
+    vec3 inPosition;
+    vec3 inNormal;
+    vec3 inTangent;
+    vec3 inBitangent;
+    vec2 inTextureCoordinates;
+};
+
+layout(scalar, buffer_reference) buffer VertexBuffer {
+    Vertex[] vertices;
+};
+
+layout(std430, buffer_reference) buffer IndexBuffer {
+    uint[] indices;
+};
+
 layout(push_constant) uniform pc {
     mat4 modelMatrix;
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
 } push_constants;
 
 void main() {
-    vec4 worldPos = push_constants.modelMatrix * vec4(inPos, 1);
+    uint index = push_constants.indexBuffer.indices[gl_VertexIndex];
+    VertexBuffer vertexData = push_constants.vertexBuffer;
+
+    Vertex vertex = vertexData.vertices[index];
+    vec3 inPosition = vertex.inPosition;
+    vec4 worldPos = push_constants.modelMatrix * vec4(inPosition, 1);
     gl_Position = projectionUniform.matrix * viewUniform.matrix * worldPos;
     mat3 mNormal = transpose(inverse(mat3(push_constants.modelMatrix)));
+
     outPos = worldPos;
-    outNormal = mNormal * normalize(inNormal);
-    outTangent = mNormal * normalize(inTangent);
-    outBitangent = mNormal * normalize(inBitangent);
-    outTextureCoords = inTextureCoords;
+    outNormal = mNormal * normalize(vertex.inNormal);
+    outTangent = mNormal * normalize(vertex.inTangent);
+    outBitangent = mNormal * normalize(vertex.inBitangent);
+    outTextureCoords = vertex.inTextureCoordinates;
 }
