@@ -8,7 +8,10 @@ import tv.memoryleakdeath.ascalondreams.lighting.Light;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanWindow;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class VulkanScene {
    private static final Logger logger = LoggerFactory.getLogger(VulkanScene.class);
@@ -16,7 +19,7 @@ public class VulkanScene {
    public static final int MAX_LIGHTS = 10;
    public static final int SHADOW_MAP_CASCADE_COUNT = 3;
 
-   private final List<Entity> entities = new ArrayList<>();
+   private final Map<String, List<Entity>> entities = new HashMap<>();
    private final Projection projection;
    private final Camera camera;
    private final Vector3f ambientLightColor = new Vector3f();
@@ -29,19 +32,22 @@ public class VulkanScene {
    }
 
    public void addEntity(Entity entity) {
-      entities.add(entity);
+      var list = entities.computeIfAbsent(entity.getModelId(), k -> new ArrayList<>());
+      list.add(entity);
    }
 
-   public void removeAllEntities() {
-      entities.clear();
-   }
-
-   public void removeEntity(Entity entity) {
-      entities.removeIf(e -> e.getId().equals(entity.getId()));
-   }
-
-   public List<Entity> getEntities() {
+   public Map<String, List<Entity>> getEntities() {
       return entities;
+   }
+
+   public int getNumEntities() {
+      return entities.values().stream().mapToInt(List::size).sum();
+   }
+
+   public Map<String, List<Entity>> getAnimatedEntities() {
+      return entities.entrySet().stream().filter(entry ->
+              entry.getValue().stream().anyMatch(entity -> entity.getEntityAnimation() != null))
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
    }
 
    public Projection getProjection() {
