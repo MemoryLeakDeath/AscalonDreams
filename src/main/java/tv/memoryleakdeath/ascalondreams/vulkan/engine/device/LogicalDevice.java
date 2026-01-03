@@ -2,6 +2,8 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.device;
 
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.AMDBufferMarker;
+import org.lwjgl.vulkan.NVDeviceDiagnosticCheckpoints;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkDeviceCreateInfo;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 
 public class LogicalDevice {
    private static final Logger logger = LoggerFactory.getLogger(LogicalDevice.class);
+   private static final boolean ENABLE_DEBUG_CHECKPOINTS = false;
    private VkDevice device;
    private PhysicalDevice physicalDevice;
    private boolean samplerAnisotropy;
@@ -42,6 +45,14 @@ public class LogicalDevice {
       Set<String> deviceExtensions = getDeviceExtensions(stack);
       logger.debug("Found device extensions: {}", deviceExtensions);
       var extensionsList = PhysicalDevice.REQUIRED_EXTENSIONS.stream().map(stack::ASCII).toList();
+      if(ENABLE_DEBUG_CHECKPOINTS) {
+         logger.debug("Enabling debug diagnostic checkpoint device extensions...");
+         switch(physicalDevice.getCheckpointExtensionType()) {
+            case NONE -> logger.warn("Requested checkpoint extensions but they are not supported by device");
+            case NVIDIA -> extensionsList.add(stack.ASCII(NVDeviceDiagnosticCheckpoints.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME));
+            case AMD -> extensionsList.add(stack.ASCII(AMDBufferMarker.VK_AMD_BUFFER_MARKER_EXTENSION_NAME));
+         }
+      }
       PointerBuffer requiredExtensions = stack.mallocPointer(extensionsList.size());
       extensionsList.forEach(requiredExtensions::put);
       requiredExtensions.flip();

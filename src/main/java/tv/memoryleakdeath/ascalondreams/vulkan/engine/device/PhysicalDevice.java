@@ -2,9 +2,11 @@ package tv.memoryleakdeath.ascalondreams.vulkan.engine.device;
 
 import org.apache.commons.collections4.IterableUtils;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.vulkan.AMDBufferMarker;
 import org.lwjgl.vulkan.KHRShaderNonSemanticInfo;
 import org.lwjgl.vulkan.KHRSurface;
 import org.lwjgl.vulkan.KHRSwapchain;
+import org.lwjgl.vulkan.NVDeviceDiagnosticCheckpoints;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkExtensionProperties;
 import org.lwjgl.vulkan.VkInstance;
@@ -31,6 +33,7 @@ public final class PhysicalDevice {
    private VkPhysicalDeviceFeatures deviceFeatures;
    private VkPhysicalDeviceProperties2 deviceProperties;
    private VkQueueFamilyProperties.Buffer queueFamilyProperties;
+   private CheckpointExtensionType checkpointExtensionType;
 
    private PhysicalDevice(VkPhysicalDevice physicalDevice) {
       this.physicalDevice = physicalDevice;
@@ -58,6 +61,8 @@ public final class PhysicalDevice {
 
          memoryProperties = VkPhysicalDeviceMemoryProperties.calloc();
          VK13.vkGetPhysicalDeviceMemoryProperties(physicalDevice, memoryProperties);
+
+         checkpointExtensionType = calculateCheckpointExtension(deviceExtensions);
          logger.debug("Created Physical Device with name: {}", getDeviceName());
       }
    }
@@ -180,5 +185,25 @@ public final class PhysicalDevice {
          throw new RuntimeException("Failed to get compute queue family index");
       }
       return index;
+   }
+
+   private CheckpointExtensionType calculateCheckpointExtension(VkExtensionProperties.Buffer deviceExtensions) {
+      var result = CheckpointExtensionType.NONE;
+      int numExtensions = deviceExtensions != null ? deviceExtensions.capacity() : 0;
+      boolean matchFound = false;
+      for(int i = 0; i < numExtensions && !matchFound; i++) {
+         String name = deviceExtensions.get(i).extensionNameString();
+         result = switch(name) {
+            case NVDeviceDiagnosticCheckpoints.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME -> CheckpointExtensionType.NVIDIA;
+            case AMDBufferMarker.VK_AMD_BUFFER_MARKER_EXTENSION_NAME -> CheckpointExtensionType.AMD;
+            default -> CheckpointExtensionType.NONE;
+         };
+         matchFound = (result != CheckpointExtensionType.NONE);
+      }
+      return result;
+   }
+
+   public CheckpointExtensionType getCheckpointExtensionType() {
+      return checkpointExtensionType;
    }
 }

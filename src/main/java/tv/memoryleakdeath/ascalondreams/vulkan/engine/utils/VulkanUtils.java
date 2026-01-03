@@ -5,8 +5,11 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.vma.Vma;
+import org.lwjgl.vulkan.AMDBufferMarker;
+import org.lwjgl.vulkan.NVDeviceDiagnosticCheckpoints;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkBufferDeviceAddressInfo;
+import org.lwjgl.vulkan.VkCheckpointDataNV;
 import org.lwjgl.vulkan.VkDependencyInfo;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkMemoryBarrier2;
@@ -18,8 +21,11 @@ import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.BaseDeviceQueue;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CheckpointExtensionType;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.PhysicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.VulkanDeviceAndProperties;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
 
@@ -139,6 +145,42 @@ public final class VulkanUtils {
                  .buffer(buffer));
       }
       return address;
+   }
+
+   public static List<DebugCheckpoint> dumpCheckpoints(BaseDeviceQueue queue) {
+      List<DebugCheckpoint> results = new ArrayList<>();
+      try(var stack = MemoryStack.stackPush()) {
+         var count = stack.callocInt(1);
+         NVDeviceDiagnosticCheckpoints.vkGetQueueCheckpointDataNV(queue.getQueue(), count, null);
+         int numCheckpoints = count.get(0);
+         if(numCheckpoints > 0) {
+            var checkpointData = VkCheckpointDataNV.calloc(numCheckpoints, stack);
+            checkpointData.stream().forEach(VkCheckpointDataNV::sType$Default);
+            NVDeviceDiagnosticCheckpoints.vkGetQueueCheckpointDataNV(queue.getQueue(), count, checkpointData);
+            results = checkpointData.stream().map(c -> new DebugCheckpoint(c.pCheckpointMarker(), c.stage())).toList();
+         }
+      }
+      return results;
+   }
+
+   public static void insertBufferMarker(PhysicalDevice physicalDevice, CommandBuffer commandBuffer, int pipelineStage, VulkanBuffer destinationBuffer,
+                                         int offset, int marker) {
+      var checkpointExtension = physicalDevice.getCheckpointExtensionType();
+      if(checkpointExtension == CheckpointExtensionType.AMD) {
+         AMDBufferMarker.vkCmdWriteBufferMarkerAMD(commandBuffer.getCommandBuffer(), pipelineStage, destinationBuffer.getBuffer(),
+                 offset, marker);
+      } else {
+         logger.warn("Requested debug buffer marker in non-supported device");
+      }
+   }
+
+   public static void insertDebugCheckpoint(PhysicalDevice physicalDevice, CommandBuffer commandBuffer, long checkpointMarker) {
+      var checkpointExtension = physicalDevice.getCheckpointExtensionType();
+      if(checkpointExtension == CheckpointExtensionType.NVIDIA) {
+         NVDeviceDiagnosticCheckpoints.vkCmdSetCheckpointNV(commandBuffer.getCommandBuffer(), checkpointMarker);
+      } else {
+         logger.warn("Requested debug checkpoint is non-supported device");
+      }
    }
 }
 
