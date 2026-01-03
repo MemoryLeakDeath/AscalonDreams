@@ -18,7 +18,6 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanPushConstantsHandler;
@@ -26,6 +25,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.pojo.PushConstantRange;
+import tv.memoryleakdeath.ascalondreams.vulkan.engine.postprocess.EmptyVertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderCompiler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.shaders.ShaderModule;
@@ -142,12 +142,13 @@ public class SceneRenderer {
    }
 
    private Pipeline createPipeline(LogicalDevice device, List<ShaderModule> shaderModules, PipelineCache cache) {
-      var vertexBufferStructure = new VertexBufferStructure();
+      var vertexBufferStructure = new EmptyVertexBufferStructure();
+      var vertexPcSize = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2;
       var info = new PipelineBuildInfo(shaderModules, vertexBufferStructure.getVertexInputStateCreateInfo(),
               new int[] { MaterialAttachments.POSITION_FORMAT, MaterialAttachments.ALBEDO_FORMAT, MaterialAttachments.NORMAL_FORMAT, MaterialAttachments.PBR_FORMAT},
               MaterialAttachments.DEPTH_FORMAT, List.of(
-                      new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT,0, VulkanConstants.MAT4X4_SIZE),
-                      new PushConstantRange(VK13.VK_SHADER_STAGE_FRAGMENT_BIT, VulkanConstants.MAT4X4_SIZE, VulkanConstants.INT_SIZE)),
+                      new PushConstantRange(VK13.VK_SHADER_STAGE_VERTEX_BIT,0, vertexPcSize),
+                      new PushConstantRange(VK13.VK_SHADER_STAGE_FRAGMENT_BIT, vertexPcSize, VulkanConstants.INT_SIZE)),
               List.of(vertexUniformLayout, vertexUniformLayout, fragmentStorageLayout, textureLayout), true, false);
       var pipeline = new Pipeline(device, cache, info);
       vertexBufferStructure.cleanup();

@@ -6,6 +6,7 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
+import org.lwjgl.vulkan.VkBufferDeviceAddressInfo;
 import org.lwjgl.vulkan.VkDependencyInfo;
 import org.lwjgl.vulkan.VkInstance;
 import org.lwjgl.vulkan.VkMemoryBarrier2;
@@ -127,6 +128,17 @@ public final class VulkanUtils {
 
          VK13.vkCmdPipelineBarrier2(commandBuffer.getCommandBuffer(), info);
       }
+   }
+
+   public static long getBufferAddress(LogicalDevice device, long buffer) {
+      long address;
+      try(var stack = MemoryStack.stackPush()) {
+         address = VK13.vkGetBufferDeviceAddress(device.getDevice(), VkBufferDeviceAddressInfo
+                 .calloc(stack)
+                 .sType$Default()
+                 .buffer(buffer));
+      }
+      return address;
    }
 }
 

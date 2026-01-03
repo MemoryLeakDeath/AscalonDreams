@@ -118,7 +118,7 @@ public class VulkanRenderer {
    public void cleanup() {
       device.waitIdle();
 
-      animationRenderer.cleanup(device, memoryAllocationUtil);
+      animationRenderer.cleanup(device);
       sceneRenderer.cleanup(device, memoryAllocationUtil);
       postProcessingRenderer.cleanup(device, memoryAllocationUtil);
       lightingRenderer.cleanup(device, memoryAllocationUtil);
@@ -178,7 +178,7 @@ public class VulkanRenderer {
       shadowRenderer.loadMaterials(device, descriptorAllocator, materialCache, textureCache);
       guiRender.loadTextures(device, descriptorAllocator, guiTextures, textureCache);
       animationCache.loadAnimations(device, memoryAllocationUtil, currentScene.getEntities(), modelCache);
-      animationRenderer.loadModels(device, descriptorAllocator, modelCache, currentScene.getEntities(), animationCache);
+      animationRenderer.loadModels(modelCache);
    }
 
    private void startRecording(CommandPool pool, CommandBuffer buf) {
@@ -195,7 +195,7 @@ public class VulkanRenderer {
       var commandPool = commandPools.get(currentFrame);
       var commandBuffer = commandBuffers.get(currentFrame);
 
-      animationRenderer.render(device, descriptorAllocator, currentScene, modelCache);
+      animationRenderer.render(device, currentScene, modelCache);
 
       startRecording(commandPool, commandBuffer);
 

@@ -21,6 +21,7 @@ public class VulkanBuffer {
    private PointerBuffer pointerBuffer;
    private long requestedSize;
    private long mappedMemory;
+   private Long address;
 
    public VulkanBuffer(LogicalDevice device, MemoryAllocationUtil allocationUtil, long size, int bufferUsage, int vmaUsage, int vmaFlags, int requiredFlags) {
       this.requestedSize = size;
@@ -41,6 +42,9 @@ public class VulkanBuffer {
          this.buffer = longBuf.get(0);
          this.vmaAllocation = allocBuf.get(0);
          this.pointerBuffer = MemoryUtil.memAllocPointer(1);
+         if((bufferUsage & VK13.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) > 0) {
+            this.address = VulkanUtils.getBufferAddress(device, buffer);
+         }
       }
    }
 
@@ -52,6 +56,13 @@ public class VulkanBuffer {
 
    public void flush(MemoryAllocationUtil allocationUtil) {
       Vma.vmaFlushAllocation(allocationUtil.getVmaAllocator(), vmaAllocation, 0, VK13.VK_WHOLE_SIZE);
+   }
+
+   public long getAddress() {
+      if(address == null) {
+         throw new IllegalStateException("Buffer was not created with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT flag!");
+      }
+      return address;
    }
 
    public long getBuffer() {

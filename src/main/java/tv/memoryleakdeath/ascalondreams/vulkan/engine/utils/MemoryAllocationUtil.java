@@ -21,6 +21,7 @@ public class MemoryAllocationUtil {
          var vmaVulkanFunctions = VmaVulkanFunctions.calloc(stack)
                  .set(instance.getVkInstance(), device.getDevice());
          var info = VmaAllocatorCreateInfo.calloc(stack)
+                 .flags(Vma.VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT)
                  .instance(instance.getVkInstance())
                  .vulkanApiVersion(VK13.VK_API_VERSION_1_3)
                  .device(device.getDevice())

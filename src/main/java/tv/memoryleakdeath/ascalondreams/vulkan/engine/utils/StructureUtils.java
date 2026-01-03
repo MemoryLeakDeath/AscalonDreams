@@ -59,6 +59,7 @@ public final class StructureUtils {
 
       var vulkan12Features = VkPhysicalDeviceVulkan12Features.calloc(stack)
               .sType$Default()
+              .bufferDeviceAddress(true)
               .scalarBlockLayout(true);
 
       var vulkan13Features = VkPhysicalDeviceVulkan13Features.calloc(stack)
@@ -77,6 +78,7 @@ public final class StructureUtils {
       features.geometryShader(true);
       boolean depthClamp = supportedFeatures.depthClamp();
       features.depthClamp(depthClamp);
+      features.shaderInt64(true);
 
       vulkanFeatures2.pNext(vulkan12Features.address());
       vulkan12Features.pNext(vulkan13Features.address());

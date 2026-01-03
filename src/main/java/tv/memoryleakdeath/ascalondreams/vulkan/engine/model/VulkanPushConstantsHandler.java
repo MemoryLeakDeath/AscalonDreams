@@ -6,7 +6,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 import java.nio.ByteBuffer;
 
 public class VulkanPushConstantsHandler {
-   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.MAT4X4_SIZE + VulkanConstants.INT_SIZE;
+   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2 + VulkanConstants.INT_SIZE;
    private static ByteBuffer pushConstantsBuffer;
 
    private VulkanPushConstantsHandler() {
