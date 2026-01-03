@@ -80,7 +80,7 @@ public class VulkanEngine {
     }
 
     private void initBobEntity() {
-       Entity bob = scene.getEntities().get(1);
+       Entity bob = scene.getEntities().get("boblamp").getFirst();
        bob.getRotation().rotateY((float) Math.toRadians(-90f));
        bob.updateModelMatrix();
        bob.setEntityAnimation(new EntityAnimation(true, 0, 0));
@@ -191,8 +191,8 @@ public class VulkanEngine {
           soundTimer = System.currentTimeMillis();
        }
 
-       var entityAnimation = scene.getEntities().get(1).getEntityAnimation();
-       var maxFrames = scene.getEntities().get(1).getMaxAnimationFrames();
+       var entityAnimation = scene.getEntities().get("boblamp").getFirst().getEntityAnimation();
+       var maxFrames = scene.getEntities().get("boblamp").getFirst().getMaxAnimationFrames();
        if(entityAnimation.isStarted()) {
           int currentFrame = Math.floorMod(entityAnimation.getCurrentFrame() + 1, maxFrames);
           entityAnimation.setCurrentFrame(currentFrame);
@@ -229,6 +229,10 @@ public class VulkanEngine {
        if(StateMachine.getInstance().getCurrentGameState() == GameState.GUI) {
           ImGui.newFrame();
           ImGui.showDemoWindow();
+          ImGui.endFrame();
+          ImGui.render();
+       } else {
+          ImGui.newFrame();
           ImGui.endFrame();
           ImGui.render();
        }

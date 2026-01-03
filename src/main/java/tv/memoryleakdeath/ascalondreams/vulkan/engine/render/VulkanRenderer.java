@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
 import tv.memoryleakdeath.ascalondreams.animations.AnimationRenderer;
+import tv.memoryleakdeath.ascalondreams.buffers.GlobalBuffers;
 import tv.memoryleakdeath.ascalondreams.gui.GuiRender;
 import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.lighting.LightingRenderer;
@@ -53,6 +54,7 @@ public class VulkanRenderer {
    private final List<CommandBuffer> commandBuffers = new ArrayList<>();
    private final List<CommandPool> commandPools = new ArrayList<>();
    private final List<Fence> fences = new ArrayList<>();
+   private final GlobalBuffers globalBuffers = new GlobalBuffers();
    private final VulkanGraphicsQueue graphicsQueue;
    private final List<Semaphore> presentationCompleteSemaphores = new ArrayList<>();
    private final LightingRenderer lightingRenderer;
@@ -118,6 +120,7 @@ public class VulkanRenderer {
    public void cleanup() {
       device.waitIdle();
 
+      globalBuffers.cleanup(device, memoryAllocationUtil);
       animationRenderer.cleanup(device);
       sceneRenderer.cleanup(device, memoryAllocationUtil);
       postProcessingRenderer.cleanup(device, memoryAllocationUtil);
@@ -199,8 +202,10 @@ public class VulkanRenderer {
 
       startRecording(commandPool, commandBuffer);
 
-      sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil);
-      shadowRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, modelCache, materialCache, currentFrame);
+      globalBuffers.update(device, memoryAllocationUtil, scene, currentFrame);
+
+      sceneRenderer.render(commandBuffer, scene, descriptorAllocator, currentFrame, device, memoryAllocationUtil, globalBuffers);
+      shadowRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, modelCache, materialCache, currentFrame, globalBuffers);
       lightingRenderer.render(device, memoryAllocationUtil, descriptorAllocator, scene, commandBuffer, sceneRenderer.getMaterialAttachments(),
               shadowRenderer.getColorAttachment(), shadowRenderer.getCascadeShadows(currentFrame), currentFrame);
       postProcessingRenderer.render(swapChain, descriptorAllocator, commandBuffer, lightingRenderer.getAttachmentColor());

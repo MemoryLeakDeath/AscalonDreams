@@ -20,29 +20,47 @@ layout(std430, buffer_reference) buffer IndexBuffer {
 };
 
 struct InstanceData {
-    mat4 modelMatrix;
+    uint modelMatrixIndex;
     uint materialIndex;
-    uint padding[3];
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+};
+
+layout(std430, buffer_reference, buffer_reference_align=16) buffer InstancesDataBuffer {
+    InstanceData[] instancesData;
+};
+
+layout(std430, buffer_reference, buffer_reference_align=8) buffer ModelMatricesDataBuffer {
+    mat4[] modelMatrices;
 };
 
 layout(push_constant) uniform pc {
-    mat4 modelMatrix;
-    VertexBuffer vertexBuffer;
-    IndexBuffer indexBuffer;
-    uint materialIndex;
+    InstancesDataBuffer instancesDataBuffer;
+    ModelMatricesDataBuffer modelsMatricesDataBuffer;
 } push_constants;
 
 layout(location = 0) out vec2 outTextureCoordinates;
 layout(location = 1) out flat uint outMaterialIndex;
 
 void main() {
-    uint index = push_constants.indexBuffer.indices[gl_VertexIndex];
-    VertexBuffer vertexData = push_constants.vertexBuffer;
+    uint entityId = gl_InstanceIndex;
 
-    Vertex vertex = vertexData.vertices[index];
+    InstancesDataBuffer instancesDataBuffer = push_constants.instancesDataBuffer;
+    InstanceData instanceData = instancesDataBuffer.instancesData[entityId];
 
+    VertexBuffer vertexBuffer = instanceData.vertexBuffer;
+    IndexBuffer indexBuffer = instanceData.indexBuffer;
+
+    ModelMatricesDataBuffer modelMatricesDataBuffer = push_constants.modelsMatricesDataBuffer;
+    mat4 modelMatrix = modelMatricesDataBuffer.modelMatrices[instanceData.modelMatrixIndex];
+
+    uint index = indexBuffer.indices[gl_VertexIndex];
+    Vertex vertex = vertexBuffer.vertices[index];
+
+    vec3 inPosition = vertex.inPosition;
+    vec4 worldPosition = modelMatrix * vec4(inPosition, 1);
     outTextureCoordinates = vertex.inTextureCoordinates;
-    outMaterialIndex = push_constants.materialIndex;
+    outMaterialIndex = instanceData.materialIndex;
 
-    gl_Position = push_constants.modelMatrix * vec4(vertex.inPosition, 1.0f);
+    gl_Position = worldPosition;
 }

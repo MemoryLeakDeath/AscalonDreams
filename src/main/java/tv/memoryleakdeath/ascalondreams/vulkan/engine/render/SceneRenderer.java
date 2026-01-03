@@ -4,11 +4,13 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.shaderc.Shaderc;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkClearValue;
+import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.buffers.GlobalBuffers;
 import tv.memoryleakdeath.ascalondreams.lighting.MaterialAttachments;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLayout;
@@ -16,10 +18,8 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorSetLa
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.MaterialCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.TextureCache;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanPushConstantsHandler;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanTextureSampler;
@@ -34,6 +34,7 @@ import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
 import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanUtils;
 
+import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -180,7 +181,7 @@ public class SceneRenderer {
    }
 
    public void render(CommandBuffer commandBuffer, VulkanScene scene, DescriptorAllocator allocator,
-                      int currentFrame, LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+                      int currentFrame, LogicalDevice device, MemoryAllocationUtil allocationUtil, GlobalBuffers globalBuffers) {
       try(var stack = MemoryStack.stackPush()) {
          var commandHandle = commandBuffer.getCommandBuffer();
          for(Attachment attachment : materialAttachments.getColorAttachments()) {
@@ -204,21 +205,13 @@ public class SceneRenderer {
          VK13.vkCmdBindDescriptorSets(commandHandle, VK13.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getLayoutId(),
                  0, descriptorSetsBuf, null);
 
-         renderEntities(stack, scene, commandBuffer, false);
-         renderEntities(stack, scene, commandBuffer, true);
+         setPushConstants(commandHandle, globalBuffers, currentFrame);
+
+         VK13.vkCmdDrawIndirect(commandHandle, globalBuffers.getIndirectBuffer(currentFrame).getBuffer(), 0,
+                 globalBuffers.getDrawCount(currentFrame), GlobalBuffers.IND_COMMAND_STRIDE);
 
          VK13.vkCmdEndRendering(commandHandle);
       }
-   }
-
-   private void renderEntities(MemoryStack stack, VulkanScene scene, CommandBuffer commandBuffer, boolean doTransparency) {
-      var commandHandle = commandBuffer.getCommandBuffer();
-      ModelCache modelCache = ModelCache.getInstance();
-      logger.trace("rendering entities - doTransparency: {}", doTransparency);
-      scene.getEntities().forEach(e -> {
-         VulkanModel model = modelCache.getModel(e.getModelId());
-         model.bindMeshes(stack, commandHandle, pipeline.getLayoutId(), e.getModelMatrix(), e.getId(), doTransparency);
-      });
    }
 
    public void resize(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain, VulkanScene scene) {
@@ -248,5 +241,14 @@ public class SceneRenderer {
 
    public MaterialAttachments getMaterialAttachments() {
       return materialAttachments;
+   }
+
+   private void setPushConstants(VkCommandBuffer commandHandle, GlobalBuffers globalBuffers, int currentFrame) {
+      ByteBuffer pushConstantsBuffer = VulkanPushConstantsHandler.getInstance();
+      int offset = 0;
+      pushConstantsBuffer.putLong(offset, globalBuffers.getInstanceDataAddress(currentFrame));
+      offset += VulkanConstants.PTR_SIZE;
+      pushConstantsBuffer.putLong(offset, globalBuffers.getModelMatricesAddress(currentFrame));
+      VK13.vkCmdPushConstants(commandHandle, pipeline.getLayoutId(), VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, pushConstantsBuffer);
    }
 }
