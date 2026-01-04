@@ -6,7 +6,7 @@ import org.lwjgl.vulkan.VkVertexInputAttributeDescription;
 import org.lwjgl.vulkan.VkVertexInputBindingDescription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
+import tv.memoryleakdeath.ascalondreams.util.VulkanConstants;
 
 public class GuiVertexBufferStructure {
    private static final Logger logger = LoggerFactory.getLogger(GuiVertexBufferStructure.class);

@@ -3,8 +3,8 @@ package tv.memoryleakdeath.ascalondreams.lighting;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VkSpecializationInfo;
 import org.lwjgl.vulkan.VkSpecializationMapEntry;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
+import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.util.VulkanConstants;
 
 import java.nio.ByteBuffer;
 

@@ -7,8 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.camera.Camera;
 import tv.memoryleakdeath.ascalondreams.lighting.Light;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Projection;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.scene.Projection;
+import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 
 public class ShadowUtils {
    private static final Logger logger = LoggerFactory.getLogger(ShadowUtils.class);

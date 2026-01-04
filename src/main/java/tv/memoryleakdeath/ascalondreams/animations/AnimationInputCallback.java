@@ -6,9 +6,9 @@ import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.input.KeyboardInputCallback;
 import tv.memoryleakdeath.ascalondreams.state.GameState;
 import tv.memoryleakdeath.ascalondreams.state.StateMachine;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.EntityAnimation;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.scene.Entity;
+import tv.memoryleakdeath.ascalondreams.scene.EntityAnimation;
+import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 
 import java.util.Collection;
 import java.util.List;

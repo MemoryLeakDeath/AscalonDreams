@@ -1,0 +1,55 @@
+package tv.memoryleakdeath.ascalondreams.cache;
+
+import tv.memoryleakdeath.ascalondreams.device.BaseDeviceQueue;
+import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
+import tv.memoryleakdeath.ascalondreams.device.CommandPool;
+import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.model.TransferBuffer;
+import tv.memoryleakdeath.ascalondreams.model.VulkanModel;
+import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class ModelCache {
+   private Map<String, VulkanModel> modelMap = new HashMap<>();
+   private static ModelCache modelCache;
+
+   private ModelCache() {
+   }
+
+   public static ModelCache getInstance() {
+      if(modelCache == null) {
+         modelCache = new ModelCache();
+      }
+      return modelCache;
+   }
+
+   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      modelMap.forEach((k, t) -> t.cleanup(device, allocationUtil));
+      modelMap.clear();
+   }
+
+   public VulkanModel getModel(String name) {
+      return modelMap.get(name);
+   }
+
+   public Map<String, VulkanModel> getModelMap() {
+      return modelMap;
+   }
+
+   public void loadModels(LogicalDevice device, MemoryAllocationUtil allocationUtil, List<VulkanModel> modelList, CommandPool pool, BaseDeviceQueue queue) {
+      modelMap = modelList.stream().collect(Collectors.toMap(VulkanModel::getId, Function.identity()));
+      var command = new CommandBuffer(device, pool, true, true);
+      List<TransferBuffer> transferBuffers = modelList.stream().flatMap(model -> model.getTransferBuffers().stream()).toList();
+      command.beginRecording();
+      transferBuffers.forEach(b -> b.recordTransferCommand(command));
+      command.endRecording();
+      command.submitAndWait(device, queue);
+      command.cleanup(device, pool);
+      transferBuffers.forEach(b -> b.cleanupSourceBuffer(device, allocationUtil));
+   }
+}

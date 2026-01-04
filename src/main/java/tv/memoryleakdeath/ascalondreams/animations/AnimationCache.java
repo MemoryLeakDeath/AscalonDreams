@@ -4,12 +4,12 @@ import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
+import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.cache.ModelCache;
+import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
+import tv.memoryleakdeath.ascalondreams.model.VulkanModel;
+import tv.memoryleakdeath.ascalondreams.scene.Entity;
+import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
 
 import java.util.HashMap;
 import java.util.List;

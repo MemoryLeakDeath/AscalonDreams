@@ -6,8 +6,8 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkRect2D;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.descriptor.DescriptorAllocator;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.Pipeline;
+import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorAllocator;
+import tv.memoryleakdeath.ascalondreams.render.Pipeline;
 
 import java.nio.FloatBuffer;
 import java.nio.LongBuffer;

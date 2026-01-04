@@ -5,19 +5,10 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.opengl.engine.OpenGLEngine;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.VulkanEngine;
+import tv.memoryleakdeath.ascalondreams.engine.VulkanEngine;
 
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
-
-    private void runOpenGL() {
-        logger.info("Starting program in OpenGL mode....");
-        OpenGLEngine engine = new OpenGLEngine();
-        engine.init();
-        engine.mainLoop();
-        logger.info("Exiting program....");
-    }
 
     private void runVulkan() {
         logger.info("Starting program in Vulkan mode....");
@@ -51,11 +42,7 @@ public class Main {
 //           System.out.println("Error converting model!  Exiting.");
 //           return;
 //        }
-        if (CommandArgs.USE_VULKAN.equalsIgnoreCase(cmdArgs.getUseEngine())) {
-            main.runVulkan();
-        } else {
-            main.runOpenGL();
-        }
+         main.runVulkan();
     }
 
     private static CommandArgs parseCommandLine(String[] args) {
@@ -74,18 +61,8 @@ public class Main {
 }
 
 class CommandArgs {
-    public static final String USE_OPENGL = "opengl";
-    public static final String USE_VULKAN = "vulkan";
-
-    @Option(name = "-e", usage = "What engine to use [opengl,vulkan]", metaVar = USE_OPENGL)
-    private String useEngine = USE_OPENGL;
-
     @Option(name = "-m", usage = "Name of model file to convert")
     private String convertModelFile = "";
-
-    public String getUseEngine() {
-        return useEngine;
-    }
 
    public String getConvertModelFile() {
       return convertModelFile;

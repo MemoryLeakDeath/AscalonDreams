@@ -1,10 +1,10 @@
 package tv.memoryleakdeath.ascalondreams.lighting;
 
 import org.lwjgl.vulkan.VK13;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.Attachment;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.render.VulkanSwapChain;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
+import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.render.Attachment;
+import tv.memoryleakdeath.ascalondreams.render.VulkanSwapChain;
+import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
 
 import java.util.ArrayList;
 import java.util.List;
