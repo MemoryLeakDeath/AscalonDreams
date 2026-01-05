@@ -7,7 +7,7 @@ import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkDrawIndirectCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
+import tv.memoryleakdeath.ascalondreams.cache.AnimationCache;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.cache.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.cache.ModelCache;
@@ -33,6 +33,16 @@ public class GlobalBuffers {
    private final VulkanBuffer[] instanceDataBuffer = new VulkanBuffer[VulkanConstants.MAX_IN_FLIGHT];
    private final VulkanBuffer[] modelMatricesBuffer = new VulkanBuffer[VulkanConstants.MAX_IN_FLIGHT];
    private final int[] drawCounts = new int[VulkanConstants.MAX_IN_FLIGHT];
+   private static GlobalBuffers globalBuffers;
+
+   private GlobalBuffers() {}
+
+   public static GlobalBuffers getInstance() {
+      if(globalBuffers == null) {
+         globalBuffers = new GlobalBuffers();
+      }
+      return globalBuffers;
+   }
 
    public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       Arrays.asList(indirectDrawCommandsBuffer).forEach(b -> b.cleanup(device, allocationUtil));

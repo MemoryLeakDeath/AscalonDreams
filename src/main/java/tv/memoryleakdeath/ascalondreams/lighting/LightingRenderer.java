@@ -13,6 +13,10 @@ import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
+import tv.memoryleakdeath.ascalondreams.render.RenderChain;
+import tv.memoryleakdeath.ascalondreams.render.Renderer;
+import tv.memoryleakdeath.ascalondreams.render.SceneRenderer;
 import tv.memoryleakdeath.ascalondreams.shadow.CascadeData;
 import tv.memoryleakdeath.ascalondreams.shadow.CascadeShadows;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorAllocator;
@@ -34,6 +38,7 @@ import tv.memoryleakdeath.ascalondreams.render.VulkanSwapChain;
 import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderCompiler;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderModule;
+import tv.memoryleakdeath.ascalondreams.shadow.ShadowRenderer;
 import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.util.StructureUtils;
 import tv.memoryleakdeath.ascalondreams.util.VulkanConstants;
@@ -45,7 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class LightingRenderer {
+public class LightingRenderer implements Renderer {
    private static final Logger logger = LoggerFactory.getLogger(LightingRenderer.class);
    private static final int COLOR_FORMAT = VK13.VK_FORMAT_R32G32B32A32_SFLOAT;
    private static final String DESC_ID_ATT = "LIGHT_DESC_ID_ATT";
@@ -71,8 +76,15 @@ public class LightingRenderer {
    private VkRenderingAttachmentInfo.Buffer attachmentColorInfo;
    private VkRenderingInfo renderingInfo;
 
-   public LightingRenderer(LogicalDevice device, DescriptorAllocator allocator, MemoryAllocationUtil allocationUtil,
-                           VulkanSwapChain swapChain, PipelineCache pipelineCache, List<Attachment> attachments) {
+   // singletons
+   private LogicalDevice device = DeviceManager.getDevice();
+   private DescriptorAllocator allocator = DescriptorAllocator.getInstance();
+   private MemoryAllocationUtil allocationUtil = MemoryAllocationUtil.getInstance();
+   private VulkanSwapChain swapChain = VulkanSwapChain.getInstance();
+   private PipelineCache pipelineCache = PipelineCache.getInstance();
+   private VulkanScene scene = VulkanScene.getInstance();
+
+   private LightingRenderer(List<Attachment> attachments) {
       this.clearColor = VkClearValue.calloc().color(c -> c.float32(0, 0f)
               .float32(1, 0f).float32(2, 0f).float32(3, 0f));
       this.attachmentColor = initColorAttachment(device, allocationUtil, swapChain);
@@ -176,7 +188,8 @@ public class LightingRenderer {
       return Arrays.stream(buffers).toList();
    }
 
-   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+   @Override
+   public void cleanup() {
       storageLayout.cleanup(device);
       lightingBuffers.forEach(b -> b.cleanup(device, allocationUtil));
       sceneLayout.cleanup(device);
@@ -192,8 +205,19 @@ public class LightingRenderer {
       clearColor.free();
    }
 
-   public void render(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator,
-                      VulkanScene scene, CommandBuffer commandBuffer, MaterialAttachments materialAttachments,
+   @Override
+   public void load() {
+   }
+
+   @Override
+   public void render(CommandBuffer commandBuffer, int currentFrame, int imageIndex) {
+      SceneRenderer sceneRenderer = RenderChain.getRendererInstance(SceneRenderer.class);
+      ShadowRenderer shadowRenderer = RenderChain.getRendererInstance(ShadowRenderer.class);
+      render(commandBuffer, sceneRenderer.getMaterialAttachments(), shadowRenderer.getColorAttachment(),
+              shadowRenderer.getCascadeShadows(currentFrame), currentFrame);
+   }
+
+   private void render(CommandBuffer commandBuffer, MaterialAttachments materialAttachments,
                       Attachment shadowAttachment, CascadeShadows cascadeShadows, int currentFrame) {
       try (var stack = MemoryStack.stackPush()) {
          VkCommandBuffer commandHandle = commandBuffer.getCommandBuffer();
@@ -242,8 +266,16 @@ public class LightingRenderer {
       }
    }
 
-   public void resize(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain,
-                      DescriptorAllocator allocator, List<Attachment> attachments) {
+   @Override
+   public void resize() {
+      SceneRenderer sceneRenderer = RenderChain.getRendererInstance(SceneRenderer.class);
+      ShadowRenderer shadowRenderer = RenderChain.getRendererInstance(ShadowRenderer.class);
+      List<Attachment> attachments = new ArrayList<>(sceneRenderer.getMaterialAttachments().getColorAttachments());
+      attachments.add(shadowRenderer.getColorAttachment());
+      resize(attachments);
+   }
+
+   private void resize(List<Attachment> attachments) {
       renderingInfo.free();
       attachmentColorInfo.free();
       attachmentColor.cleanup(device, allocationUtil);
@@ -311,5 +343,13 @@ public class LightingRenderer {
 
    public Attachment getAttachmentColor() {
       return attachmentColor;
+   }
+
+   public static LightingRenderer getInstance() {
+      SceneRenderer sceneRenderer = RenderChain.getRendererInstance(SceneRenderer.class);
+      ShadowRenderer shadowRenderer = RenderChain.getRendererInstance(ShadowRenderer.class);
+      List<Attachment> shadowAttachments = new ArrayList<>(sceneRenderer.getMaterialAttachments().getColorAttachments());
+      shadowAttachments.add(shadowRenderer.getColorAttachment());
+      return new LightingRenderer(shadowAttachments);
    }
 }

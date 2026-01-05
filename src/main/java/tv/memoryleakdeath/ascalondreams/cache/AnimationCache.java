@@ -1,14 +1,15 @@
-package tv.memoryleakdeath.ascalondreams.animations;
+package tv.memoryleakdeath.ascalondreams.cache;
 
 import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.cache.ModelCache;
 import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.scene.Entity;
+import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
 
 import java.util.HashMap;
@@ -38,7 +39,12 @@ public class AnimationCache {
       return entityAnimationBuffers.get(entityId).get(meshId);
    }
 
-   public void loadAnimations(LogicalDevice device, MemoryAllocationUtil allocationUtil, Map<String, List<Entity>> entities, ModelCache modelCache) {
+   public void loadAnimations() {
+      LogicalDevice device = DeviceManager.getDevice();
+      MemoryAllocationUtil allocationUtil = MemoryAllocationUtil.getInstance();
+      VulkanScene scene = VulkanScene.getInstance();
+      Map<String, List<Entity>> entities = scene.getEntities();
+      ModelCache modelCache = ModelCache.getInstance();
       entities.forEach((k,v) -> {
          v.forEach(e -> {
             VulkanModel model = modelCache.getModel(e.getModelId());

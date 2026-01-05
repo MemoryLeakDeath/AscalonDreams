@@ -41,7 +41,7 @@ import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.List;
 
-public class SceneRenderer implements Renderer<SceneRenderer> {
+public class SceneRenderer implements Renderer {
    private static final Logger logger = LoggerFactory.getLogger(SceneRenderer.class);
    private VkClearValue clearValueColor;
    private VkClearValue clearValueDepth;
@@ -68,13 +68,18 @@ public class SceneRenderer implements Renderer<SceneRenderer> {
    private static final String DESC_ID_TEXTURE = "SCN_DESC_ID_TEX";
    private static final String DESC_ID_VIEW = "SCN_DESC_ID_VIEW";
 
+   // singletons
+   private VulkanSwapChain swapChain = VulkanSwapChain.getInstance();
+   private PipelineCache cache = PipelineCache.getInstance();
+   private LogicalDevice device = DeviceManager.getDevice();
+   private DescriptorAllocator allocator = DescriptorAllocator.getInstance();
+   private VulkanScene scene = VulkanScene.getInstance();
+   private MemoryAllocationUtil allocationUtil = MemoryAllocationUtil.getInstance();
+   private GlobalBuffers globalBuffers = GlobalBuffers.getInstance();
+   private MaterialCache materialCache = MaterialCache.getInstance();
+   private TextureCache textureCache = TextureCache.getInstance();
+
    private SceneRenderer() {
-      VulkanSwapChain swapChain = VulkanSwapChain.getInstance();
-      PipelineCache cache = PipelineCache.getInstance();
-      LogicalDevice device = DeviceManager.getDevice();
-      DescriptorAllocator allocator = DescriptorAllocator.getInstance();
-      VulkanScene scene = VulkanScene.getInstance();
-      MemoryAllocationUtil allocationUtil = MemoryAllocationUtil.getInstance();
       this.clearValueColor = VkClearValue.calloc().color(
               c -> c.float32(0, 0f)
                       .float32(1, 0.0f)
@@ -171,7 +176,8 @@ public class SceneRenderer implements Renderer<SceneRenderer> {
               new ShaderModule(device, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV, null));
    }
 
-   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+   @Override
+   public void cleanup() {
       pipeline.cleanup(device);
       viewMatrixBuffers.forEach(b -> b.cleanup(device, allocationUtil));
       fragmentStorageLayout.cleanup(device);
@@ -188,8 +194,17 @@ public class SceneRenderer implements Renderer<SceneRenderer> {
       clearValueColor.free();
    }
 
-   public void render(CommandBuffer commandBuffer, VulkanScene scene, DescriptorAllocator allocator,
-                      int currentFrame, LogicalDevice device, MemoryAllocationUtil allocationUtil, GlobalBuffers globalBuffers) {
+   @Override
+   public void load() {
+      loadMaterials();
+   }
+
+   @Override
+   public void render(CommandBuffer commandBuffer, int currentFrame, int imageIndex) {
+      render(commandBuffer, currentFrame);
+   }
+
+   private void render(CommandBuffer commandBuffer, int currentFrame) {
       try(var stack = MemoryStack.stackPush()) {
          var commandHandle = commandBuffer.getCommandBuffer();
          for(Attachment attachment : materialAttachments.getColorAttachments()) {
@@ -222,7 +237,8 @@ public class SceneRenderer implements Renderer<SceneRenderer> {
       }
    }
 
-   public void resize(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain, VulkanScene scene) {
+   @Override
+   public void resize() {
       renderingInfo.free();
       attachmentInfoDepth.free();
       materialAttachments.cleanup(device, allocationUtil);
@@ -236,7 +252,7 @@ public class SceneRenderer implements Renderer<SceneRenderer> {
       VulkanUtils.copyMatrixToBuffer(device, allocationUtil, projectionMatrixBuffer, scene.getProjection().getProjectionMatrix(), 0);
    }
 
-   public void loadMaterials(LogicalDevice device, DescriptorAllocator allocator, MaterialCache materialCache, TextureCache textureCache) {
+   private void loadMaterials() {
       var descriptorSet = allocator.addDescriptorSet(device, DESC_ID_MATERIALS, fragmentStorageLayout);
       var layoutInfo = fragmentStorageLayout.getLayoutInfo();
       var buf = materialCache.getMaterialsBuffer();
@@ -260,8 +276,7 @@ public class SceneRenderer implements Renderer<SceneRenderer> {
       VK13.vkCmdPushConstants(commandHandle, pipeline.getLayoutId(), VK13.VK_SHADER_STAGE_VERTEX_BIT, 0, pushConstantsBuffer);
    }
 
-   @Override
-   public SceneRenderer getInstance() {
+   public static SceneRenderer getInstance() {
       return new SceneRenderer();
    }
 }

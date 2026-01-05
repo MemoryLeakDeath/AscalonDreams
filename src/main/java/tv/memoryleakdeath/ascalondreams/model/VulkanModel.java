@@ -10,7 +10,7 @@ import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
+import tv.memoryleakdeath.ascalondreams.cache.AnimationCache;
 import tv.memoryleakdeath.ascalondreams.cache.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.model.conversion.AnimationMeshData;

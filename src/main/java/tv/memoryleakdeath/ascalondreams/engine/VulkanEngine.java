@@ -78,7 +78,7 @@ public class VulkanEngine {
         window = new VulkanWindow(600, 600);
         this.scene = VulkanScene.createInstance(window);
         this.guiTexture = new GuiTexture("textures/vulkan.png");
-        renderer = new VulkanRenderer(window, scene);
+        renderer = new VulkanRenderer(window);
         renderer.initModels(
                 List.of(loadModel(SPONZA_MODEL_FILE, "SponzaEntity", new Vector3f(0f, 0f, 0f)),
                         loadModel(BOB_MODEL_FILE, "BobEntity", new Vector3f(0f, 0f, 0f), 0.04f)),

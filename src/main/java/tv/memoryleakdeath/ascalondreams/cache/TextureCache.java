@@ -6,7 +6,9 @@ import org.slf4j.LoggerFactory;
 import tv.memoryleakdeath.ascalondreams.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.CommandPool;
+import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.pojo.ImageSource;
 import tv.memoryleakdeath.ascalondreams.util.GraphicsUtils;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public class TextureCache {
@@ -35,7 +38,8 @@ public class TextureCache {
       return textureCache;
    }
 
-   public VulkanTexture addTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int format) {
+   private VulkanTexture addTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int format,
+                                   GuiTexture guiTexture) {
       if(textureMap.size() > MAX_TEXTURES) {
          var e = new RuntimeException("Texture cache is full!");
          logger.error("Max texture limit reached! Limit: %d".formatted(MAX_TEXTURES), e);
@@ -44,8 +48,24 @@ public class TextureCache {
       if(textureMap.containsKey(id)) {
          return textureMap.get(id);
       }
-      var texture = new VulkanTexture(device, allocationUtil, id, source, format);
+      var texture = new VulkanTexture(device, allocationUtil, id, source, format, guiTexture);
       textureMap.put(id, texture);
+      return texture;
+   }
+
+   public VulkanTexture addGuiTexture(GuiTexture guiTexture, int format) {
+      ImageSource source = null;
+      VulkanTexture texture = null;
+      try {
+         source = GraphicsUtils.loadImage(guiTexture.texturePath());
+         texture = addTexture(DeviceManager.getDevice(), MemoryAllocationUtil.getInstance(), guiTexture.texturePath(), source, format, guiTexture);
+      } catch (IOException e) {
+         logger.error("Could not load GUI texture file: %s".formatted(guiTexture.texturePath()), e);
+      } finally {
+         if(source != null) {
+            GraphicsUtils.cleanImageData(source);
+         }
+      }
       return texture;
    }
 
@@ -54,7 +74,7 @@ public class TextureCache {
       VulkanTexture texture = null;
       try {
          source = GraphicsUtils.loadImage(texturePath);
-         texture = addTexture(device, allocationUtil, id, source, format);
+         texture = addTexture(device, allocationUtil, id, source, format, null);
       } catch (IOException e) {
          logger.error("Could not load texture file: %s".formatted(texturePath), e);
       } finally {
@@ -76,6 +96,10 @@ public class TextureCache {
 
    public int getPosition(String id) {
       return List.copyOf(textureMap.keySet()).indexOf(id);
+   }
+
+   public List<GuiTexture> getGuiTextures() {
+      return textureMap.values().stream().map(VulkanTexture::getGuiTexture).filter(Objects::nonNull).toList();
    }
 
    public VulkanTexture getTexture(String texturePath) {

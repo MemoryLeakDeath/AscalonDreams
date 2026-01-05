@@ -18,13 +18,17 @@ import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayoutInfo;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
+import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.pojo.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.postprocess.EmptyVertexBufferStructure;
+import tv.memoryleakdeath.ascalondreams.postprocess.PostProcessingRenderer;
 import tv.memoryleakdeath.ascalondreams.render.Attachment;
 import tv.memoryleakdeath.ascalondreams.render.Pipeline;
 import tv.memoryleakdeath.ascalondreams.cache.PipelineCache;
+import tv.memoryleakdeath.ascalondreams.render.RenderChain;
+import tv.memoryleakdeath.ascalondreams.render.Renderer;
 import tv.memoryleakdeath.ascalondreams.render.VulkanSurface;
 import tv.memoryleakdeath.ascalondreams.render.VulkanSwapChain;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderCompiler;
@@ -35,7 +39,7 @@ import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SwapChainRender {
+public class SwapChainRender implements Renderer {
    private static final Logger logger = LoggerFactory.getLogger(SwapChainRender.class);
    private static final String DESC_ID_ATT = "FWD_DESC_ID_ATT";
    private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/swapchain_fragment_shader.glsl";
@@ -50,8 +54,14 @@ public class SwapChainRender {
    private List<VkRenderingAttachmentInfo.Buffer> colorAttachmentInfos;
    private List<VkRenderingInfo> renderingInfos;
 
-   public SwapChainRender(LogicalDevice device, DescriptorAllocator allocator, VulkanSwapChain swapChain,
-                          VulkanSurface surface, PipelineCache pipelineCache, Attachment sourceAttachment) {
+   // singletons
+   private LogicalDevice device = DeviceManager.getDevice();
+   private VulkanSwapChain swapChain = VulkanSwapChain.getInstance();
+   private DescriptorAllocator allocator = DescriptorAllocator.getInstance();
+   private VulkanSurface surface = VulkanSurface.getInstance();
+   private PipelineCache pipelineCache = PipelineCache.getInstance();
+
+   private SwapChainRender(Attachment sourceAttachment) {
       this.clearValue = VkClearValue.calloc()
               .color(c -> c.float32(0, 0f).float32(1, 0f).float32(2, 0f).float32(3, 0f));
       this.colorAttachmentInfos = initColorAttachmentInfos(swapChain, clearValue);
@@ -128,7 +138,8 @@ public class SwapChainRender {
               new ShaderModule(device, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV, null));
    }
 
-   public void cleanup(LogicalDevice device) {
+   @Override
+   public void cleanup() {
       textureSampler.cleanup(device);
       attributeLayout.cleanup(device);
       pipeline.cleanup(device);
@@ -137,7 +148,17 @@ public class SwapChainRender {
       clearValue.free();
    }
 
-   public void render(VulkanSwapChain swapChain, DescriptorAllocator allocator, CommandBuffer cmdBuffer, Attachment sourceAttachment, int imageIndex) {
+   @Override
+   public void load() {
+   }
+
+   @Override
+   public void render(CommandBuffer commandBuffer, int currentFrame, int imageIndex) {
+      PostProcessingRenderer postProcessingRenderer = RenderChain.getRendererInstance(PostProcessingRenderer.class);
+      render(commandBuffer, postProcessingRenderer.getColorAttachment(), imageIndex);
+   }
+
+   private void render(CommandBuffer cmdBuffer, Attachment sourceAttachment, int imageIndex) {
       try(var stack = MemoryStack.stackPush()) {
          long swapChainImage = swapChain.getImageView(imageIndex).getImageId();
          VkCommandBuffer cmdHandle = cmdBuffer.getCommandBuffer();
@@ -175,13 +196,24 @@ public class SwapChainRender {
       }
    }
 
-   public void resize(LogicalDevice device, VulkanSwapChain chain, DescriptorAllocator allocator, Attachment sourceAttachment) {
+   @Override
+   public void resize() {
+      PostProcessingRenderer postProcessingRenderer = RenderChain.getRendererInstance(PostProcessingRenderer.class);
+      resize(postProcessingRenderer.getColorAttachment());
+   }
+
+   private void resize(Attachment sourceAttachment) {
       renderingInfos.forEach(VkRenderingInfo::free);
       colorAttachmentInfos.forEach(VkRenderingAttachmentInfo.Buffer::free);
-      colorAttachmentInfos = initColorAttachmentInfos(chain, clearValue);
-      renderingInfos = initRenderingInfos(chain, colorAttachmentInfos);
+      colorAttachmentInfos = initColorAttachmentInfos(swapChain, clearValue);
+      renderingInfos = initRenderingInfos(swapChain, colorAttachmentInfos);
 
       DescriptorSet descriptorSet = allocator.getDescriptorSet(DESC_ID_ATT);
       descriptorSet.setImage(device, sourceAttachment.getImageView(), textureSampler, 0);
+   }
+
+   public static SwapChainRender getInstance() {
+      PostProcessingRenderer postProcessingRenderer = RenderChain.getRendererInstance(PostProcessingRenderer.class);
+      return new SwapChainRender(postProcessingRenderer.getColorAttachment());
    }
 }

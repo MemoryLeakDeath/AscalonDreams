@@ -8,11 +8,13 @@ import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkCommandBufferSubmitInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.cache.AnimationCache;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayoutInfo;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.CommandPool;
 import tv.memoryleakdeath.ascalondreams.device.ComputeQueue;
+import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.Fence;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.cache.ModelCache;
@@ -21,6 +23,7 @@ import tv.memoryleakdeath.ascalondreams.model.VulkanMesh;
 import tv.memoryleakdeath.ascalondreams.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.render.ComputePipeline;
 import tv.memoryleakdeath.ascalondreams.cache.PipelineCache;
+import tv.memoryleakdeath.ascalondreams.render.Renderer;
 import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderCompiler;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderModule;
@@ -32,7 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class AnimationRenderer {
+public class AnimationRenderer implements Renderer {
    private static final Logger logger = LoggerFactory.getLogger(AnimationRenderer.class);
    private static final String COMPUTE_SHADER_FILE_GLSL = "shaders/animation_compute_shader.glsl";
    private static final String COMPUTE_SHADER_FILE_SPV = COMPUTE_SHADER_FILE_GLSL + ".spv";
@@ -48,7 +51,14 @@ public class AnimationRenderer {
    private final ByteBuffer pushConstantsBuffer;
    private final DescriptorSetLayout stagingLayout;
 
-   public AnimationRenderer(LogicalDevice device, PipelineCache pipelineCache) {
+   // singletons
+   private LogicalDevice device = DeviceManager.getDevice();
+   private PipelineCache pipelineCache = PipelineCache.getInstance();
+   private AnimationCache animationCache = AnimationCache.getInstance();
+   private ModelCache modelCache = ModelCache.getInstance();
+   private VulkanScene scene = VulkanScene.getInstance();
+
+   private AnimationRenderer() {
       this.fence = new Fence(device, true);
       this.computeQueue = new ComputeQueue(device, 0);
       this.cmdPool = new CommandPool(device, computeQueue.getQueueFamilyIndex(), false);
@@ -68,7 +78,8 @@ public class AnimationRenderer {
       return new ShaderModule(device, VK13.VK_SHADER_STAGE_COMPUTE_BIT, COMPUTE_SHADER_FILE_SPV, null);
    }
 
-   public void cleanup(LogicalDevice device) {
+   @Override
+   public void cleanup() {
       MemoryUtil.memFree(pushConstantsBuffer);
       pipeline.cleanup(device);
       stagingLayout.cleanup(device);
@@ -77,7 +88,22 @@ public class AnimationRenderer {
       cmdPool.cleanup(device);
    }
 
-   public void loadModels(ModelCache modelCache) {
+   @Override
+   public void load() {
+      animationCache.loadAnimations();
+      loadModels();
+   }
+
+   @Override
+   public void render(CommandBuffer commandBuffer, int currentFrame, int imageIndex) {
+      render();
+   }
+
+   @Override
+   public void resize() {
+   }
+
+   private void loadModels() {
       var animatedModels = modelCache.getModelMap().values().stream().filter(VulkanModel::hasAnimations).toList();
       animatedModels.forEach(model ->{
          for(VulkanMesh mesh : model.getMeshList()) {
@@ -97,8 +123,7 @@ public class AnimationRenderer {
       cmdBuffer.endRecording();
    }
 
-   public void render(LogicalDevice device, VulkanScene scene, ModelCache modelCache) {
-      AnimationCache animationCache = AnimationCache.getInstance();
+   private void render() {
       fence.fenceWait(device);
       fence.reset(device);
 
@@ -152,5 +177,9 @@ public class AnimationRenderer {
       offset += VulkanConstants.PTR_SIZE;
       pushConstantsBuffer.putLong(offset, sourceBufferFloatSize);
       VK13.vkCmdPushConstants(cmdHandle, pipeline.getLayoutId(), VK13.VK_SHADER_STAGE_COMPUTE_BIT, 0, pushConstantsBuffer);
+   }
+
+   public static AnimationRenderer getInstance() {
+      return new AnimationRenderer();
    }
 }

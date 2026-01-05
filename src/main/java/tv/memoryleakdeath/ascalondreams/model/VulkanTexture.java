@@ -12,6 +12,7 @@ import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkOffset3D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.util.MathUtils;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
@@ -33,11 +34,14 @@ public class VulkanTexture {
    private boolean recordedTransition = false;
    private VulkanBuffer stagingBuffer;
    private boolean transparent = false;
+   private GuiTexture guiTexture;
 
-   public VulkanTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int imageFormat) {
+   public VulkanTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int imageFormat,
+                        GuiTexture guiTexture) {
       this.id = id;
       this.width = source.width();
       this.height = source.height();
+      this.guiTexture = guiTexture;
 
       calculateTransparency(source.data());
       logger.trace("Texture id: {} - transparent: {}", id, transparent);
@@ -248,5 +252,9 @@ public class VulkanTexture {
 
    public void setTransparent(boolean transparent) {
       this.transparent = transparent;
+   }
+
+   public GuiTexture getGuiTexture() {
+      return guiTexture;
    }
 }

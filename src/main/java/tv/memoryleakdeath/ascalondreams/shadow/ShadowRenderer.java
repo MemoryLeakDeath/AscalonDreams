@@ -12,17 +12,17 @@ import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
 import tv.memoryleakdeath.ascalondreams.buffers.GlobalBuffers;
+import tv.memoryleakdeath.ascalondreams.cache.MaterialCache;
+import tv.memoryleakdeath.ascalondreams.cache.PipelineCache;
+import tv.memoryleakdeath.ascalondreams.cache.TextureCache;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayout;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayoutInfo;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
+import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.cache.MaterialCache;
-import tv.memoryleakdeath.ascalondreams.cache.ModelCache;
-import tv.memoryleakdeath.ascalondreams.cache.TextureCache;
 import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTextureSampler;
@@ -31,7 +31,7 @@ import tv.memoryleakdeath.ascalondreams.pojo.PushConstantRange;
 import tv.memoryleakdeath.ascalondreams.postprocess.EmptyVertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.render.Attachment;
 import tv.memoryleakdeath.ascalondreams.render.Pipeline;
-import tv.memoryleakdeath.ascalondreams.cache.PipelineCache;
+import tv.memoryleakdeath.ascalondreams.render.Renderer;
 import tv.memoryleakdeath.ascalondreams.render.VulkanImageView;
 import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderCompiler;
@@ -46,7 +46,7 @@ import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ShadowRenderer {
+public class ShadowRenderer implements Renderer {
    private static final Logger logger = LoggerFactory.getLogger(ShadowRenderer.class);
    public static final int DEPTH_FORMAT = VK13.VK_FORMAT_D32_SFLOAT;
    private static final int ATTACHMENT_FORMAT = VK13.VK_FORMAT_R32G32_SFLOAT;
@@ -77,7 +77,17 @@ public class ShadowRenderer {
    private final VulkanTextureSampler textureSampler;
    private final DescriptorSetLayout geometryUniformLayout;
 
-   public ShadowRenderer(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator, PipelineCache pipelineCache) {
+   // singletons
+   private LogicalDevice device = DeviceManager.getDevice();
+   private MemoryAllocationUtil allocationUtil = MemoryAllocationUtil.getInstance();
+   private DescriptorAllocator allocator = DescriptorAllocator.getInstance();
+   private PipelineCache pipelineCache = PipelineCache.getInstance();
+   private MaterialCache materialCache = MaterialCache.getInstance();
+   private TextureCache textureCache = TextureCache.getInstance();
+   private VulkanScene scene = VulkanScene.getInstance();
+   private GlobalBuffers globalBuffers = GlobalBuffers.getInstance();
+
+   private ShadowRenderer() {
       this.clearDepth = VkClearValue.calloc().color(c -> c.float32(0, 1f));
       this.clearColor = VkClearValue.calloc().color(c -> c.float32(0, 1f).float32(1, 1f));
       depthAttachment = initDepthAttachment(device, allocationUtil);
@@ -179,7 +189,8 @@ public class ShadowRenderer {
               new ShaderModule(device, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, FRAGMENT_SHADER_FILE_SPV, null));
    }
 
-   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+   @Override
+   public void cleanup() {
       pipeline.cleanup(device);
       geometryUniformLayout.cleanup(device);
       fragmentStorageLayout.cleanup(device);
@@ -196,6 +207,11 @@ public class ShadowRenderer {
       clearDepth.free();
    }
 
+   @Override
+   public void load() {
+      loadMaterials();
+   }
+
    public CascadeShadows getCascadeShadows(int currentFrame) {
       return cascadeShadows.get(currentFrame);
    }
@@ -204,7 +220,7 @@ public class ShadowRenderer {
       return colorAttachment;
    }
 
-   public void loadMaterials(LogicalDevice device, DescriptorAllocator allocator, MaterialCache materialCache, TextureCache textureCache) {
+   private void loadMaterials() {
       DescriptorSet set = allocator.addDescriptorSet(device, DESC_ID_MAT, fragmentStorageLayout);
       var layoutInfo = fragmentStorageLayout.getLayoutInfo();
       var buffer = materialCache.getMaterialsBuffer();
@@ -215,10 +231,17 @@ public class ShadowRenderer {
       textureSet.setImagesArray(device, imageViews, textureSampler, 0);
    }
 
-   public void render(LogicalDevice device, MemoryAllocationUtil allocationUtil, DescriptorAllocator allocator,
-                      VulkanScene scene, CommandBuffer cmdBuffer,
-                      ModelCache modelCache, MaterialCache materialCache, int currentFrame, GlobalBuffers globalBuffers) {
-      AnimationCache animationCache = AnimationCache.getInstance();
+   @Override
+   public void render(CommandBuffer commandBuffer, int currentFrame, int imageIndex) {
+      render(commandBuffer, currentFrame);
+   }
+
+   @Override
+   public void resize() {
+
+   }
+
+   private void render(CommandBuffer cmdBuffer, int currentFrame) {
       try(var stack = MemoryStack.stackPush()) {
          ShadowUtils.updateCascadeShadows(cascadeShadows.get(currentFrame), scene);
          VkCommandBuffer cmdHandle = cmdBuffer.getCommandBuffer();
@@ -265,5 +288,9 @@ public class ShadowRenderer {
          offset += VulkanConstants.MAT4X4_SIZE;
       }
       buf.unMap(device, allocationUtil);
+   }
+
+   public static ShadowRenderer getInstance() {
+      return new ShadowRenderer();
    }
 }

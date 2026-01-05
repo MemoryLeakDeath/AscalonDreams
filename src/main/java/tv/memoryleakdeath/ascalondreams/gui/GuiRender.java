@@ -13,6 +13,8 @@ import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.cache.PipelineCache;
+import tv.memoryleakdeath.ascalondreams.cache.TextureCache;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorAllocator;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSet;
 import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayout;
@@ -20,8 +22,9 @@ import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayoutInfo;
 import tv.memoryleakdeath.ascalondreams.device.BaseDeviceQueue;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.CommandPool;
+import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.cache.TextureCache;
+import tv.memoryleakdeath.ascalondreams.device.VulkanGraphicsQueue;
 import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTextureSampler;
@@ -31,7 +34,8 @@ import tv.memoryleakdeath.ascalondreams.pojo.PushConstantRange;
 import tv.memoryleakdeath.ascalondreams.postprocess.PostProcessingRenderer;
 import tv.memoryleakdeath.ascalondreams.render.Attachment;
 import tv.memoryleakdeath.ascalondreams.render.Pipeline;
-import tv.memoryleakdeath.ascalondreams.cache.PipelineCache;
+import tv.memoryleakdeath.ascalondreams.render.RenderChain;
+import tv.memoryleakdeath.ascalondreams.render.Renderer;
 import tv.memoryleakdeath.ascalondreams.render.VulkanImage;
 import tv.memoryleakdeath.ascalondreams.render.VulkanSwapChain;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderCompiler;
@@ -48,7 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class GuiRender {
+public class GuiRender implements Renderer {
    private static final Logger logger = LoggerFactory.getLogger(GuiRender.class);
    private static final String DESC_ID_TEXTURE = "GUI_DESC_ID_TEXT";
    private static final String GUI_FRAGMENT_SHADER_FILE_GLSL = "shaders/gui_fragment_shader.glsl";
@@ -66,7 +70,16 @@ public class GuiRender {
    private VkRenderingAttachmentInfo.Buffer colorAttachmentInfo;
    private VkRenderingInfo renderingInfo;
 
-   public GuiRender(LogicalDevice device, DescriptorAllocator allocator, PipelineCache pipelineCache, VulkanSwapChain swapChain, MemoryAllocationUtil allocationUtil, BaseDeviceQueue queue, Attachment destinationAttachment) {
+   // singletons
+   private LogicalDevice device = DeviceManager.getDevice();
+   private DescriptorAllocator allocator = DescriptorAllocator.getInstance();
+   private PipelineCache pipelineCache = PipelineCache.getInstance();
+   private VulkanSwapChain swapChain = VulkanSwapChain.getInstance();
+   private MemoryAllocationUtil allocationUtil = MemoryAllocationUtil.getInstance();
+   private BaseDeviceQueue queue = VulkanGraphicsQueue.getInstance();
+   private TextureCache cache = TextureCache.getInstance();
+
+   private GuiRender(Attachment destinationAttachment) {
       this.indexBuffers = new ArrayList<>();
       this.vertexBuffers = new ArrayList<>();
 
@@ -146,7 +159,7 @@ public class GuiRender {
       var textureHeight = new ImInt();
       ByteBuffer fontBuf = io.getFonts().getTexDataAsRGBA32(textureWidth, textureHeight);
       var imageSource = new ImageSource(fontBuf, textureWidth.get(), textureHeight.get(), 4);
-      var fontsTexture = new VulkanTexture(device, allocationUtil, "GUI_TEXTURE", imageSource, VK13.VK_FORMAT_R8G8B8A8_SRGB);
+      var fontsTexture = new VulkanTexture(device, allocationUtil, "GUI_TEXTURE", imageSource, VK13.VK_FORMAT_R8G8B8A8_SRGB, null);
 
       var commandPool = new CommandPool(device, queue.getQueueFamilyIndex(), false);
       var cmd = new CommandBuffer(device, commandPool, true, true);
@@ -160,7 +173,8 @@ public class GuiRender {
       return fontsTexture;
    }
 
-   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+   @Override
+   public void cleanup() {
       fontTextureSampler.cleanup(device);
       fontTexture.cleanup(device, allocationUtil);
       textureDescriptorSetLayout.cleanup(device);
@@ -171,7 +185,13 @@ public class GuiRender {
       colorAttachmentInfo.free();
    }
 
-   public void loadTextures(LogicalDevice device, DescriptorAllocator allocator, List<GuiTexture> guiTextures, TextureCache cache) {
+   @Override
+   public void load() {
+      loadTextures();
+   }
+
+   private void loadTextures() {
+      List<GuiTexture> guiTextures = cache.getGuiTextures();
       if(guiTextures == null) {
          return;
       }
@@ -183,7 +203,16 @@ public class GuiRender {
       }
    }
 
-   public void render(LogicalDevice device, DescriptorAllocator allocator, MemoryAllocationUtil allocationUtil, CommandBuffer commandBuffer, int currentFrame, Attachment destinationAttachment) {
+   @Override
+   public void render(CommandBuffer commandBuffer, int currentFrame, int imageIndex) {
+      PostProcessingRenderer postProcessingRenderer = RenderChain.getRendererInstance(PostProcessingRenderer.class);
+      render(commandBuffer, currentFrame, postProcessingRenderer.getColorAttachment());
+   }
+
+   private void render(CommandBuffer commandBuffer, int currentFrame, Attachment destinationAttachment) {
+      LogicalDevice device = DeviceManager.getDevice();
+      DescriptorAllocator allocator = DescriptorAllocator.getInstance();
+      MemoryAllocationUtil allocationUtil = MemoryAllocationUtil.getInstance();
       try(var stack = MemoryStack.stackPush()) {
          updateBuffers(device, allocationUtil, currentFrame);
          if(vertexBuffers.get(currentFrame) == null) {
@@ -263,7 +292,13 @@ public class GuiRender {
       indexBuffer.unMap(device, allocationUtil);
    }
 
-   public void resize(LogicalDevice device, VulkanSwapChain swapChain, Attachment destinationAttachment) {
+   @Override
+   public void resize() {
+      PostProcessingRenderer postProcessingRenderer = RenderChain.getRendererInstance(PostProcessingRenderer.class);
+      resize(postProcessingRenderer.getColorAttachment());
+   }
+
+   private void resize(Attachment destinationAttachment) {
       var io = ImGui.getIO();
       io.setDisplaySize(swapChain.getSwapChainExtent().width(), swapChain.getSwapChainExtent().height());
 
@@ -271,5 +306,10 @@ public class GuiRender {
       colorAttachmentInfo.free();
       colorAttachmentInfo = initColorAttachmentInfo(destinationAttachment);
       renderingInfo = initRenderingInfo(destinationAttachment, colorAttachmentInfo);
+   }
+
+   public static GuiRender getInstance() {
+      PostProcessingRenderer postProcessingRenderer = RenderChain.getRendererInstance(PostProcessingRenderer.class);
+      return new GuiRender(postProcessingRenderer.getColorAttachment());
    }
 }
