@@ -1,9 +1,9 @@
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ConvertedModel;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ModelConverter;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.conversion.ModelLoader;
+import tv.memoryleakdeath.ascalondreams.model.conversion.ConvertedModel;
+import tv.memoryleakdeath.ascalondreams.model.conversion.ModelConverter;
+import tv.memoryleakdeath.ascalondreams.model.conversion.ModelLoader;
 
 public class ModelLoaderTest {
 

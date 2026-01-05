@@ -7,16 +7,16 @@ import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkDrawIndirectCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.animations.AnimationCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.MaterialCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.ModelCache;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanBuffer;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.model.VulkanModel;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.Entity;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.scene.VulkanScene;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.MemoryAllocationUtil;
-import tv.memoryleakdeath.ascalondreams.vulkan.engine.utils.VulkanConstants;
+import tv.memoryleakdeath.ascalondreams.cache.AnimationCache;
+import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.cache.MaterialCache;
+import tv.memoryleakdeath.ascalondreams.cache.ModelCache;
+import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
+import tv.memoryleakdeath.ascalondreams.model.VulkanModel;
+import tv.memoryleakdeath.ascalondreams.scene.Entity;
+import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
+import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
+import tv.memoryleakdeath.ascalondreams.util.VulkanConstants;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -33,6 +33,16 @@ public class GlobalBuffers {
    private final VulkanBuffer[] instanceDataBuffer = new VulkanBuffer[VulkanConstants.MAX_IN_FLIGHT];
    private final VulkanBuffer[] modelMatricesBuffer = new VulkanBuffer[VulkanConstants.MAX_IN_FLIGHT];
    private final int[] drawCounts = new int[VulkanConstants.MAX_IN_FLIGHT];
+   private static GlobalBuffers globalBuffers;
+
+   private GlobalBuffers() {}
+
+   public static GlobalBuffers getInstance() {
+      if(globalBuffers == null) {
+         globalBuffers = new GlobalBuffers();
+      }
+      return globalBuffers;
+   }
 
    public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
       Arrays.asList(indirectDrawCommandsBuffer).forEach(b -> b.cleanup(device, allocationUtil));

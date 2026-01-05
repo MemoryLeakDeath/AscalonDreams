@@ -1,0 +1,94 @@
+package tv.memoryleakdeath.ascalondreams.cache;
+
+import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.util.vma.Vma;
+import org.lwjgl.vulkan.VK13;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tv.memoryleakdeath.ascalondreams.device.BaseDeviceQueue;
+import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
+import tv.memoryleakdeath.ascalondreams.device.CommandPool;
+import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
+import tv.memoryleakdeath.ascalondreams.model.TransferBuffer;
+import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
+import tv.memoryleakdeath.ascalondreams.model.VulkanMaterial;
+import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
+import tv.memoryleakdeath.ascalondreams.util.VulkanConstants;
+
+import java.nio.ByteBuffer;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+public class MaterialCache {
+   private static final Logger logger = LoggerFactory.getLogger(MaterialCache.class);
+   private static final int MATERIAL_SIZE = VulkanConstants.VEC4_SIZE * 3;
+
+   private final Map<String, VulkanMaterial> materialMap = new LinkedHashMap<>();
+   private VulkanBuffer materialsBuffer;
+   private static MaterialCache materialCache;
+
+   private MaterialCache() {
+   }
+
+   public static MaterialCache getInstance() {
+      if(materialCache == null) {
+         materialCache = new MaterialCache();
+      }
+      return materialCache;
+   }
+
+   public void cleanup(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+      if(materialsBuffer != null) {
+         materialsBuffer.cleanup(device, allocationUtil);
+      }
+   }
+
+   public VulkanMaterial getMaterial(String id) {
+      return materialMap.get(id);
+   }
+
+   public boolean materialExists(String id) {
+      return materialMap.containsKey(id);
+   }
+
+   public VulkanBuffer getMaterialsBuffer() {
+      return materialsBuffer;
+   }
+
+   public int getPosition(String id) {
+      if(!materialMap.containsKey(id)) {
+         logger.error("Could not find material with id: {}", id);
+         return -1;
+      }
+      return List.copyOf(materialMap.keySet()).indexOf(id);
+   }
+
+   public void loadMaterials(LogicalDevice device, MemoryAllocationUtil allocationUtil, List<VulkanMaterial> materials, TextureCache textureCache, CommandPool pool, BaseDeviceQueue queue) {
+      int bufferSize = MATERIAL_SIZE * materials.size();
+      var sourceBuffer = new VulkanBuffer(device, allocationUtil, bufferSize, VK13.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+              Vma.VMA_MEMORY_USAGE_AUTO, Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+              VK13.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+      materialsBuffer = new VulkanBuffer(device, allocationUtil, bufferSize,
+              VK13.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK13.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+              Vma.VMA_MEMORY_USAGE_AUTO, 0, 0);
+      var transferBuffer = new TransferBuffer(sourceBuffer, materialsBuffer);
+      ByteBuffer materialDataBuffer = MemoryUtil.memByteBuffer(sourceBuffer.map(device, allocationUtil), (int)sourceBuffer.getRequestedSize());
+
+      int offset = 0;
+      for(VulkanMaterial material : materials) {
+         materialMap.put(material.getId(), material);
+         offset = material.load(device, allocationUtil, materialDataBuffer, offset, textureCache);
+         logger.trace("Loading material: {} - Material data buffer position: {} - offset: {}", material.getId(), materialDataBuffer.position(), offset);
+      }
+      sourceBuffer.unMap(device, allocationUtil);
+
+      var cmd = new CommandBuffer(device, pool, true, true);
+      cmd.beginRecording();
+      transferBuffer.recordTransferCommand(cmd);
+      cmd.endRecording();
+      cmd.submitAndWait(device, queue);
+      cmd.cleanup(device, pool);
+      transferBuffer.sourceBuffer().cleanup(device, allocationUtil);
+   }
+}
