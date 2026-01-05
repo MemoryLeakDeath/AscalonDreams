@@ -3,8 +3,7 @@ package tv.memoryleakdeath.ascalondreams.scene;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.camera.Camera;
-import tv.memoryleakdeath.ascalondreams.lighting.Light;
+import tv.memoryleakdeath.ascalondreams.render.lighting.Light;
 import tv.memoryleakdeath.ascalondreams.engine.VulkanWindow;
 
 import java.util.ArrayList;

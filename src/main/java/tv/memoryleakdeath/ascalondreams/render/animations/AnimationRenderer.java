@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.animations;
+package tv.memoryleakdeath.ascalondreams.render.animations;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;

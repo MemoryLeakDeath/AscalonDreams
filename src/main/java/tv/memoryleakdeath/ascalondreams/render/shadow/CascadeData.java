@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.shadow;
+package tv.memoryleakdeath.ascalondreams.render.shadow;
 
 import org.joml.Matrix4f;
 

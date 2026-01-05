@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.gui;
+package tv.memoryleakdeath.ascalondreams.render.gui;
 
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;

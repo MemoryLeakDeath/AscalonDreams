@@ -10,7 +10,7 @@ import org.lwjgl.openal.ALCCapabilities;
 import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.camera.Camera;
+import tv.memoryleakdeath.ascalondreams.scene.Camera;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;

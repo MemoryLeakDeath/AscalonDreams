@@ -12,7 +12,7 @@ import org.lwjgl.vulkan.VkImageSubresourceRange;
 import org.lwjgl.vulkan.VkOffset3D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
+import tv.memoryleakdeath.ascalondreams.render.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.util.MathUtils;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;

@@ -27,19 +27,20 @@ import org.lwjgl.assimp.Assimp;
 import org.lwjgl.system.MemoryStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tools.jackson.databind.ObjectMapper;
-import tv.memoryleakdeath.ascalondreams.util.ObjectMapperInstance;
+import tools.jackson.dataformat.smile.SmileMapper;
 import tv.memoryleakdeath.ascalondreams.model.AnimatedFrame;
 import tv.memoryleakdeath.ascalondreams.model.Animation;
 import tv.memoryleakdeath.ascalondreams.model.Bone;
 import tv.memoryleakdeath.ascalondreams.model.Node;
 import tv.memoryleakdeath.ascalondreams.model.VulkanMaterial;
 import tv.memoryleakdeath.ascalondreams.model.VulkanMeshData;
+import tv.memoryleakdeath.ascalondreams.util.ObjectMapperInstance;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -142,8 +143,8 @@ public class ModelConverter {
       convertedModel.setAnimations(animations);
 
       File outputFile = new File("%s/%s.json".formatted(convertedModel.getTexturePath(), modelId));
-      ObjectMapper mapper = ObjectMapperInstance.getInstance();
-      mapper.writeValue(outputFile, convertedModel);
+      SmileMapper mapper = ObjectMapperInstance.getInstance();
+      Files.write(outputFile.toPath(), mapper.writeValueAsBytes(convertedModel));
    }
 
    private static VulkanMaterial processMaterial(AIScene scene, AIMaterial material, String modelId, String textureDir, int index)

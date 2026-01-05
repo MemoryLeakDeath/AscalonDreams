@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.shadow;
+package tv.memoryleakdeath.ascalondreams.render.shadow;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -28,7 +28,7 @@ import tv.memoryleakdeath.ascalondreams.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.pojo.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.pojo.PushConstantRange;
-import tv.memoryleakdeath.ascalondreams.postprocess.EmptyVertexBufferStructure;
+import tv.memoryleakdeath.ascalondreams.render.postprocess.EmptyVertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.render.Attachment;
 import tv.memoryleakdeath.ascalondreams.render.Pipeline;
 import tv.memoryleakdeath.ascalondreams.render.Renderer;

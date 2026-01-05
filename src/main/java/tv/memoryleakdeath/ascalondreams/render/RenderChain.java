@@ -2,13 +2,13 @@ package tv.memoryleakdeath.ascalondreams.render;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.animations.AnimationRenderer;
+import tv.memoryleakdeath.ascalondreams.render.animations.AnimationRenderer;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
-import tv.memoryleakdeath.ascalondreams.gui.GuiRender;
-import tv.memoryleakdeath.ascalondreams.lighting.LightingRenderer;
-import tv.memoryleakdeath.ascalondreams.postprocess.PostProcessingRenderer;
-import tv.memoryleakdeath.ascalondreams.shadow.ShadowRenderer;
-import tv.memoryleakdeath.ascalondreams.swapchain.SwapChainRender;
+import tv.memoryleakdeath.ascalondreams.render.gui.GuiRender;
+import tv.memoryleakdeath.ascalondreams.render.lighting.LightingRenderer;
+import tv.memoryleakdeath.ascalondreams.render.postprocess.PostProcessingRenderer;
+import tv.memoryleakdeath.ascalondreams.render.shadow.ShadowRenderer;
+import tv.memoryleakdeath.ascalondreams.render.swapchain.SwapChainRender;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;

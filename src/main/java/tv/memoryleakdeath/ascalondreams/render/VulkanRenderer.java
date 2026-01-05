@@ -24,7 +24,7 @@ import tv.memoryleakdeath.ascalondreams.device.Semaphore;
 import tv.memoryleakdeath.ascalondreams.device.VulkanGraphicsQueue;
 import tv.memoryleakdeath.ascalondreams.device.VulkanPresentationQueue;
 import tv.memoryleakdeath.ascalondreams.engine.VulkanWindow;
-import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
+import tv.memoryleakdeath.ascalondreams.render.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.model.VulkanMaterial;
 import tv.memoryleakdeath.ascalondreams.model.VulkanModel;
 import tv.memoryleakdeath.ascalondreams.model.conversion.ConvertedModel;

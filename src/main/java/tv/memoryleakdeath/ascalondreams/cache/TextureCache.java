@@ -8,7 +8,7 @@ import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.CommandPool;
 import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.gui.GuiTexture;
+import tv.memoryleakdeath.ascalondreams.render.gui.GuiTexture;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.pojo.ImageSource;
 import tv.memoryleakdeath.ascalondreams.util.GraphicsUtils;

@@ -1,6 +1,7 @@
 package tv.memoryleakdeath.ascalondreams.render;
 
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
 import org.lwjgl.vulkan.VK13;
 import org.lwjgl.vulkan.VkClearValue;
@@ -20,14 +21,13 @@ import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayoutInfo;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.lighting.MaterialAttachments;
+import tv.memoryleakdeath.ascalondreams.render.lighting.MaterialAttachments;
 import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
-import tv.memoryleakdeath.ascalondreams.model.VulkanPushConstantsHandler;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTexture;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.pojo.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.pojo.PushConstantRange;
-import tv.memoryleakdeath.ascalondreams.postprocess.EmptyVertexBufferStructure;
+import tv.memoryleakdeath.ascalondreams.render.postprocess.EmptyVertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderCompiler;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderModule;
@@ -38,7 +38,7 @@ import tv.memoryleakdeath.ascalondreams.util.VulkanUtils;
 
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class SceneRenderer implements Renderer {
@@ -56,6 +56,7 @@ public class SceneRenderer implements Renderer {
    private final DescriptorSetLayout textureLayout;
    private final DescriptorSetLayout vertexUniformLayout;
    private final VulkanTextureSampler textureSampler;
+   private final ByteBuffer pushConstantsBuffer;
 
 
    private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/fragment_shader.glsl";
@@ -67,6 +68,7 @@ public class SceneRenderer implements Renderer {
    private static final String DESC_ID_PROJECTION = "SCN_DESC_ID_PROJ";
    private static final String DESC_ID_TEXTURE = "SCN_DESC_ID_TEX";
    private static final String DESC_ID_VIEW = "SCN_DESC_ID_VIEW";
+   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.PTR_SIZE * 2;
 
    // singletons
    private VulkanSwapChain swapChain = VulkanSwapChain.getInstance();
@@ -92,7 +94,7 @@ public class SceneRenderer implements Renderer {
       this.renderingInfo = initRenderInfo(swapChain, attachmentInfoColor, attachmentInfoDepth);
 
       List<ShaderModule> shaderModules = createShaderModules(device);
-      // push constants moved to PushConstantsHandler
+      this.pushConstantsBuffer = MemoryUtil.memAlloc(PUSH_CONSTANTS_SIZE);
 
       this.vertexUniformLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
               0, 1, VK13.VK_SHADER_STAGE_VERTEX_BIT));
@@ -189,7 +191,7 @@ public class SceneRenderer implements Renderer {
       attachmentInfoDepth.free();
       materialAttachments.cleanup(device, allocationUtil);
       attachmentInfoColor.free();
-      VulkanPushConstantsHandler.free();
+      MemoryUtil.memFree(pushConstantsBuffer);
       clearValueDepth.free();
       clearValueColor.free();
    }
@@ -242,7 +244,7 @@ public class SceneRenderer implements Renderer {
       renderingInfo.free();
       attachmentInfoDepth.free();
       materialAttachments.cleanup(device, allocationUtil);
-      Arrays.asList(attachmentInfoColor).forEach(VkRenderingAttachmentInfo.Buffer::free);
+      Collections.singletonList(attachmentInfoColor).forEach(VkRenderingAttachmentInfo.Buffer::free);
 
       materialAttachments = new MaterialAttachments(device, allocationUtil, swapChain);
       attachmentInfoColor = initColorAttachmentInfo(materialAttachments, clearValueColor);
@@ -268,7 +270,6 @@ public class SceneRenderer implements Renderer {
    }
 
    private void setPushConstants(VkCommandBuffer commandHandle, GlobalBuffers globalBuffers, int currentFrame) {
-      ByteBuffer pushConstantsBuffer = VulkanPushConstantsHandler.getInstance();
       int offset = 0;
       pushConstantsBuffer.putLong(offset, globalBuffers.getInstanceDataAddress(currentFrame));
       offset += VulkanConstants.PTR_SIZE;

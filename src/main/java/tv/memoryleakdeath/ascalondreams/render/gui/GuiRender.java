@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.gui;
+package tv.memoryleakdeath.ascalondreams.render.gui;
 
 import imgui.ImGui;
 import imgui.type.ImInt;
@@ -31,7 +31,7 @@ import tv.memoryleakdeath.ascalondreams.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.pojo.ImageSource;
 import tv.memoryleakdeath.ascalondreams.pojo.PipelineBuildInfo;
 import tv.memoryleakdeath.ascalondreams.pojo.PushConstantRange;
-import tv.memoryleakdeath.ascalondreams.postprocess.PostProcessingRenderer;
+import tv.memoryleakdeath.ascalondreams.render.postprocess.PostProcessingRenderer;
 import tv.memoryleakdeath.ascalondreams.render.Attachment;
 import tv.memoryleakdeath.ascalondreams.render.Pipeline;
 import tv.memoryleakdeath.ascalondreams.render.RenderChain;

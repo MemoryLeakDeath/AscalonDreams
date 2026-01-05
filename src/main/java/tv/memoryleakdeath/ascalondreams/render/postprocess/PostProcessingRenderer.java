@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.postprocess;
+package tv.memoryleakdeath.ascalondreams.render.postprocess;
 
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -19,7 +19,7 @@ import tv.memoryleakdeath.ascalondreams.descriptor.DescriptorSetLayoutInfo;
 import tv.memoryleakdeath.ascalondreams.device.CommandBuffer;
 import tv.memoryleakdeath.ascalondreams.device.DeviceManager;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
-import tv.memoryleakdeath.ascalondreams.lighting.LightingRenderer;
+import tv.memoryleakdeath.ascalondreams.render.lighting.LightingRenderer;
 import tv.memoryleakdeath.ascalondreams.model.VulkanBuffer;
 import tv.memoryleakdeath.ascalondreams.model.VulkanTextureSampler;
 import tv.memoryleakdeath.ascalondreams.pojo.PipelineBuildInfo;

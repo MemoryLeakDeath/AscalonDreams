@@ -3,15 +3,11 @@ package tv.memoryleakdeath.ascalondreams.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.ArrayUtils;
 import org.joml.Matrix4f;
-import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.vma.Vma;
 import org.lwjgl.vulkan.VK13;
-import org.lwjgl.vulkan.VkCommandBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.cache.AnimationCache;
-import tv.memoryleakdeath.ascalondreams.cache.MaterialCache;
 import tv.memoryleakdeath.ascalondreams.device.LogicalDevice;
 import tv.memoryleakdeath.ascalondreams.model.conversion.AnimationMeshData;
 import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
@@ -22,7 +18,6 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class VulkanModel {
    private static final Logger logger = LoggerFactory.getLogger(VulkanModel.class);
@@ -34,6 +29,7 @@ public class VulkanModel {
    private List<TransferBuffer> transferBuffers = new ArrayList<>();
 
    public VulkanModel() {
+      // this is used for Json deserialization
    }
 
    public VulkanModel(String id) {
@@ -179,45 +175,6 @@ public class VulkanModel {
       data.put(indicies);
       sourceBuffer.unMap(device, allocationUtil);
       return new TransferBuffer(sourceBuffer, destinationBuffer);
-   }
-
-   public void bindMeshes(MemoryStack stack, VkCommandBuffer cmd, long piplineLayoutId, Matrix4f modelMatrix,
-                          String entityId, boolean doTransparent) {
-      MaterialCache materialCache = MaterialCache.getInstance();
-      AnimationCache animationCache = AnimationCache.getInstance();
-      AtomicInteger numRendered = new AtomicInteger(0);
-      meshList.forEach(mesh -> {
-         String materialId = mesh.materialId();
-         int materialIndex = materialCache.getPosition(materialId);
-         VulkanMaterial material = materialCache.getMaterial(materialId);
-         if(!MaterialCache.getInstance().materialExists(materialId)) {
-            logger.warn("Mesh {} in model {} does not have a material!", mesh.id(), id);
-         } else {
-            if(material.isTransparent() == doTransparent) {
-               logger.trace("Rendering material: {}", materialId);
-               numRendered.incrementAndGet();
-               var animationAndVertexBufferAddress = hasAnimations() ? animationCache.getBuffer(entityId, mesh.id()).getAddress() :
-                       mesh.vertexBuffer().getAddress();
-               setPushConstants(cmd, modelMatrix, animationAndVertexBufferAddress, mesh.indexBuffer().getAddress(), materialIndex, piplineLayoutId);
-               VK13.vkCmdDraw(cmd, mesh.numIndicies(), 1, 0, 0);
-            }
-         }
-      });
-      logger.trace("Render pass, transparency: {} rendered {} materials", doTransparent, numRendered.get());
-   }
-
-   private void setPushConstants(VkCommandBuffer cmd, Matrix4f modelMatrix, long vertexBufferAddress,
-                                 long indexBufferAddress, int materialIndex, long pipelineLayoutId) {
-      int vertexPcSize = VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE * 2;
-      ByteBuffer pushConstantsBuffer = VulkanPushConstantsHandler.getInstance();
-      modelMatrix.get(0, pushConstantsBuffer);
-      pushConstantsBuffer.putLong(VulkanConstants.MAT4X4_SIZE, vertexBufferAddress);
-      pushConstantsBuffer.putLong(VulkanConstants.MAT4X4_SIZE + VulkanConstants.PTR_SIZE, indexBufferAddress);
-      pushConstantsBuffer.putInt(vertexPcSize, materialIndex);
-      VK13.vkCmdPushConstants(cmd, pipelineLayoutId, VK13.VK_SHADER_STAGE_VERTEX_BIT, 0,
-              pushConstantsBuffer.slice(0, vertexPcSize));
-      VK13.vkCmdPushConstants(cmd, pipelineLayoutId, VK13.VK_SHADER_STAGE_FRAGMENT_BIT, vertexPcSize,
-              pushConstantsBuffer.slice(vertexPcSize, VulkanConstants.INT_SIZE));
    }
 
    private static TransferBuffer createJointMatricesBuffers(LogicalDevice device, MemoryAllocationUtil allocationUtil, AnimatedFrame frame) {

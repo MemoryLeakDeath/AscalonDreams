@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.lighting;
+package tv.memoryleakdeath.ascalondreams.render.lighting;
 
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VkSpecializationInfo;

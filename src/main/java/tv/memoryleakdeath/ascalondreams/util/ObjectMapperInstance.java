@@ -1,19 +1,18 @@
 package tv.memoryleakdeath.ascalondreams.util;
 
 import org.joml.Matrix4f;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 public class ObjectMapperInstance {
-   private static ObjectMapper mapper;
+   private static SmileMapper mapper;
 
    private ObjectMapperInstance() {
    }
 
-   public static ObjectMapper getInstance() {
+   public static SmileMapper getInstance() {
       if(mapper == null) {
-         mapper = JsonMapper.builder()
+         mapper = SmileMapper.builder()
                  .addModule(buildModule())
                  .build();
       }

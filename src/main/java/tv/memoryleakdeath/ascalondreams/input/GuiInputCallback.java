@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.gui;
+package tv.memoryleakdeath.ascalondreams.input;
 
 import imgui.ImGui;
 import imgui.flag.ImGuiKey;
@@ -7,8 +7,6 @@ import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.memoryleakdeath.ascalondreams.input.KeyboardInputCallback;
-import tv.memoryleakdeath.ascalondreams.input.MouseInputCallback;
 import tv.memoryleakdeath.ascalondreams.state.GameState;
 import tv.memoryleakdeath.ascalondreams.state.StateMachine;
 

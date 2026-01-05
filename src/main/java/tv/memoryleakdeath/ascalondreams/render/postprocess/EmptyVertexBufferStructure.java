@@ -1,4 +1,4 @@
-package tv.memoryleakdeath.ascalondreams.postprocess;
+package tv.memoryleakdeath.ascalondreams.render.postprocess;
 
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo;
 
