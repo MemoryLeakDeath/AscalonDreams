@@ -32,6 +32,8 @@ import tv.memoryleakdeath.ascalondreams.render.Attachment;
 import tv.memoryleakdeath.ascalondreams.render.Pipeline;
 import tv.memoryleakdeath.ascalondreams.render.Renderer;
 import tv.memoryleakdeath.ascalondreams.render.VulkanImageView;
+import tv.memoryleakdeath.ascalondreams.render.VulkanSwapChain;
+import tv.memoryleakdeath.ascalondreams.render.lighting.MaterialAttachments;
 import tv.memoryleakdeath.ascalondreams.render.postprocess.EmptyVertexBufferStructure;
 import tv.memoryleakdeath.ascalondreams.render.shadow.CascadeData;
 import tv.memoryleakdeath.ascalondreams.render.shadow.CascadeShadows;
@@ -51,34 +53,45 @@ import java.util.List;
 
 public class AmbientOcclusionRenderer implements Renderer {
    private static final Logger logger = LoggerFactory.getLogger(AmbientOcclusionRenderer.class);
-   public static final int DEPTH_FORMAT = VK13.VK_FORMAT_D32_SFLOAT;
-   private static final int ATTACHMENT_FORMAT = VK13.VK_FORMAT_R32G32_SFLOAT;
-   private static final String DESC_ID_MAT = "SHADOW_DESC_ID_MAT";
-   private static final String DESC_ID_PRJ = "SHADOW_DESC_ID_PRJ";
-   private static final String DESC_ID_TEXT = "SHADOW_SCN_DESC_ID_TEXT";
-   private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/shadow_fragment_shader.glsl";
-   private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
-   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.PTR_SIZE * 2;
-   private static final String SHADOW_GEOMETRY_SHADER_FILE_GLSL = "shaders/shadow_geometry_shader.glsl";
-   private static final String SHADOW_GEOMETRY_SHADER_FILE_SPV = SHADOW_GEOMETRY_SHADER_FILE_GLSL + ".spv";
-   private static final String VERTEX_SHADER_FILE_GLSL = "shaders/shadow_vertex_shader.glsl";
-   private static final String VERTEX_SHADER_FILE_SPV = VERTEX_SHADER_FILE_GLSL + ".spv";
+//   public static final int DEPTH_FORMAT = VK13.VK_FORMAT_D32_SFLOAT;
+//   private static final int ATTACHMENT_FORMAT = VK13.VK_FORMAT_R32G32_SFLOAT;
+//   private static final String DESC_ID_MAT = "SHADOW_DESC_ID_MAT";
+//   private static final String DESC_ID_PRJ = "SHADOW_DESC_ID_PRJ";
+//   private static final String DESC_ID_TEXT = "SHADOW_SCN_DESC_ID_TEXT";
+//   private static final String FRAGMENT_SHADER_FILE_GLSL = "shaders/shadow_fragment_shader.glsl";
+//   private static final String FRAGMENT_SHADER_FILE_SPV = FRAGMENT_SHADER_FILE_GLSL + ".spv";
+//   private static final int PUSH_CONSTANTS_SIZE = VulkanConstants.PTR_SIZE * 2;
+//   private static final String SHADOW_GEOMETRY_SHADER_FILE_GLSL = "shaders/shadow_geometry_shader.glsl";
+//   private static final String SHADOW_GEOMETRY_SHADER_FILE_SPV = SHADOW_GEOMETRY_SHADER_FILE_GLSL + ".spv";
+//   private static final String VERTEX_SHADER_FILE_GLSL = "shaders/shadow_vertex_shader.glsl";
+//   private static final String VERTEX_SHADER_FILE_SPV = VERTEX_SHADER_FILE_GLSL + ".spv";
 
-   private final List<CascadeShadows> cascadeShadows;
+//   private final List<CascadeShadows> cascadeShadows;
+//   private final VkClearValue clearColor;
+//   private final VkClearValue clearDepth;
+//   private final Attachment colorAttachment;
+//   private final VkRenderingAttachmentInfo.Buffer colorAttachmentInfo;
+//   private final Attachment depthAttachment;
+//   private final VkRenderingAttachmentInfo depthAttachmentInfo;
+//   private final DescriptorSetLayout fragmentStorageLayout;
+//   private final Pipeline pipeline;
+//   private final List<VulkanBuffer> projectionBuffers;
+//   private final ByteBuffer pushConstantBuffer;
+//   private final VkRenderingInfo renderingInfo;
+//   private final DescriptorSetLayout textureLayout;
+//   private final VulkanTextureSampler textureSampler;
+//   private final DescriptorSetLayout geometryUniformLayout;
+
    private final VkClearValue clearColor;
    private final VkClearValue clearDepth;
-   private final Attachment colorAttachment;
-   private final VkRenderingAttachmentInfo.Buffer colorAttachmentInfo;
-   private final Attachment depthAttachment;
-   private final VkRenderingAttachmentInfo depthAttachmentInfo;
-   private final DescriptorSetLayout fragmentStorageLayout;
-   private final Pipeline pipeline;
-   private final List<VulkanBuffer> projectionBuffers;
-   private final ByteBuffer pushConstantBuffer;
-   private final VkRenderingInfo renderingInfo;
-   private final DescriptorSetLayout textureLayout;
-   private final VulkanTextureSampler textureSampler;
-   private final DescriptorSetLayout geometryUniformLayout;
+   private VkRenderingAttachmentInfo.Buffer attachmentInfoColor;
+   private VkRenderingAttachmentInfo attachmentInfoDepth;
+   private MaterialAttachments materialAttachments;
+   private Attachment ssaoColorAttachment;
+   private VkRenderingAttachmentInfo.Buffer ssaoColorAttachmentInfo;
+   private Attachment ssaoBlurAttachment;
+   private VkRenderingAttachmentInfo.Buffer ssaoBlurAttachmentInfo;
+
 
    // singletons
    private LogicalDevice device = DeviceManager.getDevice();
@@ -89,48 +102,84 @@ public class AmbientOcclusionRenderer implements Renderer {
    private TextureCache textureCache = TextureCache.getInstance();
    private VulkanScene scene = VulkanScene.getInstance();
    private GlobalBuffers globalBuffers = GlobalBuffers.getInstance();
+   private VulkanSwapChain swapChain = VulkanSwapChain.getInstance();
 
    private AmbientOcclusionRenderer() {
       this.clearDepth = VkClearValue.calloc().color(c -> c.float32(0, 1f));
       this.clearColor = VkClearValue.calloc().color(c -> c.float32(0, 1f).float32(1, 1f));
-      depthAttachment = initDepthAttachment(device, allocationUtil);
-      this.depthAttachmentInfo = initDepthAttachmentInfo(depthAttachment, clearDepth);
-      this.colorAttachment = initColorAttachment(device, allocationUtil);
-      this.colorAttachmentInfo = initColorAttachmentInfo(colorAttachment, clearColor);
-      this.pushConstantBuffer = MemoryUtil.memAlloc(PUSH_CONSTANTS_SIZE);
-      this.renderingInfo = initRenderInfo(colorAttachmentInfo, depthAttachmentInfo);
+      this.materialAttachments = new MaterialAttachments(device, allocationUtil, swapChain);
+      this.attachmentInfoColor = initColorAttachmentInfo(materialAttachments, clearColor);
+      this.attachmentInfoDepth = initDepthAttachmentInfo(materialAttachments, clearDepth);
+      this.ssaoColorAttachment = initSSAOAttachment(device, allocationUtil, swapChain);
+      this.ssaoColorAttachmentInfo = initSSAOColorAttachmentInfo(ssaoColorAttachment, clearColor);
+      this.ssaoBlurAttachment = initSSAOAttachment(device, allocationUtil, swapChain);
+      this.ssaoBlurAttachmentInfo = initSSAOColorAttachmentInfo(ssaoBlurAttachment, clearColor);
+
+//      depthAttachment = initDepthAttachment(device, allocationUtil);
+//      this.depthAttachmentInfo = initDepthAttachmentInfo(depthAttachment, clearDepth);
+//      this.colorAttachment = initColorAttachment(device, allocationUtil);
+//      this.colorAttachmentInfo = initColorAttachmentInfo(colorAttachment, clearColor);
+//      this.pushConstantBuffer = MemoryUtil.memAlloc(PUSH_CONSTANTS_SIZE);
+//      this.renderingInfo = initRenderInfo(colorAttachmentInfo, depthAttachmentInfo);
       List<ShaderModule> shaderModules = initShaderModules(device);
 
-      this.geometryUniformLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-              0, 1, VK13.VK_SHADER_STAGE_GEOMETRY_BIT));
-      long bufSize = (long)VulkanConstants.MAT4X4_SIZE * VulkanScene.SHADOW_MAP_CASCADE_COUNT;
-      this.projectionBuffers = VulkanUtils.createHostVisibleBuffers(device, allocationUtil, allocator, bufSize,
-              VulkanConstants.MAX_IN_FLIGHT, VK13.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, DESC_ID_PRJ, geometryUniformLayout);
+//      this.geometryUniformLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+//              0, 1, VK13.VK_SHADER_STAGE_GEOMETRY_BIT));
+//      long bufSize = (long)VulkanConstants.MAT4X4_SIZE * VulkanScene.SHADOW_MAP_CASCADE_COUNT;
+//      this.projectionBuffers = VulkanUtils.createHostVisibleBuffers(device, allocationUtil, allocator, bufSize,
+//              VulkanConstants.MAX_IN_FLIGHT, VK13.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, DESC_ID_PRJ, geometryUniformLayout);
+//
+//      this.fragmentStorageLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+//              0, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT));
+//
+//      this.textureSampler = new VulkanTextureSampler(device, VK13.VK_SAMPLER_ADDRESS_MODE_REPEAT, VK13.VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+//              1, true);
+//      this.textureLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+//              0, TextureCache.MAX_TEXTURES, VK13.VK_SHADER_STAGE_FRAGMENT_BIT));
+//
+//      this.pipeline = initPipeline(device, pipelineCache, shaderModules,
+//              List.of(geometryUniformLayout, textureLayout, fragmentStorageLayout));
+//      shaderModules.forEach(s -> s.cleanup(device));
+//
+//      this.cascadeShadows = new ArrayList<>();
+//      for(int i = 0; i < VulkanConstants.MAX_IN_FLIGHT; i++) {
+//         cascadeShadows.add(new CascadeShadows());
+//      }
+   }
 
-      this.fragmentStorageLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-              0, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT));
-
-      this.textureSampler = new VulkanTextureSampler(device, VK13.VK_SAMPLER_ADDRESS_MODE_REPEAT, VK13.VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-              1, true);
-      this.textureLayout = new DescriptorSetLayout(device, new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-              0, TextureCache.MAX_TEXTURES, VK13.VK_SHADER_STAGE_FRAGMENT_BIT));
-
-      this.pipeline = initPipeline(device, pipelineCache, shaderModules,
-              List.of(geometryUniformLayout, textureLayout, fragmentStorageLayout));
-      shaderModules.forEach(s -> s.cleanup(device));
-
-      this.cascadeShadows = new ArrayList<>();
-      for(int i = 0; i < VulkanConstants.MAX_IN_FLIGHT; i++) {
-         cascadeShadows.add(new CascadeShadows());
+   private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(MaterialAttachments attachment, VkClearValue clearValue) {
+      List<Attachment> colorAttachments = attachment.getColorAttachments();
+      int numAttachments = colorAttachments.size();
+      var result = VkRenderingAttachmentInfo.calloc(numAttachments);
+      for(int i = 0; i < numAttachments; i++) {
+         result.get(i)
+                 .sType$Default()
+                 .imageView(colorAttachments.get(i).getImageView().getImageViewId())
+                 .imageLayout(VK13.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                 .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                 .storeOp(VK13.VK_ATTACHMENT_STORE_OP_STORE)
+                 .clearValue(clearValue);
       }
+      return result;
    }
 
-   private static Attachment initColorAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
-      return new Attachment(device, allocationUtil, ShadowUtils.SHADOW_MAP_SIZE, ShadowUtils.SHADOW_MAP_SIZE,
-              ATTACHMENT_FORMAT, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VulkanScene.SHADOW_MAP_CASCADE_COUNT);
+   private static VkRenderingAttachmentInfo initDepthAttachmentInfo(MaterialAttachments attachmentDepth, VkClearValue clearValue) {
+      return VkRenderingAttachmentInfo.calloc()
+              .sType$Default()
+              .imageView(attachmentDepth.getDepthAttachment().getImageView().getImageViewId())
+              .imageLayout(VK13.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+              .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
+              .storeOp(VK13.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+              .clearValue(clearValue);
    }
 
-   private static VkRenderingAttachmentInfo.Buffer initColorAttachmentInfo(Attachment sourceAttachment, VkClearValue clearValue) {
+
+   private static Attachment initSSAOAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil, VulkanSwapChain swapChain) {
+      return new Attachment(device, allocationUtil, swapChain.getSwapChainExtent().width(), swapChain.getSwapChainExtent().height(),
+              VK13.VK_FORMAT_R8_UNORM, VK13.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1);
+   }
+
+   private static VkRenderingAttachmentInfo.Buffer initSSAOColorAttachmentInfo(Attachment sourceAttachment, VkClearValue clearValue) {
       return VkRenderingAttachmentInfo.calloc(1)
               .sType$Default()
               .imageView(sourceAttachment.getImageView().getImageViewId())
@@ -140,20 +189,20 @@ public class AmbientOcclusionRenderer implements Renderer {
               .clearValue(clearValue);
    }
 
-   private static Attachment initDepthAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
-      return new Attachment(device, allocationUtil, ShadowUtils.SHADOW_MAP_SIZE, ShadowUtils.SHADOW_MAP_SIZE,
-              DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VulkanScene.SHADOW_MAP_CASCADE_COUNT);
-   }
+//   private static Attachment initDepthAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
+//      return new Attachment(device, allocationUtil, ShadowUtils.SHADOW_MAP_SIZE, ShadowUtils.SHADOW_MAP_SIZE,
+//              DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VulkanScene.SHADOW_MAP_CASCADE_COUNT);
+//   }
 
-   private static VkRenderingAttachmentInfo initDepthAttachmentInfo(Attachment depthAttachment, VkClearValue clearValue) {
-      return VkRenderingAttachmentInfo.calloc()
-              .sType$Default()
-              .imageView(depthAttachment.getImageView().getImageViewId())
-              .imageLayout(VK13.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-              .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
-              .storeOp(VK13.VK_ATTACHMENT_STORE_OP_DONT_CARE)
-              .clearValue(clearValue);
-   }
+//   private static VkRenderingAttachmentInfo initDepthAttachmentInfo(Attachment depthAttachment, VkClearValue clearValue) {
+//      return VkRenderingAttachmentInfo.calloc()
+//              .sType$Default()
+//              .imageView(depthAttachment.getImageView().getImageViewId())
+//              .imageLayout(VK13.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+//              .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
+//              .storeOp(VK13.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+//              .clearValue(clearValue);
+//   }
 
    private static Pipeline initPipeline(LogicalDevice device, PipelineCache cache, List<ShaderModule> shaderModules, List<DescriptorSetLayout> layouts) {
       var vertexBuffer = new EmptyVertexBufferStructure();
