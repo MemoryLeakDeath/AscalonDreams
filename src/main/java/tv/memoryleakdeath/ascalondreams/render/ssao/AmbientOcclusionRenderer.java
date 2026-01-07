@@ -4,10 +4,12 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
 import org.lwjgl.vulkan.VK13;
+import org.lwjgl.vulkan.VkAttachmentDescription;
 import org.lwjgl.vulkan.VkClearValue;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkRect2D;
+import org.lwjgl.vulkan.VkRenderPassCreateInfo;
 import org.lwjgl.vulkan.VkRenderingAttachmentInfo;
 import org.lwjgl.vulkan.VkRenderingInfo;
 import org.slf4j.Logger;
@@ -40,6 +42,7 @@ import tv.memoryleakdeath.ascalondreams.render.shadow.CascadeShadows;
 import tv.memoryleakdeath.ascalondreams.render.shadow.ShadowUtils;
 import tv.memoryleakdeath.ascalondreams.scene.VulkanScene;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderCompiler;
+import tv.memoryleakdeath.ascalondreams.shaders.ShaderInfo;
 import tv.memoryleakdeath.ascalondreams.shaders.ShaderModule;
 import tv.memoryleakdeath.ascalondreams.util.MemoryAllocationUtil;
 import tv.memoryleakdeath.ascalondreams.util.StructureUtils;
@@ -65,6 +68,13 @@ public class AmbientOcclusionRenderer implements Renderer {
 //   private static final String SHADOW_GEOMETRY_SHADER_FILE_SPV = SHADOW_GEOMETRY_SHADER_FILE_GLSL + ".spv";
 //   private static final String VERTEX_SHADER_FILE_GLSL = "shaders/shadow_vertex_shader.glsl";
 //   private static final String VERTEX_SHADER_FILE_SPV = VERTEX_SHADER_FILE_GLSL + ".spv";
+   private static final List<ShaderInfo> SHADERS = List.of(
+           new ShaderInfo("shaders/ssao/blur_fragment.glsl", VulkanConstants.FRAGMENT_SHADER_TYPE, true),
+           new ShaderInfo("shaders/ssao/composition_fragment.glsl", VulkanConstants.FRAGMENT_SHADER_TYPE, true),
+           new ShaderInfo("shaders/ssao/fullscreen_vertex.glsl", VulkanConstants.VERTEX_SHADER_TYPE, true),
+           new ShaderInfo("shaders/ssao/gbuffer_fragment.glsl", VulkanConstants.FRAGMENT_SHADER_TYPE, true),
+           new ShaderInfo("shaders/ssao/gbuffer_vertex.glsl", VulkanConstants.VERTEX_SHADER_TYPE, true)
+   );
 
 //   private final List<CascadeShadows> cascadeShadows;
 //   private final VkClearValue clearColor;
@@ -91,6 +101,7 @@ public class AmbientOcclusionRenderer implements Renderer {
    private VkRenderingAttachmentInfo.Buffer ssaoColorAttachmentInfo;
    private Attachment ssaoBlurAttachment;
    private VkRenderingAttachmentInfo.Buffer ssaoBlurAttachmentInfo;
+   private VkAttachmentDescription.Buffer attachmentDescriptions;
 
 
    // singletons
@@ -114,6 +125,7 @@ public class AmbientOcclusionRenderer implements Renderer {
       this.ssaoColorAttachmentInfo = initSSAOColorAttachmentInfo(ssaoColorAttachment, clearColor);
       this.ssaoBlurAttachment = initSSAOAttachment(device, allocationUtil, swapChain);
       this.ssaoBlurAttachmentInfo = initSSAOColorAttachmentInfo(ssaoBlurAttachment, clearColor);
+      this.attachmentDescriptions = initAttachmentDescriptions(materialAttachments);
 
 //      depthAttachment = initDepthAttachment(device, allocationUtil);
 //      this.depthAttachmentInfo = initDepthAttachmentInfo(depthAttachment, clearDepth);
@@ -189,6 +201,31 @@ public class AmbientOcclusionRenderer implements Renderer {
               .clearValue(clearValue);
    }
 
+   private static VkAttachmentDescription.Buffer initAttachmentDescriptions(MaterialAttachments attachments) {
+      try(var stack = MemoryStack.stackPush()) {
+         var attachmentDescriptionBuffer = VkAttachmentDescription.calloc(attachments.getColorAttachments().size(), stack);
+         for(int i = 0; i < attachments.getColorAttachments().size(); i++) {
+            var colorAttachment = attachments.getColorAttachments().get(i);
+            attachmentDescriptionBuffer.get(i)
+                    .samples(VK13.VK_SAMPLE_COUNT_1_BIT)
+                    .loadOp(VK13.VK_ATTACHMENT_LOAD_OP_CLEAR)
+                    .storeOp(VK13.VK_ATTACHMENT_STORE_OP_STORE)
+                    .stencilLoadOp(VK13.VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+                    .stencilStoreOp(VK13.VK_ATTACHMENT_STORE_OP_DONT_CARE)
+                    .finalLayout(colorAttachment.isDepthAttachment() ?
+                            VK13.VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK13.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .format(colorAttachment.getImage().getFormat());
+         }
+         return attachmentDescriptionBuffer;
+      }
+   }
+
+   private static VkRenderPassCreateInfo initRenderPass(DescriptorAllocator allocator) {
+      return VkRenderPassCreateInfo.calloc()
+              .sType$Default()
+              .pAttachments(allocator.getDescriptorSet("").);
+   }
+
 //   private static Attachment initDepthAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
 //      return new Attachment(device, allocationUtil, ShadowUtils.SHADOW_MAP_SIZE, ShadowUtils.SHADOW_MAP_SIZE,
 //              DEPTH_FORMAT, VK13.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VulkanScene.SHADOW_MAP_CASCADE_COUNT);
@@ -232,9 +269,8 @@ public class AmbientOcclusionRenderer implements Renderer {
    }
 
    private static List<ShaderModule> initShaderModules(LogicalDevice device) {
-      ShaderCompiler.compileShaderIfChanged(VERTEX_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_vertex_shader, true);
-      ShaderCompiler.compileShaderIfChanged(SHADOW_GEOMETRY_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_geometry_shader, true);
-      ShaderCompiler.compileShaderIfChanged(FRAGMENT_SHADER_FILE_GLSL, Shaderc.shaderc_glsl_fragment_shader, true);
+      ShaderCompiler.compileShadersIfChanged(SHADERS);
+      return SHADERS.stream().map(info -> new ShaderModule(device, ))
 
       return List.of(new ShaderModule(device, VK13.VK_SHADER_STAGE_VERTEX_BIT, VERTEX_SHADER_FILE_SPV, null),
               new ShaderModule(device, VK13.VK_SHADER_STAGE_GEOMETRY_BIT, SHADOW_GEOMETRY_SHADER_FILE_SPV, null),

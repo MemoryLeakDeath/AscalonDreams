@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.util.List;
 
 public class ShaderCompiler {
    private ShaderCompiler() {
@@ -39,6 +40,10 @@ public class ShaderCompiler {
          Shaderc.shaderc_compiler_release(compilerHandle);
       }
       return compiledShaderCode;
+   }
+
+   public static void compileShadersIfChanged(List<ShaderInfo> shaders) {
+      shaders.forEach(s -> compileShaderIfChanged(s.file(), s.type(), s.debug()));
    }
 
    public static void compileShaderIfChanged(String glsShaderFile, int type, boolean debugShaders) {
