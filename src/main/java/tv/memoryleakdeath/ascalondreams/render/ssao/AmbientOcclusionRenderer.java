@@ -115,7 +115,11 @@ public class AmbientOcclusionRenderer implements Renderer {
    private long ssaoFrameBuffer;
    private long ssaoBlurRenderPass;
    private long ssaoBlurFrameBuffer;
-   private long ssaoSampler;
+   private VulkanTextureSampler textureSampler;
+   private DescriptorSetLayout gBufferLayout;
+   private DescriptorSetLayout ssaoLayout;
+   private DescriptorSetLayout ssaoBlurLayout;
+   private DescriptorSetLayout compositionLayout;
 
 
    // singletons
@@ -145,7 +149,27 @@ public class AmbientOcclusionRenderer implements Renderer {
       this.ssaoFrameBuffer = createSSAOFrameBuffer(device, ssaoColorAttachment, ssaoRenderPass);
       this.ssaoBlurRenderPass = createSSAOBlurRenderPass(device, ssaoBlurAttachment);
       this.ssaoBlurFrameBuffer = createSSAOBlurFrameBuffer(device, ssaoBlurAttachment, ssaoBlurRenderPass);
-      this.ssaoSampler = createSampler(device);
+      this.textureSampler = new VulkanTextureSampler(device, VK13.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK13.VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+              1, VK13.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, true);
+
+      this.gBufferLayout = initDescriptorSetLayout(device, VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0,
+              VK13.VK_SHADER_STAGE_VERTEX_BIT | VK13.VK_SHADER_STAGE_FRAGMENT_BIT);
+      this.ssaoLayout = initDescriptorSetLayout(device, List.of(
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT)));
+      this.ssaoBlurLayout = initDescriptorSetLayout(device, VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, VK13.VK_SHADER_STAGE_FRAGMENT_BIT);
+      this.compositionLayout = initDescriptorSetLayout(device, List.of(
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT),
+              new DescriptorSetLayoutInfo(VK13.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, 1, VK13.VK_SHADER_STAGE_FRAGMENT_BIT)));
+
+
 
 //      depthAttachment = initDepthAttachment(device, allocationUtil);
 //      this.depthAttachmentInfo = initDepthAttachmentInfo(depthAttachment, clearDepth);
@@ -443,24 +467,14 @@ public class AmbientOcclusionRenderer implements Renderer {
       return frameBuffer.get(0);
    }
 
-   private static long createSampler(LogicalDevice device) {
-      LongBuffer samplerBuf = MemoryUtil.memAllocLong(1);
-      var sampler = VkSamplerCreateInfo.calloc()
-              .magFilter(VK13.VK_FILTER_NEAREST)
-              .minFilter(VK13.VK_FILTER_NEAREST)
-              .mipmapMode(VK13.VK_SAMPLER_MIPMAP_MODE_LINEAR)
-              .addressModeU(VK13.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
-              .addressModeV(VK13.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
-              .addressModeW(VK13.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
-              .mipLodBias(0f)
-              .maxAnisotropy(1f)
-              .minLod(0f)
-              .maxLod(1f)
-              .borderColor(VK13.VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
-      VulkanUtils.failIfNeeded(VK13.vkCreateSampler(device.getDevice(), sampler, null, samplerBuf), "Failed to create SSAO sampler!");
-      return samplerBuf.get(0);
+   private static DescriptorSetLayout initDescriptorSetLayout(LogicalDevice device, int type, int binding, int stage) {
+      var info = new DescriptorSetLayoutInfo(type, binding, 1, stage);
+      return new DescriptorSetLayout(device, info);
    }
 
+   private static DescriptorSetLayout initDescriptorSetLayout(LogicalDevice device, List<DescriptorSetLayoutInfo> infos) {
+      return new DescriptorSetLayout(device, infos);
+   }
 
 //   private static Attachment initDepthAttachment(LogicalDevice device, MemoryAllocationUtil allocationUtil) {
 //      return new Attachment(device, allocationUtil, ShadowUtils.SHADOW_MAP_SIZE, ShadowUtils.SHADOW_MAP_SIZE,
@@ -488,21 +502,21 @@ public class AmbientOcclusionRenderer implements Renderer {
       return pipeline;
    }
 
-   private static VkRenderingInfo initRenderInfo(VkRenderingAttachmentInfo.Buffer colorAttachmentInfo,
-                                                 VkRenderingAttachmentInfo depthAttachments) {
-      var result = VkRenderingInfo.calloc().sType$Default();
-      try(var stack = MemoryStack.stackPush()) {
-         VkExtent2D extent = VkExtent2D.calloc(stack)
-                 .width(ShadowUtils.SHADOW_MAP_SIZE)
-                 .height(ShadowUtils.SHADOW_MAP_SIZE);
-         var renderArea = VkRect2D.calloc(stack).extent(extent);
-         result.renderArea(renderArea)
-                 .layerCount(VulkanScene.SHADOW_MAP_CASCADE_COUNT)
-                 .pColorAttachments(colorAttachmentInfo)
-                 .pDepthAttachment(depthAttachments);
-      }
-      return result;
-   }
+//   private static VkRenderingInfo initRenderInfo(VkRenderingAttachmentInfo.Buffer colorAttachmentInfo,
+//                                                 VkRenderingAttachmentInfo depthAttachments) {
+//      var result = VkRenderingInfo.calloc().sType$Default();
+//      try(var stack = MemoryStack.stackPush()) {
+//         VkExtent2D extent = VkExtent2D.calloc(stack)
+//                 .width(ShadowUtils.SHADOW_MAP_SIZE)
+//                 .height(ShadowUtils.SHADOW_MAP_SIZE);
+//         var renderArea = VkRect2D.calloc(stack).extent(extent);
+//         result.renderArea(renderArea)
+//                 .layerCount(VulkanScene.SHADOW_MAP_CASCADE_COUNT)
+//                 .pColorAttachments(colorAttachmentInfo)
+//                 .pDepthAttachment(depthAttachments);
+//      }
+//      return result;
+//   }
 
    private static List<ShaderModule> initShaderModules(LogicalDevice device) {
       ShaderCompiler.compileShadersIfChanged(SHADERS);

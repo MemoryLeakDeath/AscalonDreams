@@ -16,6 +16,10 @@ public class VulkanTextureSampler {
    private final long id;
 
    public VulkanTextureSampler(LogicalDevice device, int addressMode, int borderColor, int miplevels, boolean anisotropy) {
+      this(device, addressMode, borderColor, miplevels, VK13.VK_SAMPLER_MIPMAP_MODE_NEAREST, anisotropy);
+   }
+
+   public VulkanTextureSampler(LogicalDevice device, int addressMode, int borderColor, int miplevels, int mipmapMode, boolean anisotropy) {
       try(var stack = MemoryStack.stackPush()) {
          var info = VkSamplerCreateInfo.calloc(stack)
                  .sType$Default()
@@ -28,7 +32,7 @@ public class VulkanTextureSampler {
                  .unnormalizedCoordinates(false)
                  .compareEnable(false)
                  .compareOp(VK13.VK_COMPARE_OP_NEVER)
-                 .mipmapMode(VK13.VK_SAMPLER_MIPMAP_MODE_NEAREST)
+                 .mipmapMode(mipmapMode)
                  .minLod(0f)
                  .maxLod(miplevels)
                  .mipLodBias(0f);
