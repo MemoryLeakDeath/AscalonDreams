@@ -23,7 +23,7 @@
 		<commonsexec.version>1.6.0</commonsexec.version>
 		<commonscollections.version>4.5.0</commonscollections.version>
         <commonsio.version>2.21.0</commonsio.version>
-        <junit.version>6.0.1</junit.version>
+        <junit.version>6.0.2</junit.version>
         <imgui.version>1.90.0</imgui.version>
         <main.class>tv.memoryleakdeath.ascalondreams.Main</main.class>
 	</properties>
