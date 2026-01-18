@@ -35,25 +35,30 @@ public class VulkanTexture {
    private VulkanBuffer stagingBuffer;
    private boolean transparent = false;
    private GuiTexture guiTexture;
+   private boolean skybox = false;
 
    public VulkanTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int imageFormat,
-                        GuiTexture guiTexture) {
+                        GuiTexture guiTexture, boolean isSkybox) {
       this.id = id;
       this.width = source.width();
       this.height = source.height();
       this.guiTexture = guiTexture;
+      this.skybox = isSkybox;
 
       calculateTransparency(source.data());
       logger.trace("Texture id: {} - transparent: {}", id, transparent);
       createStagingBuffer(device, allocationUtil, source.data());
       int mipLevels = MathUtils.calculateMipLevels(width, height);
-      this.image = new VulkanImage(device, allocationUtil, width, height,
+      this.image = new VulkanImage(allocationUtil, width, height,
               VK13.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK13.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK13.VK_IMAGE_USAGE_SAMPLED_BIT,
-              imageFormat, mipLevels, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, 1);
+              imageFormat, mipLevels, Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, skybox ? 6 : 1);
       var imageData = new VulkanImageViewData();
       imageData.setAspectMask(VK13.VK_IMAGE_ASPECT_COLOR_BIT);
       imageData.setFormat(image.getFormat());
       imageData.setMipLevels(mipLevels);
+      if(skybox) {
+         imageData.setViewType(VK13.VK_IMAGE_VIEW_TYPE_CUBE);
+      }
       this.imageView = new VulkanImageView(device, image.getId(), imageData, false);
    }
 
@@ -256,5 +261,9 @@ public class VulkanTexture {
 
    public GuiTexture getGuiTexture() {
       return guiTexture;
+   }
+
+   public boolean isSkybox() {
+      return skybox;
    }
 }

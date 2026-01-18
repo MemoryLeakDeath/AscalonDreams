@@ -159,7 +159,7 @@ public class GuiRender implements Renderer {
       var textureHeight = new ImInt();
       ByteBuffer fontBuf = io.getFonts().getTexDataAsRGBA32(textureWidth, textureHeight);
       var imageSource = new ImageSource(fontBuf, textureWidth.get(), textureHeight.get(), 4);
-      var fontsTexture = new VulkanTexture(device, allocationUtil, "GUI_TEXTURE", imageSource, VK13.VK_FORMAT_R8G8B8A8_SRGB, null);
+      var fontsTexture = new VulkanTexture(device, allocationUtil, "GUI_TEXTURE", imageSource, VK13.VK_FORMAT_R8G8B8A8_SRGB, null, false);
 
       var commandPool = new CommandPool(device, queue.getQueueFamilyIndex(), false);
       var cmd = new CommandBuffer(device, commandPool, true, true);

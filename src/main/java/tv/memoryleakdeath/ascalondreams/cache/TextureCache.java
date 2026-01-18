@@ -39,7 +39,7 @@ public class TextureCache {
    }
 
    private VulkanTexture addTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, ImageSource source, int format,
-                                   GuiTexture guiTexture) {
+                                   GuiTexture guiTexture, boolean isSkybox) {
       if(textureMap.size() > MAX_TEXTURES) {
          var e = new RuntimeException("Texture cache is full!");
          logger.error("Max texture limit reached! Limit: %d".formatted(MAX_TEXTURES), e);
@@ -48,7 +48,7 @@ public class TextureCache {
       if(textureMap.containsKey(id)) {
          return textureMap.get(id);
       }
-      var texture = new VulkanTexture(device, allocationUtil, id, source, format, guiTexture);
+      var texture = new VulkanTexture(device, allocationUtil, id, source, format, guiTexture, isSkybox);
       textureMap.put(id, texture);
       return texture;
    }
@@ -58,7 +58,7 @@ public class TextureCache {
       VulkanTexture texture = null;
       try {
          source = GraphicsUtils.loadImage(guiTexture.texturePath());
-         texture = addTexture(DeviceManager.getDevice(), MemoryAllocationUtil.getInstance(), guiTexture.texturePath(), source, format, guiTexture);
+         texture = addTexture(DeviceManager.getDevice(), MemoryAllocationUtil.getInstance(), guiTexture.texturePath(), source, format, guiTexture, false);
       } catch (IOException e) {
          logger.error("Could not load GUI texture file: %s".formatted(guiTexture.texturePath()), e);
       } finally {
@@ -74,7 +74,23 @@ public class TextureCache {
       VulkanTexture texture = null;
       try {
          source = GraphicsUtils.loadImage(texturePath);
-         texture = addTexture(device, allocationUtil, id, source, format, null);
+         texture = addTexture(device, allocationUtil, id, source, format, null, false);
+      } catch (IOException e) {
+         logger.error("Could not load texture file: %s".formatted(texturePath), e);
+      } finally {
+         if(source != null) {
+            GraphicsUtils.cleanImageData(source);
+         }
+      }
+      return texture;
+   }
+
+   public VulkanTexture addSkyboxTexture(LogicalDevice device, MemoryAllocationUtil allocationUtil, String id, String texturePath, int format) {
+      ImageSource source = null;
+      VulkanTexture texture = null;
+      try {
+         source = GraphicsUtils.loadImage(texturePath);
+         texture = addTexture(device, allocationUtil, id, source, format, null, true);
       } catch (IOException e) {
          logger.error("Could not load texture file: %s".formatted(texturePath), e);
       } finally {
@@ -100,6 +116,10 @@ public class TextureCache {
 
    public List<GuiTexture> getGuiTextures() {
       return textureMap.values().stream().map(VulkanTexture::getGuiTexture).filter(Objects::nonNull).toList();
+   }
+
+   public List<VulkanTexture> getSkyboxTextures() {
+      return textureMap.values().stream().filter(VulkanTexture::isSkybox).toList();
    }
 
    public VulkanTexture getTexture(String texturePath) {

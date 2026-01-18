@@ -123,9 +123,13 @@ public class VulkanRenderer {
       instance.cleanup();
    }
 
-   public void initModels(List<ConvertedModel> convertedModels, List<GuiTexture> guiTextures) {
+   public void initModels(List<ConvertedModel> convertedModels, List<GuiTexture> guiTextures, List<String> skyboxTextures) {
       if(guiTextures != null) {
          guiTextures.forEach(t -> textureCache.addGuiTexture(t, VK13.VK_FORMAT_R8G8B8A8_SRGB));
+      }
+      if(skyboxTextures != null) {
+         // TODO: id needs to be unique, fix this!  (look at GuiTexture record)
+         skyboxTextures.forEach(t -> textureCache.addSkyboxTexture(device, memoryAllocationUtil, "SKYBOX_TEXTURE", t, VK13.VK_FORMAT_R8G8B8A8_UNORM));
       }
       List<VulkanMaterial> allMaterials = convertedModels.stream().flatMap(m -> m.getMaterials().stream()).toList();
       logger.debug("Loading {} materials", allMaterials.size());

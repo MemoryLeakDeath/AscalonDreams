@@ -28,7 +28,7 @@ public class Attachment {
          imageUsage = (usage | VK13.VK_IMAGE_USAGE_SAMPLED_BIT);
          depthAttachment = true;
       }
-      this.image = new VulkanImage(device, allocationUtil, width, height, imageUsage, format, 1,
+      this.image = new VulkanImage(allocationUtil, width, height, imageUsage, format, 1,
               Vma.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, layers);
 
       var imageViewData = new VulkanImageViewData();

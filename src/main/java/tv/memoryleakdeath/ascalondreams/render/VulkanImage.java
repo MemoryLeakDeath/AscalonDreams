@@ -26,8 +26,13 @@ public class VulkanImage {
    private final int height;
    private final int layerCount;
 
-   public VulkanImage(LogicalDevice device, MemoryAllocationUtil allocationUtil, int width, int height, int usage,
+   public VulkanImage(MemoryAllocationUtil allocationUtil, int width, int height, int usage,
                       int imageFormat, int mipLevels, int memoryUsage, int layerCount) {
+      this(allocationUtil, width, height, usage, imageFormat, mipLevels, memoryUsage, layerCount, 0);
+   }
+
+   public VulkanImage(MemoryAllocationUtil allocationUtil, int width, int height, int usage,
+                      int imageFormat, int mipLevels, int memoryUsage, int layerCount, int imageFlags) {
       try(var stack = MemoryStack.stackPush()) {
          this.format = imageFormat;
          this.mipLevels = mipLevels;
@@ -47,6 +52,9 @@ public class VulkanImage {
                  .sharingMode(VK13.VK_SHARING_MODE_EXCLUSIVE)
                  .tiling(VK13.VK_IMAGE_TILING_OPTIMAL)
                  .usage(usage);
+         if(imageFlags != 0) {
+            info.flags(imageFlags);
+         }
          var vmaAllocCreateInfo = VmaAllocationCreateInfo.calloc(1, stack)
                  .get(0)
                  .usage(Vma.VMA_MEMORY_USAGE_AUTO)

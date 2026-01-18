@@ -59,6 +59,14 @@ public class VulkanEngine {
     private static final String SOUND_FILE1 = "sounds/creak1.ogg";
     private static final String SOUND_FILE2 = "sounds/woo_scary.ogg";
 
+    private static final String SKYBOX_TEXTURE_FILE1 = "textures/skybox/Yokohama3/negx.jpg";
+    private static final String SKYBOX_TEXTURE_FILE2 = "textures/skybox/Yokohama3/negy.jpg";
+    private static final String SKYBOX_TEXTURE_FILE3 = "textures/skybox/Yokohama3/negz.jpg";
+    private static final String SKYBOX_TEXTURE_FILE4 = "textures/skybox/Yokohama3/posx.jpg";
+    private static final String SKYBOX_TEXTURE_FILE5 = "textures/skybox/Yokohama3/posy.jpg";
+    private static final String SKYBOX_TEXTURE_FILE6 = "textures/skybox/Yokohama3/posz.jpg";
+
+
     private long soundTimer = 0;
 
     private VulkanWindow window;
