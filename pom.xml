@@ -16,7 +16,7 @@
 		<joml.version>1.10.8</joml.version>
 		<joml-primitives.version>1.10.0</joml-primitives.version>
 		<lwjgl3-awt.version>0.2.3</lwjgl3-awt.version>
-		<logback.version>1.5.23</logback.version>
+		<logback.version>1.5.24</logback.version>
 		<commonslang.version>3.20.0</commonslang.version>
 		<args4j.version>2.37</args4j.version>
         <jackson.version>3.0.3</jackson.version>
